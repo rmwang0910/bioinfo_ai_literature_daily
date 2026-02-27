@@ -319,6 +319,14 @@ class LiteratureAgent:
             parsed['days_back'] = months * 30  # 近似值
             logger.info(f"简单解析：检测到最近{months}月，转换为{months * 30}天")
         
+        # 解析"近N年/最近N年/过去N年"
+        years_match = re.search(r'(最近|近|过去)(\d+)年', user_input)
+        if years_match and 'min_date' not in parsed and 'days_back' not in parsed:
+            years = int(years_match.group(2))
+            days = years * 365  # 按年近似为365天
+            parsed['days_back'] = days
+            logger.info(f"简单解析：检测到{years_match.group(1)}{years}年，转换为最近{days}天")
+        
         # 解析关键词（简单提取）
         keywords = []
         
@@ -1356,6 +1364,13 @@ class LiteratureAgent:
         if days_match:
             return {'days_back': int(days_match.group(1))}
         
+        # 解析"近N年/最近N年/过去N年"
+        years_match = re.search(r'(最近|近|过去)(\d+)年', time_input)
+        if years_match:
+            years = int(years_match.group(2))
+            days = years * 365  # 按年近似为365天
+            return {'days_back': days}
+        
         # 解析年份
         year_match = re.search(r'(\d{4})年', time_input)
         if year_match:
@@ -1365,7 +1380,7 @@ class LiteratureAgent:
                 'max_date': f"{year}-12-31"
             }
         
-        # 解析日期范围
+        # 解析日期范围（YYYY-MM-DD 到 YYYY-MM-DD）
         date_range_match = re.search(r'(\d{4}-\d{2}-\d{2})\s*到\s*(\d{4}-\d{2}-\d{2})', time_input)
         if date_range_match:
             return {
@@ -1373,7 +1388,73 @@ class LiteratureAgent:
                 'max_date': date_range_match.group(2)
             }
         
+        # 简单规则没命中时，尝试使用LLM兜底解析时间范围
+        if self.use_llm:
+            logger.info(f"简单时间解析失败，尝试使用LLM解析时间范围: {time_input}")
+            llm_result = self._parse_time_with_llm(time_input)
+            if llm_result:
+                return llm_result
+        
         return None
+
+    def _parse_time_with_llm(self, user_input: str) -> Dict[str, Any]:
+        """
+        使用LLM解析时间范围（兜底方案）
+        返回:
+          - {'days_back': int} 或 {'min_date': 'YYYY-MM-DD', 'max_date': 'YYYY-MM-DD'}
+          - 解析失败返回 {}
+        """
+        if not self.use_llm:
+            return {}
+
+        prompt_template = self._load_prompt("parse_time_range")
+        if not prompt_template:
+            # 默认提示词（如果忘了创建 prompts/parse_time_range.txt）
+            prompt_template = """你是一个时间范围解析助手。
+用户需求：{user_input}
+
+请从中解析出文献检索的时间范围，并只输出JSON：
+- 如果是“最近N年/近N年/过去N年/最近N月/最近N天”等相对时间，用days_back字段（整数，天数）。
+- 如果是“2020年到2023年”、“2015年至今”、“2010年-2012年”等具体年份或日期，返回min_date和max_date（YYYY-MM-DD）。
+
+输出格式示例：
+{{
+  "days_back": 365,
+  "min_date": null,
+  "max_date": null
+}}
+
+或：
+
+{{
+  "days_back": null,
+  "min_date": "2015-01-01",
+  "max_date": "2024-12-31"
+}}
+"""
+        import re, json
+        prompt = prompt_template.format(user_input=user_input)
+        try:
+            resp = self.llm_client.generate(prompt, max_tokens=300, temperature=0.1)
+            json_match = re.search(r'\{.*?\}', resp, re.DOTALL)
+            if not json_match:
+                logger.warning(f"LLM时间解析未返回JSON，原始响应: {resp[:200]}...")
+                return {}
+            data = json.loads(json_match.group(0))
+            days_back = data.get("days_back")
+            min_date = data.get("min_date")
+            max_date = data.get("max_date")
+            result: Dict[str, Any] = {}
+            if isinstance(days_back, int) and days_back > 0:
+                result["days_back"] = days_back
+            if isinstance(min_date, str) and isinstance(max_date, str):
+                result["min_date"] = min_date
+                result["max_date"] = max_date
+            logger.info(f"LLM解析时间范围结果: {result}")
+            return result
+        except Exception as e:
+            logger.warning(f"LLM解析时间范围失败: {e}")
+            return {}
     
     def _generate_validation_table(self, papers: List, keyword_validation_info: Dict) -> str:
         """
