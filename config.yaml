@@ -60,7 +60,7 @@ email:
   from_email: "3211524094@qq.com"
   
   # 收件人邮箱（接收文献信息的邮箱）
-  to_email: "yours@qq.com"
+  to_email: "654409646@qq.com"
   
   # 是否使用TLS加密（使用587端口时设为true）
   use_tls: true
