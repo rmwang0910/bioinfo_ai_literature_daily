@@ -77,7 +77,7 @@ email:
 python agent_main.py
 
 # 命令行模式（自然语言）
-python agent_main.py --mode interactive "找2026年关于单细胞和AI的文献，发送到example@qq.com"
+python agent_main.py --mode interactive "找2026年关于单细胞的文献，发送到example@qq.com"
 
 # 定时触发模式（使用config.yaml配置）
 python agent_main.py --mode scheduled
@@ -192,7 +192,7 @@ python agent_main.py --mode interactive "找2026年关于三碱基重复与疾�
 ### 示例 2: 多关键词搜索
 
 ```bash
-python agent_main.py --mode interactive "找最近30天关于单细胞和AI的文献，发送到example@qq.com"
+python agent_main.py --mode interactive "找最近30天关于生物信息和AI的文献，发送到example@qq.com"
 ```
 
 ### 示例 3: 定时推送
