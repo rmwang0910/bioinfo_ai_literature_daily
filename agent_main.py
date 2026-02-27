@@ -56,6 +56,9 @@ class LiteratureAgent:
         self.prompts_dir = Path(__file__).parent / "prompts"
         self.mode = mode
         self.base_agent = BioinfoAILiteratureDaily(config_path)
+        # 是否强制使用LLM进行关键词扩展（由config.search.force_llm_expand_keywords控制）
+        search_cfg = getattr(self.base_agent, "config", {}).get("search", {}) if getattr(self.base_agent, "config", None) else {}
+        self.force_llm_expand_keywords = bool(search_cfg.get("force_llm_expand_keywords", False))
         
         if mode == "scheduled":
             logger.info("运行模式: 定时触发模式（使用config.yaml配置）")
@@ -880,20 +883,38 @@ class LiteratureAgent:
             if cleaned_keywords:
                 # 使用LLM将中文/混合关键词扩展为适合PubMed的英文检索词
                 expanded_keywords = cleaned_keywords
+                # 是否要求“必须通过LLM扩展”
+                force_expand = getattr(self, "force_llm_expand_keywords", False)
+                
                 if self.use_llm:
                     try:
                         expanded_keywords = self._expand_search_keywords_with_llm(cleaned_keywords)
                         logger.info(f"✅ 关键词扩展结果（用于检索）: {expanded_keywords}")
                     except Exception as e:
-                        logger.warning(f"使用LLM扩展关键词失败，使用原始关键词: {e}")
-                        expanded_keywords = cleaned_keywords
+                        if force_expand:
+                            # 强制模式下，LLM扩展失败视为致命错误
+                            msg = f"强制LLM关键词扩展开启，但扩展失败: {e}。请检查LLM配置或修改关键词后重试。"
+                            logger.error(msg)
+                            raise RuntimeError(msg)
+                        else:
+                            logger.warning(f"使用LLM扩展关键词失败，使用原始关键词: {e}")
+                            expanded_keywords = cleaned_keywords
                 
                 # 强制只使用英文关键词进行检索（移除所有包含中文的关键词）
                 english_expanded = self._filter_english_keywords(expanded_keywords)
                 if not english_expanded:
-                    # 根据模式决定行为：交互式模式下绝不能悄悄回退到config.yaml默认关键词
+                    if force_expand:
+                        # 强制扩展模式：不允许回退到默认关键词，直接报错中止
+                        msg = (
+                            "强制通过LLM扩展关键词已开启，但未能从扩展结果中生成任何英文检索词。"
+                            "请在指令中调整/简化关键词，或暂时关闭force_llm_expand_keywords。"
+                        )
+                        logger.error(msg)
+                        raise RuntimeError(msg)
+                    # 非强制模式：根据运行模式决定行为
                     if self.mode == "interactive":
-                        logger.error("扩展后的英文关键词为空，交互式模式下不会回退到配置文件默认关键词。")
+                        logger.error("扩展后的英文关键词为空，交互式模式下不会回退到配置文件默认关键词。"
+                                     "请在指令中直接提供英文关键词（例如：single cell, CRISPR, organoid）。")
                         # 显式清空搜索关键词，后续流程会提示用户
                         self.base_agent.config['search']['keywords'] = []
                     else:
@@ -1285,11 +1306,17 @@ class LiteratureAgent:
         try:
             response = self.llm_client.generate(prompt, max_tokens=400, temperature=0.2)
             import json, re
-            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            # 使用非贪婪匹配，只取第一个完整的JSON对象，避免意外多余内容
+            json_match = re.search(r'\{.*?\}', response, re.DOTALL)
             if not json_match:
                 logger.warning(f"无法从LLM扩展关键词响应中提取JSON，原始响应: {response[:200]}...")
                 return keywords
-            data = json.loads(json_match.group(0))
+            raw_json = json_match.group(0)
+            try:
+                data = json.loads(raw_json)
+            except Exception as je:
+                logger.warning(f"解析LLM扩展关键词JSON失败，将使用原始关键词。原始片段: {raw_json[:200]}..., 错误: {je}")
+                return keywords
             expanded = data.get("expanded_keywords") or []
             # 清理：去重、去空、转字符串
             cleaned = []
