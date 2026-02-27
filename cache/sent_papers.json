@@ -1247,7 +1247,47 @@
       "year": 2026,
       "url": "https://pubmed.ncbi.nlm.nih.gov/41422503/",
       "sent_date": "2026-02-27T09:41:39.182378"
+    },
+    {
+      "title": "Huntington Disease.",
+      "doi": null,
+      "journal": "",
+      "year": 2025,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/32644592/",
+      "sent_date": "2026-02-27T14:29:08.113121"
+    },
+    {
+      "title": "CAG Repeat Instability and Region-Specific Gene Expression Changes in the SCA12 Brain.",
+      "doi": "10.1007/s12311-025-01808-z",
+      "journal": "Cerebellum",
+      "year": 2025,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/40075006/",
+      "sent_date": "2026-02-27T14:29:08.113157"
+    },
+    {
+      "title": "Repeat length in spinocerebellar ataxia type 4 (SCA4) predicts age at onset and disease severity.",
+      "doi": "10.1007/s00415-024-12600-0",
+      "journal": "J Neurol",
+      "year": 2024,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/39095619/",
+      "sent_date": "2026-02-27T14:29:08.113162"
+    },
+    {
+      "title": "In Silico Prediction of Potential Inhibitors for Targeting RNA CAG Repeats via Molecular Docking and Dynamics Simulation: A Drug Discovery Approach.",
+      "doi": "10.1002/jcb.30611",
+      "journal": "J Cell Biochem",
+      "year": 2024,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/38884365/",
+      "sent_date": "2026-02-27T14:29:08.113165"
+    },
+    {
+      "title": "A Novel Metric for Predicting Severity of Disease Features in Friedreich's Ataxia.",
+      "doi": "10.1002/mds.29370",
+      "journal": "Mov Disord",
+      "year": 2023,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/36928898/",
+      "sent_date": "2026-02-27T14:29:08.113168"
     }
   ],
-  "last_update": "2026-02-27T09:41:39.182381"
+  "last_update": "2026-02-27T14:29:08.113171"
 }

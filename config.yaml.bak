@@ -13,6 +13,11 @@ search:
     - "transcriptomics AND machine learning"
     - "systems biology AND AI"
   
+  # 是否强制通过LLM进行关键词扩展
+  # false：尝试用LLM扩展，失败时回退到原始关键词（当前默认行为）
+  # true：必须通过LLM扩展成功，否则报错中止，提示你调整关键词
+  force_llm_expand_keywords: true
+  
   # 每个关键词最多返回的论文数
   max_results_per_keyword: 20
   

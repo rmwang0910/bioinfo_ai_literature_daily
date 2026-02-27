@@ -1301,7 +1301,9 @@ class LiteratureAgent:
 
 请按照要求返回JSON："""
         
-        prompt = prompt_template.format(keywords=keywords)
+        # 注意：prompt_template 中包含JSON示例的大括号，不能直接用str.format
+        # 这里只做一个简单的占位符替换，避免误解析其他花括号
+        prompt = prompt_template.replace("{keywords}", ", ".join(keywords))
         
         try:
             response = self.llm_client.generate(prompt, max_tokens=400, temperature=0.2)
