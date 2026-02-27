@@ -210,24 +210,35 @@ python scheduler.py
 ### 使用Python调度器（开发测试）
 
 ```bash
-# 启动定时任务（默认每天早上9点执行）
+# 启动定时任务（默认每天早上9点执行，走基础 main.py 流程）
 python scheduler.py
 
 # 立即执行一次并启动定时任务
 python scheduler.py --run-now
 ```
 
-### 使用系统Cron（生产环境）
+> 开发/调试阶段可以用 `scheduler.py` 快速验证基础流程是否正常；  
+> 生产环境更推荐直接用智能体入口 `agent_main.py --mode scheduled` 做定时任务。
 
-编辑crontab：
+### 使用系统Cron（生产环境，推荐）
+
+编辑 crontab：
+
 ```bash
 crontab -e
 ```
 
-添加定时任务（例如每天早上9点执行）：
+添加定时任务（例如每天早上9点执行），直接调用智能体定时模式：
+
 ```bash
-0 9 * * * cd /path/to/bioinfo_ai_literature_daily && /usr/bin/python3 main.py >> logs/cron.log 2>&1
+0 9 * * * source ~/.bashrc && conda activate bioai_literature_daily && \
+  cd /path/to/bioinfo_ai_literature_daily && \
+  python agent_main.py --mode scheduled >> logs/cron.log 2>&1
 ```
+
+这样可以保证：
+
+ - 不需要单独维护一套只走 `main.py` 的老逻辑
 
 ## ⚠️ 注意事项
 
