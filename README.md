@@ -21,6 +21,9 @@
 
 1. **安装 Python 依赖**：
 ```bash
+#构建环境
+conda create -n bioinfo_ai_literature_daily python=3.13
+ 
 # 激活conda环境（推荐）
 conda activate bioai_literature_daily
 
