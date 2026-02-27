@@ -1,0 +1,88 @@
+# 生信+AI文献每日推送智能体配置文件
+
+# 搜索配置
+search:
+  # 搜索关键词列表（支持PubMed查询语法）
+  keywords:
+    - "bioinformatics AND artificial intelligence"
+    - "computational biology AND machine learning"
+    - "genomics AND deep learning"
+    - "single cell AND AI"
+    - "sequencing AND neural network"
+    - "proteomics AND artificial intelligence"
+    - "transcriptomics AND machine learning"
+    - "systems biology AND AI"
+  
+  # 每个关键词最多返回的论文数
+  max_results_per_keyword: 20
+  
+  # 关键词组合方式：'AND'（交集，所有关键词都必须包含）或 'OR'（并集，任一关键词包含即可）
+  # 如果关键词列表中已经包含AND/OR等逻辑运算符，此选项将被忽略
+  keyword_operator: "AND"  # 默认使用AND（交集）
+  
+  # 是否启用严格关键词验证（使用LLM检查每篇论文是否实质性包含所有关键词）
+  # 当为true时，会使用LLM验证每篇论文是否在研究方法、核心数据或主要结论中实质性包含所有关键词
+  strict_keyword_validation: true  # 默认启用严格验证
+  
+  # 验证严格度级别（仅当strict_keyword_validation为true时生效）
+  # "normal": 标准严格度（默认）
+  # "strict": 更严格，要求所有关键词都有明确的实质性使用证据
+  # "very_strict": 非常严格，采用最保守的判断标准，宁可少选也不误选
+  validation_strictness: "strict"  # 默认使用最严格标准
+  
+  # 是否跳过“已发送文献”的去重（仅用于测试阶段）
+  # true: 不再根据已发送缓存去重，同一篇论文可以重复发送
+  # false: 默认行为，过滤掉历史上已经发送过的论文
+  skip_sent_dedup: true
+  
+  # 搜索最近N天的文献（如果设置了min_date，则忽略此选项）
+  days_back: 7
+  
+  # 最小日期（格式：YYYY-MM-DD），如果设置，将覆盖days_back
+  # min_date: "2024-01-01"
+
+# 邮件配置
+email:
+  # SMTP服务器地址（QQ邮箱）
+  smtp_server: "smtp.qq.com"
+  
+  # SMTP端口（587用于TLS，465用于SSL）
+  smtp_port: 587
+  
+  # SMTP用户名（发送邮箱地址）
+  smtp_username: "3211524094@qq.com"
+  
+  # SMTP密码（QQ邮箱授权码，不是QQ密码！）
+  # 获取方法：登录QQ邮箱 -> 设置 -> 账户 -> 开启SMTP服务 -> 生成授权码
+  smtp_password: "psqbljjtiibfdehe"
+  
+  # 发件人邮箱（发送邮箱地址）
+  from_email: "3211524094@qq.com"
+  
+  # 收件人邮箱（接收文献信息的邮箱）
+  to_email: "654409646@qq.com"
+  
+  # 是否使用TLS加密（使用587端口时设为true）
+  use_tls: true
+
+# 过滤配置
+filter:
+  # 最小摘要长度（字符数）
+  min_abstract_length: 100
+  
+  # 排除关键词列表（如果论文标题或摘要包含这些关键词，将被排除）
+  exclude_keywords: []
+  
+  # 必须包含的关键词列表（如果设置，论文必须包含至少一个关键词）
+  include_keywords: []
+
+# 报告配置
+report:
+  # 最多发送的论文数量
+  max_papers: 50
+  
+  # 邮件格式：html 或 text
+  format: "html"
+  
+  # 是否同时显示英文摘要（当有中文总结时）
+  show_english_abstract: false

@@ -1,0 +1,1253 @@
+{
+  "papers": [
+    {
+      "title": "Non-Viral CRISPR carriers: transient delivery with lasting effects.",
+      "doi": "10.1080/10717544.2026.2614125",
+      "journal": "Drug Deliv",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41543272/",
+      "sent_date": "2026-02-26T10:07:02.763357"
+    },
+    {
+      "title": "DRP1 depletion protects NK cells from hypoxia-induced dysfunction.",
+      "doi": "10.1080/13510002.2026.2626181",
+      "journal": "Redox Rep",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41706678/",
+      "sent_date": "2026-02-26T10:07:02.763391"
+    },
+    {
+      "title": "Cas10 residues lining the target RNA binding channel regulate interference by distinguishing cognate target RNA from mismatched targets.",
+      "doi": "10.1080/15476286.2026.2633385",
+      "journal": "RNA Biol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41704216/",
+      "sent_date": "2026-02-26T10:07:02.763400"
+    },
+    {
+      "title": "The influence of GMO media strategies on public perceptions of CRISPR crop technologies in Southern Ontario.",
+      "doi": "10.1080/21645698.2026.2620131",
+      "journal": "GM Crops Food",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41674223/",
+      "sent_date": "2026-02-26T10:07:02.763405"
+    },
+    {
+      "title": "Advancing climate adaptation in saffron through CRISPR-based modulation of stress tolerance and photoperiodic flowering control.",
+      "doi": "10.1080/21645698.2026.2626180",
+      "journal": "GM Crops Food",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41664621/",
+      "sent_date": "2026-02-26T10:07:02.763411"
+    },
+    {
+      "title": "The emergence and biological characteristics of linezolid-resistant Clostridioides difficile isolates in the Asia-Pacific region.",
+      "doi": "10.1080/22221751.2026.2627070",
+      "journal": "Emerg Microbes Infect",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41630629/",
+      "sent_date": "2026-02-26T10:07:02.763416"
+    },
+    {
+      "title": "Bioethics in assisted reproduction and embryology.",
+      "doi": "10.1080/19396368.2026.2618252",
+      "journal": "Syst Biol Reprod Med",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41581067/",
+      "sent_date": "2026-02-26T10:07:02.763421"
+    },
+    {
+      "title": "Systematic review and data-driven insights into CHO cell engineering for next-generation antibody production.",
+      "doi": "10.1080/19420862.2026.2615475",
+      "journal": "MAbs",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41548093/",
+      "sent_date": "2026-02-26T10:07:02.763426"
+    },
+    {
+      "title": "The essential role of heparan sulfate in the entry of PDCoV and other porcine coronaviruses.",
+      "doi": "10.1080/21505594.2026.2614154",
+      "journal": "Virulence",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41503690/",
+      "sent_date": "2026-02-26T10:07:02.763430"
+    },
+    {
+      "title": "Silencing of optogenetic and chemogenetic transgenes in human iPSCs involves promoter methylation and methylation-independent mechanisms.",
+      "doi": "10.1080/15592294.2025.2606983",
+      "journal": "Epigenetics",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41468306/",
+      "sent_date": "2026-02-26T10:07:02.763435"
+    },
+    {
+      "title": "The autophagy-related protein PlAtg26b regulates vegetative growth, reproductive processes, autophagy, and pathogenicity in Peronophythora litchii.",
+      "doi": "10.1080/21505594.2025.2606498",
+      "journal": "Virulence",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41410478/",
+      "sent_date": "2026-02-26T10:07:02.763440"
+    },
+    {
+      "title": "Engineering of multiple modules to enhance lignocellulose degradation ability in Bacillus subtilis using CRISPR/Cas9 system.",
+      "doi": "10.1016/j.synbio.2026.01.021",
+      "journal": "Synth Syst Biotechnol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41704465/",
+      "sent_date": "2026-02-26T10:07:02.763445"
+    },
+    {
+      "title": "OptoLoop - an optogenetic tool to probe the functional role of genome organization.",
+      "doi": "10.1242/jcs.264574",
+      "journal": "J Cell Sci",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41549960/",
+      "sent_date": "2026-02-26T10:07:02.763449"
+    },
+    {
+      "title": "CRISPR/Cas12a-nanozyme visual biosensor for detection of microRNA-21.",
+      "doi": "10.1016/j.talanta.2026.129517",
+      "journal": "Talanta",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41671823/",
+      "sent_date": "2026-02-26T10:07:02.763453"
+    },
+    {
+      "title": "CircRNA-regulated programmed cell death networks in cardiomyocytes: Molecular crosstalk and therapeutic translation.",
+      "doi": "10.1016/j.ncrna.2026.01.008",
+      "journal": "Noncoding RNA Res",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41631272/",
+      "sent_date": "2026-02-26T10:07:02.763458"
+    },
+    {
+      "title": "A new split DNA-based activation of CRISPR/Cas12a for amplification-free and dual-stimulus responsive detection and precise imaging of miRNA-221.",
+      "doi": "10.1016/j.talanta.2026.129443",
+      "journal": "Talanta",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41628563/",
+      "sent_date": "2026-02-26T10:07:02.763462"
+    },
+    {
+      "title": "Integrated amplification of NADPH-regenerating modules enhances cytidine biosynthesis in Escherichia coli.",
+      "doi": "10.1016/j.synbio.2025.12.009",
+      "journal": "Synth Syst Biotechnol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41574266/",
+      "sent_date": "2026-02-26T10:07:02.763466"
+    },
+    {
+      "title": "RECC: A Red/ET-CRISPR/Cas9-based system enabling genome mining of marine Pseudoalteromonas for novel natural products.",
+      "doi": "10.1016/j.synbio.2025.12.015",
+      "journal": "Synth Syst Biotechnol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41574265/",
+      "sent_date": "2026-02-26T10:07:02.763470"
+    },
+    {
+      "title": "Metabolic reprogramming of abscisic acid-producing strain Botrytis cinerea TB-31 toward terpenoid biosynthesis using a CRISPR/Cas9 ribonucleoprotein system.",
+      "doi": "10.1016/j.synbio.2025.12.002",
+      "journal": "Synth Syst Biotechnol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41551747/",
+      "sent_date": "2026-02-26T10:07:02.763475"
+    },
+    {
+      "title": "The lldD lactate dehydrogenase is a determinant of lactic acid tolerance in Pichia kudriavzevii by pyruvate metabolism pathway.",
+      "doi": "10.1016/j.fm.2025.104989",
+      "journal": "Food Microbiol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41478695/",
+      "sent_date": "2026-02-26T10:07:02.763479"
+    },
+    {
+      "title": "Identification of the immune-related diagnostic biomarkers between Graves' disease and thyroid carcinoma based on comprehensive bioinformatics analysis and machine learning.",
+      "doi": "10.1080/08916934.2026.2631208",
+      "journal": "Autoimmunity",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41729615/",
+      "sent_date": "2026-02-26T10:36:16.155553"
+    },
+    {
+      "title": "Genetic relationships between the gut microbiota and prostate cancer: Mendelian randomization combined with bioinformatics analysis.",
+      "doi": "10.1080/13685538.2026.2615561",
+      "journal": "Aging Male",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41532675/",
+      "sent_date": "2026-02-26T10:36:16.155579"
+    },
+    {
+      "title": "ACD(2)W-InceptionNeXt: adjacent class distinguished and class distance weighted InceptionNeXt-based computer-aided mayo endoscopic scoring system for still images and video segments.",
+      "doi": "10.1007/s13755-026-00435-0",
+      "journal": "Health Inf Sci Syst",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41704942/",
+      "sent_date": "2026-02-26T10:36:16.155583"
+    },
+    {
+      "title": "Immune-related biomarkers for major depressive disorder identified via integrated bioinformatics and machine learning.",
+      "doi": "10.1080/20008066.2026.2619389",
+      "journal": "Eur J Psychotraumatol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41665627/",
+      "sent_date": "2026-02-26T10:36:16.155585"
+    },
+    {
+      "title": "Advanced deep learning strategies in nanopore RNA sequencing.",
+      "doi": "10.1080/15476286.2026.2627968",
+      "journal": "RNA Biol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41663212/",
+      "sent_date": "2026-02-26T10:36:16.155588"
+    },
+    {
+      "title": "Comprehensive analysis of mRNA-microRNA-lncRNA expression profiles in post-traumatic elbow heterotopic ossification using RNA sequencing and experimental validation.",
+      "doi": "10.1080/07853890.2025.2611612",
+      "journal": "Ann Med",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41530916/",
+      "sent_date": "2026-02-26T10:36:16.155591"
+    },
+    {
+      "title": "Conformation-aware structure prediction of antigen-recognizing immune proteins.",
+      "doi": "10.1080/19420862.2025.2602217",
+      "journal": "MAbs",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41378904/",
+      "sent_date": "2026-02-26T10:36:16.155593"
+    },
+    {
+      "title": "Applications of large-scale artificial intelligence models in bioinformatics.",
+      "doi": "10.1002/qub2.70026",
+      "journal": "Quant Biol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41675595/",
+      "sent_date": "2026-02-26T10:36:16.155595"
+    },
+    {
+      "title": "DeepHSI: A transferable and expandable hyperspectral framework for industrial plant origin identification: A case study of Pogostemon cablin (Blanco) Benth.",
+      "doi": "10.1016/j.talanta.2026.129474",
+      "journal": "Talanta",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41621286/",
+      "sent_date": "2026-02-26T10:36:16.155597"
+    },
+    {
+      "title": "Defect-complementation homologous recombination: A novel strategy for precise genome engineering of virulent phages.",
+      "doi": "10.1016/j.synbio.2025.11.002",
+      "journal": "Synth Syst Biotechnol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41328409/",
+      "sent_date": "2026-02-26T10:36:16.155600"
+    },
+    {
+      "title": "Artificial Intelligence Virtual Organoids (AIVOs).",
+      "doi": "10.1016/j.bioactmat.2025.12.030",
+      "journal": "Bioact Mater",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41536916/",
+      "sent_date": "2026-02-26T10:36:16.155602"
+    },
+    {
+      "title": "Plasma metabolomics identifies lipid mediators linking depression and cognitive decline in late-life depression.",
+      "doi": "10.1016/j.jad.2025.121094",
+      "journal": "J Affect Disord",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41483882/",
+      "sent_date": "2026-02-26T10:36:16.155604"
+    },
+    {
+      "title": "A readily interpretable rule involving multiple forms of pairwise molecule comparisons with applications for clinical make-decision of breast cancer management.",
+      "doi": "10.1016/j.jpba.2026.117347",
+      "journal": "J Pharm Biomed Anal",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41519015/",
+      "sent_date": "2026-02-26T10:36:16.155607"
+    },
+    {
+      "title": "Integrated metabolomics and transcriptomics reveal biomarkers for detecting fentanyl analog abuse through machine learning.",
+      "doi": "10.1016/j.jpba.2025.117323",
+      "journal": "J Pharm Biomed Anal",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41475031/",
+      "sent_date": "2026-02-26T10:36:16.155609"
+    },
+    {
+      "title": "Multi-objective optimization of oxygen transfer and hydrodynamic shear in dual-impeller stirred tanks via integrated computational fluid dynamics and machine learning framework.",
+      "doi": "10.1016/j.biortech.2026.134166",
+      "journal": "Bioresour Technol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41662994/",
+      "sent_date": "2026-02-26T10:36:16.155611"
+    },
+    {
+      "title": "Predictive value of tear lipidomics biomarkers for TAO activity and relationship with clinical characteristics.",
+      "doi": "10.1016/j.exer.2026.110901",
+      "journal": "Exp Eye Res",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41643837/",
+      "sent_date": "2026-02-26T10:36:16.155614"
+    },
+    {
+      "title": "Artificial Intelligence in Drug Discovery: Integrative Advances From Data to Therapeutic Innovation.",
+      "doi": "10.1002/ddr.70229",
+      "journal": "Drug Dev Res",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41630488/",
+      "sent_date": "2026-02-26T10:36:16.155616"
+    },
+    {
+      "title": "Childhood dyslexia risk elevated by heavy metal mixtures from e-waste: A machine learning-driven mixture modeling study.",
+      "doi": "10.1016/j.envpol.2026.127745",
+      "journal": "Environ Pollut",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41617043/",
+      "sent_date": "2026-02-26T10:36:16.155618"
+    },
+    {
+      "title": "Machine learning integrated extracellular vesicle proteome analysis for early markers of bronchopulmonary dysplasia.",
+      "doi": "10.1152/function.090.2025",
+      "journal": "Function (Oxf)",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41552916/",
+      "sent_date": "2026-02-26T10:36:16.155620"
+    },
+    {
+      "title": "Naapinneq: strengthening Inuit maternal and child health through gathering Inuit from Kalaallit Nunaat and Nunavut.",
+      "doi": "10.1080/22423982.2026.2634479",
+      "journal": "Int J Circumpolar Health",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41711117/",
+      "sent_date": "2026-02-26T11:35:48.478356"
+    },
+    {
+      "title": "Inunngorfik - connection to land, inuit culture and giving birth in Kalaallit Nunaat: pregnant women's and their families' perspectives on the centralization of delivery services.",
+      "doi": "10.1080/22423982.2026.2630454",
+      "journal": "Int J Circumpolar Health",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41680968/",
+      "sent_date": "2026-02-26T11:35:48.478386"
+    },
+    {
+      "title": "Induction of DNA-mediated immune responses by bacterial extracellular vesicles results in control of murine norovirus infection.",
+      "doi": "10.1080/19490976.2026.2624171",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41645037/",
+      "sent_date": "2026-02-26T11:35:48.478391"
+    },
+    {
+      "title": "The enteric DNA virome differs in infants at risk for atopic disease.",
+      "doi": "10.1080/19490976.2026.2616066",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41593042/",
+      "sent_date": "2026-02-26T11:35:48.478394"
+    },
+    {
+      "title": "The benefits and future potential of generative artificial intelligence (GAI) on mental health: a Delphi study.",
+      "doi": "10.1080/17482631.2026.2621802",
+      "journal": "Int J Qual Stud Health Well-being",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41589742/",
+      "sent_date": "2026-02-26T11:35:48.478397"
+    },
+    {
+      "title": "Autoinducer 2 as a universal language in microbial consortia: decoding molecular mechanisms, ecological impacts, and application.",
+      "doi": "10.1080/19490976.2026.2615494",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41574816/",
+      "sent_date": "2026-02-26T11:35:48.478399"
+    },
+    {
+      "title": "Generating multiple-choice questions using reverse engineering techniques.",
+      "doi": "10.1080/10872981.2025.2611632",
+      "journal": "Med Educ Online",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41510996/",
+      "sent_date": "2026-02-26T11:35:48.478401"
+    },
+    {
+      "title": "Crosstalk between the microbiota and intestinal gammadelta T cell compartments in health and IBD.",
+      "doi": "10.1080/19490976.2025.2604908",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41459728/",
+      "sent_date": "2026-02-26T11:35:48.478404"
+    },
+    {
+      "title": "The ApoB/ApoA-I ratio supersedes conventional lipids in predicting coronary artery disease and clinical phenotypes requiring revascularization.",
+      "doi": "10.1080/10641963.2025.2603463",
+      "journal": "Clin Exp Hypertens",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41430776/",
+      "sent_date": "2026-02-26T11:35:48.478406"
+    },
+    {
+      "title": "Impact of gut microbiota on host stem cells across the gastrointestinal tract.",
+      "doi": "10.1080/19490976.2025.2606477",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41427927/",
+      "sent_date": "2026-02-26T11:35:48.478408"
+    },
+    {
+      "title": "Miniature bioreactor arrays for modeling functional and structural dysbiosis in inflammatory bowel disease.",
+      "doi": "10.1080/19490976.2025.2604875",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41427586/",
+      "sent_date": "2026-02-26T11:35:48.478410"
+    },
+    {
+      "title": "Tumor microenvironment-responsive conformational activation of apoA-I mimetic peptides for targeted cancer therapy.",
+      "doi": "10.1080/10717544.2025.2604086",
+      "journal": "Drug Deliv",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41404765/",
+      "sent_date": "2026-02-26T11:35:48.478413"
+    },
+    {
+      "title": "[THE INNOVATIVE APPROACHES TO MEDICAL EDUCATION IN THE COUNTRIES OF THE BRICS: PROJECT TRAINING AS A MODE OF PROFESSIONAL COMPETENCES FORMATION].",
+      "doi": "10.32687/0869-866X-2026-34-1-113-118",
+      "journal": "Probl Sotsialnoi Gig Zdravookhranenniiai Istor Med",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723622/",
+      "sent_date": "2026-02-26T11:35:48.478415"
+    },
+    {
+      "title": "[THE PRECISION APPROACH IN CONTEMPORARY NEUROSURGICAL PRACTICE: A REVIEW].",
+      "doi": "10.32687/0869-866X-2026-34-1-108-112",
+      "journal": "Probl Sotsialnoi Gig Zdravookhranenniiai Istor Med",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723613/",
+      "sent_date": "2026-02-26T11:35:48.478418"
+    },
+    {
+      "title": "Breaking barriers in women's pelvic health: claims-based economic analysis and healthcare utilization of an AI care program compared to usual care.",
+      "doi": "10.1080/13696998.2026.2627835",
+      "journal": "J Med Econ",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41733548/",
+      "sent_date": "2026-02-26T11:35:48.478420"
+    },
+    {
+      "title": "Comparative Evaluation of Intraocular Lens Power Calculation Formulas in Patients After Radial Keratotomy.",
+      "doi": "10.1080/08941939.2026.2622155",
+      "journal": "J Invest Surg",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41704059/",
+      "sent_date": "2026-02-26T11:35:48.478422"
+    },
+    {
+      "title": "Hives in autonomic disorders: a cutaneous marker of a distinct symptom phenotype.",
+      "doi": "10.1080/07853890.2026.2626224",
+      "journal": "Ann Med",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41668453/",
+      "sent_date": "2026-02-26T11:35:48.478424"
+    },
+    {
+      "title": "Use of uterine activity to predict preterm birth by artificial intelligence assisted models: a narrative systematic review.",
+      "doi": "10.1080/14767058.2025.2582375",
+      "journal": "J Matern Fetal Neonatal Med",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41663244/",
+      "sent_date": "2026-02-26T11:35:48.478426"
+    },
+    {
+      "title": "Diagnosis, evaluation, and management of patients with non-muscle invasive bladder cancer.",
+      "doi": "10.1080/20565623.2026.2622297",
+      "journal": "Future Sci OA",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41661092/",
+      "sent_date": "2026-02-26T11:35:48.478428"
+    },
+    {
+      "title": "Big data in healthcare and medicine revisited design and managerial challenges in the age of artificial intelligence.",
+      "doi": "10.1007/s13755-026-00433-2",
+      "journal": "Health Inf Sci Syst",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41659839/",
+      "sent_date": "2026-02-26T11:35:48.478430"
+    },
+    {
+      "title": "Beetroot juice supplementation enhances the effects of blood flow restriction training on lower limb strength and vertical jump performance under fatigue in male university students: a randomized, double-blind, placebo-controlled study.",
+      "doi": "10.1080/15502783.2026.2636613",
+      "journal": "J Int Soc Sports Nutr",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41733365/",
+      "sent_date": "2026-02-26T15:39:50.771908"
+    },
+    {
+      "title": "The role of physiotherapists in acute post-stroke neurorehabilitation: qualitative perspectives from clinicians and stroke unit managers.",
+      "doi": "10.1080/17482631.2026.2634880",
+      "journal": "Int J Qual Stud Health Well-being",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41733307/",
+      "sent_date": "2026-02-26T15:39:50.771937"
+    },
+    {
+      "title": "A mixed inflammatory peripheral signature defines clinical outcomes in a phase II trial combining pembrolizumab with paclitaxel and carboplatin in melanoma.",
+      "doi": "10.1080/2162402X.2026.2631244",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41732954/",
+      "sent_date": "2026-02-26T15:39:50.771942"
+    },
+    {
+      "title": "Acceptability and preferences regarding long-acting injectable antiretroviral therapy among people with HIV in Pakistan.",
+      "doi": "10.1080/25787489.2026.2635223",
+      "journal": "HIV Res Clin Pract",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41729188/",
+      "sent_date": "2026-02-26T15:39:50.771944"
+    },
+    {
+      "title": "Simulated microgravity induces cerebral dysfunction by disturbing protective microbiota-metabolite-microglia signaling across the gut‒brain axis.",
+      "doi": "10.1080/19490976.2026.2635820",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41729099/",
+      "sent_date": "2026-02-26T15:39:50.771946"
+    },
+    {
+      "title": "Quantitative live-cell imaging of auxin and cytokinin signalling in developing feeding sites of Heterodera schachtii.",
+      "doi": "10.1080/15592324.2026.2629039",
+      "journal": "Plant Signal Behav",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41728823/",
+      "sent_date": "2026-02-26T15:39:50.771948"
+    },
+    {
+      "title": "T-periodic dynamics in a 3D delayed quasispecies model.",
+      "doi": "10.1080/17513758.2026.2631218",
+      "journal": "J Biol Dyn",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41728638/",
+      "sent_date": "2026-02-26T15:39:50.771951"
+    },
+    {
+      "title": "(Self-)caring with companion animals: a qualitative exploration of how companion animals shape everyday practices of rest and relaxation.",
+      "doi": "10.1080/17482631.2025.2606862",
+      "journal": "Int J Qual Stud Health Well-being",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41725060/",
+      "sent_date": "2026-02-26T15:39:50.771953"
+    },
+    {
+      "title": "Seasonal changes in energy intake and emerging indicators of energy availability in young elite Nordic skiers.",
+      "doi": "10.1080/15502783.2026.2634184",
+      "journal": "J Int Soc Sports Nutr",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723749/",
+      "sent_date": "2026-02-26T15:39:50.771955"
+    },
+    {
+      "title": "Annexin A1 exacerbates islet stellate cell activation by regulating triglyceride catabolism via the PPARalpha/ACOX1/CYP4a pathway.",
+      "doi": "10.1080/19382014.2026.2633793",
+      "journal": "Islets",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723748/",
+      "sent_date": "2026-02-26T15:39:50.771956"
+    },
+    {
+      "title": "Monocytes acquire a tumor-associated IL1B program upon encountering patient-derived colon cancer organoids.",
+      "doi": "10.1080/2162402X.2026.2633012",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723598/",
+      "sent_date": "2026-02-26T15:39:50.771958"
+    },
+    {
+      "title": "Alcohol consumption in metabolic dysfunction-associated steatotic liver disease (MASLD): understanding the gut-liver crosstalk for clinical translation.",
+      "doi": "10.1080/19490976.2026.2631834",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723574/",
+      "sent_date": "2026-02-26T15:39:50.771960"
+    },
+    {
+      "title": "Allostatic load in psychiatry: a systematic review and meta-analysis.",
+      "doi": "10.1080/10253890.2026.2635367",
+      "journal": "Stress",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723573/",
+      "sent_date": "2026-02-26T15:39:50.771962"
+    },
+    {
+      "title": "Beetroot juice supplementation enhances the effects of blood flow restriction training on lower limb strength and vertical jump performance under fatigue in male university students: a randomized, double-blind, placebo-controlled study.",
+      "doi": "10.1080/15502783.2026.2636613",
+      "journal": "J Int Soc Sports Nutr",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41733365/",
+      "sent_date": "2026-02-26T16:37:10.798220"
+    },
+    {
+      "title": "The role of physiotherapists in acute post-stroke neurorehabilitation: qualitative perspectives from clinicians and stroke unit managers.",
+      "doi": "10.1080/17482631.2026.2634880",
+      "journal": "Int J Qual Stud Health Well-being",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41733307/",
+      "sent_date": "2026-02-26T16:37:10.798273"
+    },
+    {
+      "title": "A mixed inflammatory peripheral signature defines clinical outcomes in a phase II trial combining pembrolizumab with paclitaxel and carboplatin in melanoma.",
+      "doi": "10.1080/2162402X.2026.2631244",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41732954/",
+      "sent_date": "2026-02-26T16:37:10.798278"
+    },
+    {
+      "title": "Identification of the immune-related diagnostic biomarkers between Graves' disease and thyroid carcinoma based on comprehensive bioinformatics analysis and machine learning.",
+      "doi": "10.1080/08916934.2026.2631208",
+      "journal": "Autoimmunity",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41729615/",
+      "sent_date": "2026-02-26T16:37:10.798280"
+    },
+    {
+      "title": "Acceptability and preferences regarding long-acting injectable antiretroviral therapy among people with HIV in Pakistan.",
+      "doi": "10.1080/25787489.2026.2635223",
+      "journal": "HIV Res Clin Pract",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41729188/",
+      "sent_date": "2026-02-26T16:37:10.798283"
+    },
+    {
+      "title": "Simulated microgravity induces cerebral dysfunction by disturbing protective microbiota-metabolite-microglia signaling across the gut‒brain axis.",
+      "doi": "10.1080/19490976.2026.2635820",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41729099/",
+      "sent_date": "2026-02-26T16:37:10.798286"
+    },
+    {
+      "title": "Quantitative live-cell imaging of auxin and cytokinin signalling in developing feeding sites of Heterodera schachtii.",
+      "doi": "10.1080/15592324.2026.2629039",
+      "journal": "Plant Signal Behav",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41728823/",
+      "sent_date": "2026-02-26T16:37:10.798288"
+    },
+    {
+      "title": "T-periodic dynamics in a 3D delayed quasispecies model.",
+      "doi": "10.1080/17513758.2026.2631218",
+      "journal": "J Biol Dyn",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41728638/",
+      "sent_date": "2026-02-26T16:37:10.798290"
+    },
+    {
+      "title": "(Self-)caring with companion animals: a qualitative exploration of how companion animals shape everyday practices of rest and relaxation.",
+      "doi": "10.1080/17482631.2025.2606862",
+      "journal": "Int J Qual Stud Health Well-being",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41725060/",
+      "sent_date": "2026-02-26T16:37:10.798291"
+    },
+    {
+      "title": "Seasonal changes in energy intake and emerging indicators of energy availability in young elite Nordic skiers.",
+      "doi": "10.1080/15502783.2026.2634184",
+      "journal": "J Int Soc Sports Nutr",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723749/",
+      "sent_date": "2026-02-26T16:37:10.798293"
+    },
+    {
+      "title": "Annexin A1 exacerbates islet stellate cell activation by regulating triglyceride catabolism via the PPARalpha/ACOX1/CYP4a pathway.",
+      "doi": "10.1080/19382014.2026.2633793",
+      "journal": "Islets",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723748/",
+      "sent_date": "2026-02-26T16:37:10.798295"
+    },
+    {
+      "title": "Monocytes acquire a tumor-associated IL1B program upon encountering patient-derived colon cancer organoids.",
+      "doi": "10.1080/2162402X.2026.2633012",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723598/",
+      "sent_date": "2026-02-26T16:37:10.798297"
+    },
+    {
+      "title": "Alcohol consumption in metabolic dysfunction-associated steatotic liver disease (MASLD): understanding the gut-liver crosstalk for clinical translation.",
+      "doi": "10.1080/19490976.2026.2631834",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723574/",
+      "sent_date": "2026-02-26T16:37:10.798299"
+    },
+    {
+      "title": "Allostatic load in psychiatry: a systematic review and meta-analysis.",
+      "doi": "10.1080/10253890.2026.2635367",
+      "journal": "Stress",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723573/",
+      "sent_date": "2026-02-26T16:37:10.798301"
+    },
+    {
+      "title": "Monocytes acquire a tumor-associated IL1B program upon encountering patient-derived colon cancer organoids.",
+      "doi": "10.1080/2162402X.2026.2633012",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723598/",
+      "sent_date": "2026-02-26T17:11:37.377442"
+    },
+    {
+      "title": "Bulk and single-cell transcriptomics for identification of potential diagnostic biomarkers associated with pulmonary arterial hypertension and integrated stress response and experimental validation.",
+      "doi": "10.1080/10641963.2026.2629926",
+      "journal": "Clin Exp Hypertens",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41706425/",
+      "sent_date": "2026-02-26T17:11:37.377471"
+    },
+    {
+      "title": "ANXA2, DBN1, ZNF385D, and IL6ST: Endothelial cell biomarkers linking atherosclerosis progression to immune microenvironment dysregulation.",
+      "doi": "10.1080/10641963.2026.2627352",
+      "journal": "Clin Exp Hypertens",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41655191/",
+      "sent_date": "2026-02-26T17:11:37.377475"
+    },
+    {
+      "title": "Distinct T and innate-like lymphocyte reprogramming following lyophilized fecal microbiota transplantation in recurrent C. difficile infection.",
+      "doi": "10.1080/19490976.2026.2620127",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41574864/",
+      "sent_date": "2026-02-26T17:11:37.377477"
+    },
+    {
+      "title": "Multi-platform analysis of the tumor immune microenvironment associated with breast cancer subtypes.",
+      "doi": "10.1080/2162402X.2025.2610535",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41530924/",
+      "sent_date": "2026-02-26T17:11:37.377479"
+    },
+    {
+      "title": "Arachidonic acid intake promotes hypertension and target-organ fibrosis through CYP4A-mediated 20-HETE overproduction: Integrated evidence from human and animal studies.",
+      "doi": "10.1080/10641963.2025.2611130",
+      "journal": "Clin Exp Hypertens",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41491652/",
+      "sent_date": "2026-02-26T17:11:37.377481"
+    },
+    {
+      "title": "Exploring the key functions of T cells and the regulation of the immune microenvironment in prostate cancer using single-cell RNA sequencing and bulk RNA sequencing.",
+      "doi": "10.1080/08916934.2025.2596700",
+      "journal": "Autoimmunity",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41474172/",
+      "sent_date": "2026-02-26T17:11:37.377483"
+    },
+    {
+      "title": "Single-cell landscape of peripheral and tumor-infiltrating immune cells in HPV-negative HNSCC.",
+      "doi": "10.1080/2162402X.2025.2605741",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41467967/",
+      "sent_date": "2026-02-26T17:11:37.377485"
+    },
+    {
+      "title": "Gut microbiota dysbiosis exacerbates acute pancreatitis via Escherichia coli-driven neutrophil heterogeneity and NETosis.",
+      "doi": "10.1080/19490976.2025.2606480",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41439481/",
+      "sent_date": "2026-02-26T17:11:37.377487"
+    },
+    {
+      "title": "Monocytes acquire a tumor-associated IL1B program upon encountering patient-derived colon cancer organoids.",
+      "doi": "10.1080/2162402X.2026.2633012",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723598/",
+      "sent_date": "2026-02-26T20:08:47.242418"
+    },
+    {
+      "title": "The shared mechanisms and potential diagnostic markers for IgA nephropathy and celiac disease.",
+      "doi": "10.1080/08916934.2026.2635179",
+      "journal": "Autoimmunity",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41714845/",
+      "sent_date": "2026-02-26T20:08:47.242446"
+    },
+    {
+      "title": "Bulk and single-cell transcriptomics for identification of potential diagnostic biomarkers associated with pulmonary arterial hypertension and integrated stress response and experimental validation.",
+      "doi": "10.1080/10641963.2026.2629926",
+      "journal": "Clin Exp Hypertens",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41706425/",
+      "sent_date": "2026-02-26T20:08:47.242451"
+    },
+    {
+      "title": "ANXA2, DBN1, ZNF385D, and IL6ST: Endothelial cell biomarkers linking atherosclerosis progression to immune microenvironment dysregulation.",
+      "doi": "10.1080/10641963.2026.2627352",
+      "journal": "Clin Exp Hypertens",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41655191/",
+      "sent_date": "2026-02-26T20:08:47.242454"
+    },
+    {
+      "title": "Distinct T and innate-like lymphocyte reprogramming following lyophilized fecal microbiota transplantation in recurrent C. difficile infection.",
+      "doi": "10.1080/19490976.2026.2620127",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41574864/",
+      "sent_date": "2026-02-26T20:08:47.242457"
+    },
+    {
+      "title": "Multi-platform analysis of the tumor immune microenvironment associated with breast cancer subtypes.",
+      "doi": "10.1080/2162402X.2025.2610535",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41530924/",
+      "sent_date": "2026-02-26T20:08:47.242460"
+    },
+    {
+      "title": "Oncolytic virus OVV-03 enhances CAR-T cell therapy against glioblastoma via immune modulation and specific HER2 upregulation.",
+      "doi": "10.1080/2162402X.2025.2612377",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41496551/",
+      "sent_date": "2026-02-26T20:08:47.242463"
+    },
+    {
+      "title": "Arachidonic acid intake promotes hypertension and target-organ fibrosis through CYP4A-mediated 20-HETE overproduction: Integrated evidence from human and animal studies.",
+      "doi": "10.1080/10641963.2025.2611130",
+      "journal": "Clin Exp Hypertens",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41491652/",
+      "sent_date": "2026-02-26T20:08:47.242465"
+    },
+    {
+      "title": "Exploring the key functions of T cells and the regulation of the immune microenvironment in prostate cancer using single-cell RNA sequencing and bulk RNA sequencing.",
+      "doi": "10.1080/08916934.2025.2596700",
+      "journal": "Autoimmunity",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41474172/",
+      "sent_date": "2026-02-26T20:08:47.242468"
+    },
+    {
+      "title": "Single-cell landscape of peripheral and tumor-infiltrating immune cells in HPV-negative HNSCC.",
+      "doi": "10.1080/2162402X.2025.2605741",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41467967/",
+      "sent_date": "2026-02-26T20:08:47.242470"
+    },
+    {
+      "title": "Gut microbiota dysbiosis exacerbates acute pancreatitis via Escherichia coli-driven neutrophil heterogeneity and NETosis.",
+      "doi": "10.1080/19490976.2025.2606480",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41439481/",
+      "sent_date": "2026-02-26T20:08:47.242473"
+    },
+    {
+      "title": "Aberrant epithelial differentiation may contribute to endometrial polyp formation: insights from single-cell analysis.",
+      "doi": "10.1080/19396368.2026.2628916",
+      "journal": "Syst Biol Reprod Med",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41712676/",
+      "sent_date": "2026-02-26T20:08:47.242475"
+    },
+    {
+      "title": "Diethyl Phthalate (DEP) as a potential osteosarcoma risk factor: a multi-omics study integrating network Toxicology, single-cell RNA sequencing, and molecular docking.",
+      "doi": "10.1080/14756366.2025.2611582",
+      "journal": "J Enzyme Inhib Med Chem",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41693684/",
+      "sent_date": "2026-02-26T20:08:47.242478"
+    },
+    {
+      "title": "Single-cell transcriptome revealed the aberrant keratinocytes activation in antigen presentation in atopic dermatitis.",
+      "doi": "10.1080/07853890.2026.2627742",
+      "journal": "Ann Med",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41666125/",
+      "sent_date": "2026-02-26T20:08:47.242480"
+    },
+    {
+      "title": "Immune-related biomarkers for major depressive disorder identified via integrated bioinformatics and machine learning.",
+      "doi": "10.1080/20008066.2026.2619389",
+      "journal": "Eur J Psychotraumatol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41665627/",
+      "sent_date": "2026-02-26T20:08:47.242483"
+    },
+    {
+      "title": "Time-resolved simultaneous imaging of mitochondrial reactive oxygen species and lysosomal permeabilization to determine organelle-centred cell death.",
+      "doi": "10.1080/13510002.2026.2621497",
+      "journal": "Redox Rep",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41639612/",
+      "sent_date": "2026-02-26T20:08:47.242485"
+    },
+    {
+      "title": "Age-associated differences in XBB.1.5 trivalent booster vaccine-induced adaptive responses revealed by single-cell RNA sequencing.",
+      "doi": "10.1080/22221751.2026.2627067",
+      "journal": "Emerg Microbes Infect",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41631690/",
+      "sent_date": "2026-02-26T20:08:47.242488"
+    },
+    {
+      "title": "Research on tissue-resident macrophages in the field of cancer research: a bibliometric analysis from 2004 to 2025.",
+      "doi": "10.1080/19336918.2026.2624204",
+      "journal": "Cell Adh Migr",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41627832/",
+      "sent_date": "2026-02-26T20:08:47.242490"
+    },
+    {
+      "title": "Single-cell transcriptomics and machine-learning reveal M1 macrophage-driven progression from minimal change disease to focal segmental glomerulosclerosis.",
+      "doi": "10.1080/0886022X.2026.2620204",
+      "journal": "Ren Fail",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41622775/",
+      "sent_date": "2026-02-26T20:08:47.242492"
+    },
+    {
+      "title": "A system-level metastable model of cancer evolution: integrating replication stress, cell cycle deregulation and chromosomal instability.",
+      "doi": "10.1080/07853890.2026.2620184",
+      "journal": "Ann Med",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41606986/",
+      "sent_date": "2026-02-26T20:08:47.242495"
+    },
+    {
+      "title": "Monocytes acquire a tumor-associated IL1B program upon encountering patient-derived colon cancer organoids.",
+      "doi": "10.1080/2162402X.2026.2633012",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723598/",
+      "sent_date": "2026-02-26T20:28:56.991906"
+    },
+    {
+      "title": "The shared mechanisms and potential diagnostic markers for IgA nephropathy and celiac disease.",
+      "doi": "10.1080/08916934.2026.2635179",
+      "journal": "Autoimmunity",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41714845/",
+      "sent_date": "2026-02-26T20:28:56.991955"
+    },
+    {
+      "title": "Bulk and single-cell transcriptomics for identification of potential diagnostic biomarkers associated with pulmonary arterial hypertension and integrated stress response and experimental validation.",
+      "doi": "10.1080/10641963.2026.2629926",
+      "journal": "Clin Exp Hypertens",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41706425/",
+      "sent_date": "2026-02-26T20:28:56.991963"
+    },
+    {
+      "title": "ANXA2, DBN1, ZNF385D, and IL6ST: Endothelial cell biomarkers linking atherosclerosis progression to immune microenvironment dysregulation.",
+      "doi": "10.1080/10641963.2026.2627352",
+      "journal": "Clin Exp Hypertens",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41655191/",
+      "sent_date": "2026-02-26T20:28:56.991969"
+    },
+    {
+      "title": "Distinct T and innate-like lymphocyte reprogramming following lyophilized fecal microbiota transplantation in recurrent C. difficile infection.",
+      "doi": "10.1080/19490976.2026.2620127",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41574864/",
+      "sent_date": "2026-02-26T20:28:56.991975"
+    },
+    {
+      "title": "Multi-platform analysis of the tumor immune microenvironment associated with breast cancer subtypes.",
+      "doi": "10.1080/2162402X.2025.2610535",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41530924/",
+      "sent_date": "2026-02-26T20:28:56.991980"
+    },
+    {
+      "title": "Oncolytic virus OVV-03 enhances CAR-T cell therapy against glioblastoma via immune modulation and specific HER2 upregulation.",
+      "doi": "10.1080/2162402X.2025.2612377",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41496551/",
+      "sent_date": "2026-02-26T20:28:56.991985"
+    },
+    {
+      "title": "Arachidonic acid intake promotes hypertension and target-organ fibrosis through CYP4A-mediated 20-HETE overproduction: Integrated evidence from human and animal studies.",
+      "doi": "10.1080/10641963.2025.2611130",
+      "journal": "Clin Exp Hypertens",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41491652/",
+      "sent_date": "2026-02-26T20:28:56.991989"
+    },
+    {
+      "title": "Exploring the key functions of T cells and the regulation of the immune microenvironment in prostate cancer using single-cell RNA sequencing and bulk RNA sequencing.",
+      "doi": "10.1080/08916934.2025.2596700",
+      "journal": "Autoimmunity",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41474172/",
+      "sent_date": "2026-02-26T20:28:56.991994"
+    },
+    {
+      "title": "Single-cell landscape of peripheral and tumor-infiltrating immune cells in HPV-negative HNSCC.",
+      "doi": "10.1080/2162402X.2025.2605741",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41467967/",
+      "sent_date": "2026-02-26T20:28:56.991999"
+    },
+    {
+      "title": "Gut microbiota dysbiosis exacerbates acute pancreatitis via Escherichia coli-driven neutrophil heterogeneity and NETosis.",
+      "doi": "10.1080/19490976.2025.2606480",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41439481/",
+      "sent_date": "2026-02-26T20:28:56.992004"
+    },
+    {
+      "title": "Quantum dot enhanced photonic biosensors for single cell analysis from synthesis to clinical application.",
+      "doi": "10.1186/s11671-026-04483-z",
+      "journal": "Discov Nano",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41733821/",
+      "sent_date": "2026-02-26T20:28:56.992009"
+    },
+    {
+      "title": "Aberrant epithelial differentiation may contribute to endometrial polyp formation: insights from single-cell analysis.",
+      "doi": "10.1080/19396368.2026.2628916",
+      "journal": "Syst Biol Reprod Med",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41712676/",
+      "sent_date": "2026-02-26T20:28:56.992014"
+    },
+    {
+      "title": "Diethyl Phthalate (DEP) as a potential osteosarcoma risk factor: a multi-omics study integrating network Toxicology, single-cell RNA sequencing, and molecular docking.",
+      "doi": "10.1080/14756366.2025.2611582",
+      "journal": "J Enzyme Inhib Med Chem",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41693684/",
+      "sent_date": "2026-02-26T20:28:56.992019"
+    },
+    {
+      "title": "Single-cell transcriptome revealed the aberrant keratinocytes activation in antigen presentation in atopic dermatitis.",
+      "doi": "10.1080/07853890.2026.2627742",
+      "journal": "Ann Med",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41666125/",
+      "sent_date": "2026-02-26T20:28:56.992025"
+    },
+    {
+      "title": "Immune-related biomarkers for major depressive disorder identified via integrated bioinformatics and machine learning.",
+      "doi": "10.1080/20008066.2026.2619389",
+      "journal": "Eur J Psychotraumatol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41665627/",
+      "sent_date": "2026-02-26T20:28:56.992029"
+    },
+    {
+      "title": "Time-resolved simultaneous imaging of mitochondrial reactive oxygen species and lysosomal permeabilization to determine organelle-centred cell death.",
+      "doi": "10.1080/13510002.2026.2621497",
+      "journal": "Redox Rep",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41639612/",
+      "sent_date": "2026-02-26T20:28:56.992035"
+    },
+    {
+      "title": "Age-associated differences in XBB.1.5 trivalent booster vaccine-induced adaptive responses revealed by single-cell RNA sequencing.",
+      "doi": "10.1080/22221751.2026.2627067",
+      "journal": "Emerg Microbes Infect",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41631690/",
+      "sent_date": "2026-02-26T20:28:56.992040"
+    },
+    {
+      "title": "Research on tissue-resident macrophages in the field of cancer research: a bibliometric analysis from 2004 to 2025.",
+      "doi": "10.1080/19336918.2026.2624204",
+      "journal": "Cell Adh Migr",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41627832/",
+      "sent_date": "2026-02-26T20:28:56.992045"
+    },
+    {
+      "title": "Single-cell transcriptomics and machine-learning reveal M1 macrophage-driven progression from minimal change disease to focal segmental glomerulosclerosis.",
+      "doi": "10.1080/0886022X.2026.2620204",
+      "journal": "Ren Fail",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41622775/",
+      "sent_date": "2026-02-26T20:28:56.992049"
+    },
+    {
+      "title": "Monocytes acquire a tumor-associated IL1B program upon encountering patient-derived colon cancer organoids.",
+      "doi": "10.1080/2162402X.2026.2633012",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41723598/",
+      "sent_date": "2026-02-27T09:10:59.112087"
+    },
+    {
+      "title": "The shared mechanisms and potential diagnostic markers for IgA nephropathy and celiac disease.",
+      "doi": "10.1080/08916934.2026.2635179",
+      "journal": "Autoimmunity",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41714845/",
+      "sent_date": "2026-02-27T09:10:59.112127"
+    },
+    {
+      "title": "Bulk and single-cell transcriptomics for identification of potential diagnostic biomarkers associated with pulmonary arterial hypertension and integrated stress response and experimental validation.",
+      "doi": "10.1080/10641963.2026.2629926",
+      "journal": "Clin Exp Hypertens",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41706425/",
+      "sent_date": "2026-02-27T09:10:59.112134"
+    },
+    {
+      "title": "ANXA2, DBN1, ZNF385D, and IL6ST: Endothelial cell biomarkers linking atherosclerosis progression to immune microenvironment dysregulation.",
+      "doi": "10.1080/10641963.2026.2627352",
+      "journal": "Clin Exp Hypertens",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41655191/",
+      "sent_date": "2026-02-27T09:10:59.112138"
+    },
+    {
+      "title": "Distinct T and innate-like lymphocyte reprogramming following lyophilized fecal microbiota transplantation in recurrent C. difficile infection.",
+      "doi": "10.1080/19490976.2026.2620127",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41574864/",
+      "sent_date": "2026-02-27T09:10:59.112141"
+    },
+    {
+      "title": "Multi-platform analysis of the tumor immune microenvironment associated with breast cancer subtypes.",
+      "doi": "10.1080/2162402X.2025.2610535",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41530924/",
+      "sent_date": "2026-02-27T09:10:59.112144"
+    },
+    {
+      "title": "Oncolytic virus OVV-03 enhances CAR-T cell therapy against glioblastoma via immune modulation and specific HER2 upregulation.",
+      "doi": "10.1080/2162402X.2025.2612377",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41496551/",
+      "sent_date": "2026-02-27T09:10:59.112147"
+    },
+    {
+      "title": "Arachidonic acid intake promotes hypertension and target-organ fibrosis through CYP4A-mediated 20-HETE overproduction: Integrated evidence from human and animal studies.",
+      "doi": "10.1080/10641963.2025.2611130",
+      "journal": "Clin Exp Hypertens",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41491652/",
+      "sent_date": "2026-02-27T09:10:59.112150"
+    },
+    {
+      "title": "Exploring the key functions of T cells and the regulation of the immune microenvironment in prostate cancer using single-cell RNA sequencing and bulk RNA sequencing.",
+      "doi": "10.1080/08916934.2025.2596700",
+      "journal": "Autoimmunity",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41474172/",
+      "sent_date": "2026-02-27T09:10:59.112153"
+    },
+    {
+      "title": "Single-cell landscape of peripheral and tumor-infiltrating immune cells in HPV-negative HNSCC.",
+      "doi": "10.1080/2162402X.2025.2605741",
+      "journal": "Oncoimmunology",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41467967/",
+      "sent_date": "2026-02-27T09:10:59.112156"
+    },
+    {
+      "title": "Gut microbiota dysbiosis exacerbates acute pancreatitis via Escherichia coli-driven neutrophil heterogeneity and NETosis.",
+      "doi": "10.1080/19490976.2025.2606480",
+      "journal": "Gut Microbes",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41439481/",
+      "sent_date": "2026-02-27T09:10:59.112158"
+    },
+    {
+      "title": "Aberrant epithelial differentiation may contribute to endometrial polyp formation: insights from single-cell analysis.",
+      "doi": "10.1080/19396368.2026.2628916",
+      "journal": "Syst Biol Reprod Med",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41712676/",
+      "sent_date": "2026-02-27T09:10:59.112162"
+    },
+    {
+      "title": "Diethyl Phthalate (DEP) as a potential osteosarcoma risk factor: a multi-omics study integrating network Toxicology, single-cell RNA sequencing, and molecular docking.",
+      "doi": "10.1080/14756366.2025.2611582",
+      "journal": "J Enzyme Inhib Med Chem",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41693684/",
+      "sent_date": "2026-02-27T09:10:59.112165"
+    },
+    {
+      "title": "Single-cell transcriptome revealed the aberrant keratinocytes activation in antigen presentation in atopic dermatitis.",
+      "doi": "10.1080/07853890.2026.2627742",
+      "journal": "Ann Med",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41666125/",
+      "sent_date": "2026-02-27T09:10:59.112167"
+    },
+    {
+      "title": "Immune-related biomarkers for major depressive disorder identified via integrated bioinformatics and machine learning.",
+      "doi": "10.1080/20008066.2026.2619389",
+      "journal": "Eur J Psychotraumatol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41665627/",
+      "sent_date": "2026-02-27T09:10:59.112171"
+    },
+    {
+      "title": "Age-associated differences in XBB.1.5 trivalent booster vaccine-induced adaptive responses revealed by single-cell RNA sequencing.",
+      "doi": "10.1080/22221751.2026.2627067",
+      "journal": "Emerg Microbes Infect",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41631690/",
+      "sent_date": "2026-02-27T09:10:59.112174"
+    },
+    {
+      "title": "Single-cell transcriptomics and machine-learning reveal M1 macrophage-driven progression from minimal change disease to focal segmental glomerulosclerosis.",
+      "doi": "10.1080/0886022X.2026.2620204",
+      "journal": "Ren Fail",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41622775/",
+      "sent_date": "2026-02-27T09:10:59.112177"
+    },
+    {
+      "title": "Pathological classification of Fuchs endothelial corneal dystrophy into several types and their relationships with CTG18.1 expansion repeats.",
+      "doi": "10.1002/path.70044",
+      "journal": "J Pathol",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41736702/",
+      "sent_date": "2026-02-27T09:41:39.182348"
+    },
+    {
+      "title": "Pinpointing protein as the problem.",
+      "doi": "10.1126/science.aee6924",
+      "journal": "Science",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41643027/",
+      "sent_date": "2026-02-27T09:41:39.182372"
+    },
+    {
+      "title": "Aberrant skeletal muscle morphogenesis and myofiber differentiation characterize equine myotonic dystrophy.",
+      "doi": "10.1371/journal.pone.0341655",
+      "journal": "PLoS One",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41610137/",
+      "sent_date": "2026-02-27T09:41:39.182376"
+    },
+    {
+      "title": "Repeat-associated non-AUG translation as a common mechanism for the polyGln ataxias.",
+      "doi": "10.1016/j.celrep.2025.116741",
+      "journal": "Cell Rep",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41422503/",
+      "sent_date": "2026-02-27T09:41:39.182378"
+    }
+  ],
+  "last_update": "2026-02-27T09:41:39.182381"
+}
