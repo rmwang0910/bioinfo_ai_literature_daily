@@ -210,35 +210,75 @@ python scheduler.py
 ### 使用Python调度器（开发测试）
 
 ```bash
-# 启动定时任务（默认每天早上9点执行，走基础 main.py 流程）
+# 启动定时任务（默认每天早上9点执行）
 python scheduler.py
 
 # 立即执行一次并启动定时任务
 python scheduler.py --run-now
 ```
 
-> 开发/调试阶段可以用 `scheduler.py` 快速验证基础流程是否正常；  
-> 生产环境更推荐直接用智能体入口 `agent_main.py --mode scheduled` 做定时任务。
+### 使用系统Cron（生产环境）
 
-### 使用系统Cron（生产环境，推荐）
-
-编辑 crontab：
-
+编辑crontab：
 ```bash
 crontab -e
 ```
 
-添加定时任务（例如每天早上9点执行），直接调用智能体定时模式：
-
+添加定时任务（例如每天早上9点执行）：
 ```bash
-0 9 * * * source ~/.bashrc && conda activate bioai_literature_daily && \
-  cd /path/to/bioinfo_ai_literature_daily && \
-  python agent_main.py --mode scheduled >> logs/cron.log 2>&1
+0 9 * * * source ~/.bashrc && conda activate bioinfo_ai_literature_daily && cd /storeData/ztron/wangrm/AI/bioinfo_ai_literature_daily && python agent_main.py --mode scheduled >> logs/cron.log 2>&1
 ```
 
-这样可以保证：
+**注意**：请根据你的实际路径修改上述命令中的路径。
 
- - 不需要单独维护一套只走 `main.py` 的老逻辑
+### 检查定时任务是否执行
+
+#### 方法1：使用检查脚本（推荐）
+
+```bash
+# 将 check_cron.sh 上传到服务器，然后执行
+chmod +x check_cron.sh
+./check_cron.sh
+```
+
+脚本会自动检查：
+- 日志文件是否存在及最后修改时间
+- 今天的执行记录
+- 错误信息
+- crontab 配置
+- 项目目录和文件
+- 系统 cron 日志
+- 邮件发送记录
+
+#### 方法2：手动检查
+
+```bash
+# 1. 查看今天的日志（最直接）
+tail -n 100 /storeData/ztron/wangrm/AI/bioinfo_ai_literature_daily/logs/cron.log
+
+# 2. 查看今天9点后的日志
+grep "$(date +%Y-%m-%d)" /storeData/ztron/wangrm/AI/bioinfo_ai_literature_daily/logs/cron.log | grep -E "(09:|10:)" | tail -50
+
+# 3. 检查日志文件最后修改时间
+ls -lh /storeData/ztron/wangrm/AI/bioinfo_ai_literature_daily/logs/cron.log
+
+# 4. 查看 crontab 配置
+crontab -l
+
+# 5. 检查系统 cron 日志（需要 root 权限）
+sudo grep CRON /var/log/syslog | grep "$(date +%b\ %d)" | tail -20
+```
+
+#### 常见问题排查
+
+- **日志文件不存在**：检查 crontab 中的路径是否正确，确保 `logs/` 目录存在
+- **日志文件没有更新**：检查 cron 服务是否运行，检查 conda 环境路径是否正确
+- **程序执行失败**：查看日志文件中的错误信息，常见原因包括：
+  - conda 环境未激活
+  - Python 路径错误
+  - 配置文件缺失
+  - LLM API 密钥未设置
+  - 网络连接问题
 
 ## ⚠️ 注意事项
 
