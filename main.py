@@ -1298,21 +1298,27 @@ class BioinfoAILiteratureDaily:
                                  paper_summaries.get(paper_id) or
                                  paper_summaries.get(str(i)))
             
-            # 检查是否是翻译的摘要（如果启用了翻译且没有中文总结，则可能是翻译）
+            # 获取翻译后的摘要（使用 _translated 后缀的键）
             translate_enabled = self.config.get('report', {}).get('translate_abstract', False)
-            if not chinese_summary and translate_enabled and paper.abstract:
-                # 尝试获取翻译后的摘要
-                translated_abstract = (paper_summaries.get(paper.doi) or 
-                                     paper_summaries.get(paper.title) or 
-                                     paper_summaries.get(paper_id) or
-                                     paper_summaries.get(str(i)))
+            translated_abstract = None
+            if translate_enabled and paper.abstract:
+                # 尝试获取翻译后的摘要（使用 _translated 后缀的键）
+                translated_abstract = (paper_summaries.get(f"{paper.doi}_translated") or 
+                                     paper_summaries.get(f"{paper.title}_translated") or 
+                                     paper_summaries.get(f"{paper_id}_translated") or
+                                     paper_summaries.get(f"{str(i)}_translated"))
             
             if chinese_summary:
                 # 显示中文总结
                 summary_text = chinese_summary.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                 abstract_html = f'<div class="abstract"><strong>中文总结:</strong> {summary_text}</div>'
+                
+                # 如果启用了翻译摘要，也显示翻译的摘要
+                if translated_abstract:
+                    translated_text = translated_abstract.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    abstract_html += f'<div class="abstract" style="margin-top: 10px;"><strong>中文摘要:</strong> {translated_text}</div>'
                 # 如果配置了显示英文摘要，也显示
-                if paper.abstract and self.config.get('report', {}).get('show_english_abstract', False):
+                elif paper.abstract and self.config.get('report', {}).get('show_english_abstract', False):
                     abstract_text = paper.abstract[:300].replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                     abstract_html += f'<div class="abstract" style="margin-top: 10px; font-size: 0.9em; color: #666;"><strong>英文摘要:</strong> {abstract_text}...</div>'
             elif translated_abstract:
@@ -1437,17 +1443,23 @@ class BioinfoAILiteratureDaily:
                                  paper_summaries.get(paper_id) or
                                  paper_summaries.get(str(i)))
             
-            # 检查是否是翻译的摘要
+            # 获取翻译后的摘要（使用 _translated 后缀的键）
             translate_enabled = self.config.get('report', {}).get('translate_abstract', False)
-            if not chinese_summary and translate_enabled and paper.abstract:
-                translated_abstract = (paper_summaries.get(paper.doi) or 
-                                     paper_summaries.get(paper.title) or 
-                                     paper_summaries.get(paper_id) or
-                                     paper_summaries.get(str(i)))
+            translated_abstract = None
+            if translate_enabled and paper.abstract:
+                # 尝试获取翻译后的摘要（使用 _translated 后缀的键）
+                translated_abstract = (paper_summaries.get(f"{paper.doi}_translated") or 
+                                     paper_summaries.get(f"{paper.title}_translated") or 
+                                     paper_summaries.get(f"{paper_id}_translated") or
+                                     paper_summaries.get(f"{str(i)}_translated"))
             
             if chinese_summary:
                 abstract_text = f'中文总结: {chinese_summary}'
-                if paper.abstract and self.config.get('report', {}).get('show_english_abstract', False):
+                # 如果启用了翻译摘要，也显示翻译的摘要
+                if translated_abstract:
+                    abstract_text += f'\n   中文摘要: {translated_abstract}'
+                # 如果配置了显示英文摘要，也显示
+                elif paper.abstract and self.config.get('report', {}).get('show_english_abstract', False):
                     abstract_text += f'\n   英文摘要: {paper.abstract[:300]}...'
             elif translated_abstract:
                 abstract_text = f'中文摘要: {translated_abstract}'
@@ -1500,8 +1512,8 @@ class BioinfoAILiteratureDaily:
             
             for i, paper in enumerate(papers):
                 if paper.abstract:
-                    # 检查是否已有中文总结（优先保留）
                     paper_id = paper.doi or paper.title or str(i)
+                    # 检查是否已有中文总结
                     has_existing_summary = (
                         (paper.doi and paper.doi in paper_summaries) or
                         (paper.title and paper.title in paper_summaries) or
@@ -1509,18 +1521,18 @@ class BioinfoAILiteratureDaily:
                         (str(i) in paper_summaries)
                     )
                     
-                    # 如果没有中文总结，则翻译摘要
-                    if not has_existing_summary:
-                        translated = self._translate_abstract(paper.abstract)
-                        if translated:
-                            # 使用多个键存储，方便后续查找
-                            if paper.doi:
-                                paper_summaries[paper.doi] = translated
-                            if paper.title:
-                                paper_summaries[paper.title] = translated
-                            paper_summaries[paper_id] = translated
-                            paper_summaries[str(i)] = translated
-                            logger.info(f"✅ 已翻译论文 {i+1}/{len(papers)}: {paper.title[:50] if paper.title else '无标题'}...")
+                    # 即使有中文总结，如果启用了翻译摘要，也要翻译摘要
+                    # 使用特殊的键来存储翻译的摘要，避免覆盖中文总结
+                    translated = self._translate_abstract(paper.abstract)
+                    if translated:
+                        # 使用特殊的键存储翻译的摘要（添加 _translated 后缀）
+                        if paper.doi:
+                            paper_summaries[f"{paper.doi}_translated"] = translated
+                        if paper.title:
+                            paper_summaries[f"{paper.title}_translated"] = translated
+                        paper_summaries[f"{paper_id}_translated"] = translated
+                        paper_summaries[f"{str(i)}_translated"] = translated
+                        logger.info(f"✅ 已翻译论文 {i+1}/{len(papers)}: {paper.title[:50] if paper.title else '无标题'}...")
             
             logger.info(f"摘要翻译完成，共翻译 {sum(1 for v in paper_summaries.values() if v)} 篇论文的摘要")
         if not papers:
