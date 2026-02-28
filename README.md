@@ -254,13 +254,13 @@ chmod +x check_cron.sh
 
 ```bash
 # 1. 查看今天的日志（最直接）
-tail -n 100 /storeData/ztron/wangrm/AI/bioinfo_ai_literature_daily/logs/cron.log
+tail -n 100 /to/path/bioinfo_ai_literature_daily/logs/cron.log
 
 # 2. 查看今天9点后的日志
-grep "$(date +%Y-%m-%d)" /storeData/ztron/wangrm/AI/bioinfo_ai_literature_daily/logs/cron.log | grep -E "(09:|10:)" | tail -50
+grep "$(date +%Y-%m-%d)" /to/path/bioinfo_ai_literature_daily/logs/cron.log | grep -E "(09:|10:)" | tail -50
 
 # 3. 检查日志文件最后修改时间
-ls -lh /storeData/ztron/wangrm/AI/bioinfo_ai_literature_daily/logs/cron.log
+ls -lh /to/path/bioinfo_ai_literature_daily/logs/cron.log
 
 # 4. 查看 crontab 配置
 crontab -l
