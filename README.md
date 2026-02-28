@@ -226,7 +226,7 @@ crontab -e
 
 添加定时任务（例如每天早上9点执行）：
 ```bash
-0 9 * * * source ~/.bashrc && conda activate bioinfo_ai_literature_daily && cd /storeData/ztron/wangrm/AI/bioinfo_ai_literature_daily && python agent_main.py --mode scheduled >> logs/cron.log 2>&1
+0 9 * * * source ~/.bashrc && conda activate bioinfo_ai_literature_daily && cd /to/path/bioinfo_ai_literature_daily && python agent_main.py --mode scheduled >> logs/cron.log 2>&1
 ```
 
 **注意**：请根据你的实际路径修改上述命令中的路径。
