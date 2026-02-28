@@ -229,57 +229,6 @@ crontab -e
 0 9 * * * source ~/.bashrc && conda activate bioinfo_ai_literature_daily && cd /to/path/bioinfo_ai_literature_daily && python agent_main.py --mode scheduled >> logs/cron.log 2>&1
 ```
 
-**注意**：请根据你的实际路径修改上述命令中的路径。
-
-### 检查定时任务是否执行
-
-#### 方法1：使用检查脚本（推荐）
-
-```bash
-# 将 check_cron.sh 上传到服务器，然后执行
-chmod +x check_cron.sh
-./check_cron.sh
-```
-
-脚本会自动检查：
-- 日志文件是否存在及最后修改时间
-- 今天的执行记录
-- 错误信息
-- crontab 配置
-- 项目目录和文件
-- 系统 cron 日志
-- 邮件发送记录
-
-#### 方法2：手动检查
-
-```bash
-# 1. 查看今天的日志（最直接）
-tail -n 100 /to/path/bioinfo_ai_literature_daily/logs/cron.log
-
-# 2. 查看今天9点后的日志
-grep "$(date +%Y-%m-%d)" /to/path/bioinfo_ai_literature_daily/logs/cron.log | grep -E "(09:|10:)" | tail -50
-
-# 3. 检查日志文件最后修改时间
-ls -lh /to/path/bioinfo_ai_literature_daily/logs/cron.log
-
-# 4. 查看 crontab 配置
-crontab -l
-
-# 5. 检查系统 cron 日志（需要 root 权限）
-sudo grep CRON /var/log/syslog | grep "$(date +%b\ %d)" | tail -20
-```
-
-#### 常见问题排查
-
-- **日志文件不存在**：检查 crontab 中的路径是否正确，确保 `logs/` 目录存在
-- **日志文件没有更新**：检查 cron 服务是否运行，检查 conda 环境路径是否正确
-- **程序执行失败**：查看日志文件中的错误信息，常见原因包括：
-  - conda 环境未激活
-  - Python 路径错误
-  - 配置文件缺失
-  - LLM API 密钥未设置
-  - 网络连接问题
-
 ## ⚠️ 注意事项
 
 1. **网络连接**：需要访问PubMed API，确保网络连接正常
