@@ -13,16 +13,17 @@ schedule>=1.2.0
 # ========== LLM 依赖（必需） ==========
 openai>=1.0.0
 
-# ========== BioLitKG 核心依赖 ==========
-# 这些依赖用于消除警告，确保BioLitKG功能完整
+# ========== 文献搜索源依赖（独立运行，不依赖 BioLitKG） ==========
+# 这些依赖用于支持多源文献检索（PubMed + arXiv）
 
 # 文献搜索相关
-arxiv>=2.0.0  # arXiv搜索（消除警告）
-httpx>=0.25.0  # HTTP客户端（消除警告）
-PyMuPDF>=1.23.0  # PDF处理（消除警告）
+arxiv>=2.0.0  # arXiv搜索（必需，用于多源检索）
+feedparser>=6.0.0  # RSS feed解析（必需，用于bioRxiv搜索）
+httpx>=0.25.0  # HTTP客户端（可选，用于高级功能）
+PyMuPDF>=1.23.0  # PDF处理（可选，用于PDF提取）
 
-# 混合搜索（语义搜索）
-sentence-transformers>=2.2.0  # 语义嵌入模型（消除警告）
+# 混合搜索（语义搜索，可选）
+# sentence-transformers>=2.2.0  # 语义嵌入模型（可选，用于语义搜索）
 # 注意：sentence-transformers 会自动安装 torch，如果安装失败可以单独安装：
 # torch>=2.0.0
 

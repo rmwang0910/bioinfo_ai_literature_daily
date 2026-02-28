@@ -10,6 +10,7 @@ import os
 import sys
 import logging
 import json
+import re
 import yaml
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -18,11 +19,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import smtplib
 
-# 添加 BioLitKG 路径
-biolitkg_path = Path(__file__).parent.parent.parent / "AI" / "BioLitKG"
-if str(biolitkg_path) not in sys.path:
-    sys.path.insert(0, str(biolitkg_path))
-
 # 配置logging
 logging.basicConfig(
     level=logging.INFO,
@@ -30,13 +26,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# 导入 BioLitKG 模块
+# 导入本地文献搜索模块（独立，不依赖 BioLitKG）
 try:
     from literature.pubmed_client import PubMedClient
-    from literature.base_client import PaperMetadata
+    from literature.base_client import PaperMetadata, PaperSource
+    from literature.unified_search import UnifiedLiteratureSearch
 except ImportError as e:
-    logger.error(f"无法导入 BioLitKG 模块: {e}")
-    logger.error("请确保 BioLitKG 已正确安装")
+    logger.error(f"无法导入文献搜索模块: {e}")
+    logger.error("请确保已安装所有依赖（biopython, arxiv 等）")
     sys.exit(1)
 
 
@@ -59,8 +56,10 @@ class BioinfoAILiteratureDaily:
         # 加载配置文件
         self.config = self._load_config(config_path)
         
-        # 初始化搜索客户端
+        # 初始化搜索客户端（PubMed 为基础必需）
         self.pubmed_client = PubMedClient()
+        # 统一检索客户端（按需懒加载）
+        self._unified_search: Optional["UnifiedLiteratureSearch"] = None
         
         # 加载已发送的文献记录（用于去重）
         self.sent_papers_cache = self._load_sent_papers_cache()
@@ -117,7 +116,8 @@ class BioinfoAILiteratureDaily:
             },
             'report': {
                 'max_papers': 50,  # 最多发送50篇文献
-                'format': 'html'  # 邮件格式：html 或 text
+                'format': 'html',  # 邮件格式：html 或 text
+                'translate_abstract': False  # 是否将英文摘要翻译成中文
             }
         }
     
@@ -189,12 +189,13 @@ class BioinfoAILiteratureDaily:
             论文列表
         """
         logger.info("开始搜索文献...")
-        
         search_config = self.config['search']
         keywords = search_config.get('keywords', [])
         max_results = search_config.get('max_results_per_keyword', 20)
         # 关键词组合方式：'AND'（交集）或 'OR'（并集），默认为'AND'
         keyword_operator = search_config.get('keyword_operator', 'AND').upper()
+        # 是否启用 BioLitKG 的统一检索（PubMed + arXiv 等）
+        use_unified_search = bool(search_config.get('use_unified_search', False))
         
         # 计算日期范围
         if search_config.get('min_date') and search_config.get('max_date'):
@@ -216,7 +217,7 @@ class BioinfoAILiteratureDaily:
         
         logger.info(f"搜索时间范围: {min_date.strftime('%Y-%m-%d')} 至 {max_date.strftime('%Y-%m-%d')}")
         
-        all_papers = []
+        all_papers: List[PaperMetadata] = []
         
         # 检查关键词是否已经包含逻辑运算符
         has_operator = any(' AND ' in kw.upper() or ' OR ' in kw.upper() or ' NOT ' in kw.upper() for kw in keywords)
@@ -246,20 +247,52 @@ class BioinfoAILiteratureDaily:
         for query_keywords in queries:
             logger.info(f"搜索查询: {query_keywords}")
             try:
-                # 构建查询，限制日期范围
-                query = f"{query_keywords}[Title/Abstract]"
-                
                 # 确保年份是整数
                 year_from = int(min_date.year) if min_date else None
                 year_to = int(max_date.year) if max_date else None
-                
-                papers = self.pubmed_client.search(
-                    query=query,
-                    max_results=max_results,
-                    year_from=year_from,
-                    year_to=year_to,
-                    sort="pub_date"
-                )
+
+                papers: List[PaperMetadata] = []
+
+                # 1）优先尝试使用 BioLitKG 的统一检索（多源：PubMed + arXiv 等）
+                if use_unified_search and UnifiedLiteratureSearch is not None:
+                    # 懒加载统一检索客户端
+                    if self._unified_search is None:
+                        try:
+                            logger.info("初始化统一检索（PubMed + arXiv + bioRxiv）")
+                            # 这里不强依赖 BioLitKG 的独立安装，只使用当前仓库中的代码
+                            self._unified_search = UnifiedLiteratureSearch(
+                                arxiv_enabled=True,
+                                semantic_scholar_enabled=False,  # 已禁用 Semantic Scholar
+                                pubmed_enabled=True,
+                                biorxiv_enabled=True,  # 启用 bioRxiv
+                            )
+                        except Exception as e:
+                            logger.warning(f"初始化统一检索失败，将回退到仅使用 PubMed: {e}")
+                            self._unified_search = None
+
+                    if self._unified_search is not None:
+                        # 统一检索接口不需要 PubMed 特有的 [Title/Abstract] 后缀
+                        unified_query = query_keywords
+                        logger.info("使用统一检索（PubMed + arXiv + bioRxiv）进行多源搜索")
+                        papers = self._unified_search.search(
+                            query=unified_query,
+                            max_results_per_source=max_results,
+                            year_from=year_from,
+                            year_to=year_to,
+                            deduplicate=True,
+                        )
+
+                # 2）如果未启用统一检索或初始化失败，则仅使用 PubMed
+                if not papers:
+                    # 构建 PubMed 特有的查询语法
+                    query = f"{query_keywords}[Title/Abstract]"
+                    papers = self.pubmed_client.search(
+                        query=query,
+                        max_results=max_results,
+                        year_from=year_from,
+                        year_to=year_to,
+                        sort="pub_date"
+                    )
                 
                 # 进一步过滤日期
                 filtered_papers = []
@@ -268,6 +301,13 @@ class BioinfoAILiteratureDaily:
                         # 优先使用精确的发布日期
                         if paper.publication_date:
                             paper_date = paper.publication_date
+                            
+                            # 处理时区问题：确保 paper_date 和 min_date/max_date 都是 offset-naive
+                            # 如果 paper_date 是 offset-aware（有时区信息），转换为 offset-naive
+                            if paper_date.tzinfo is not None:
+                                # 转换为本地时间（去掉时区信息）
+                                paper_date = paper_date.replace(tzinfo=None)
+                            
                             # 精确日期：必须在时间范围内
                             if min_date <= paper_date <= max_date:
                                 filtered_papers.append(paper)
@@ -294,7 +334,7 @@ class BioinfoAILiteratureDaily:
                 all_papers.extend(filtered_papers)
                 logger.info(f"找到 {len(filtered_papers)} 篇论文（日期过滤后）")
             except Exception as e:
-                logger.warning(f"搜索关键词 '{keyword}' 时出错: {e}")
+                logger.warning(f"搜索查询 '{query_keywords}' 时出错: {e}")
                 continue
         
         # 去重（基于DOI和标题）
@@ -348,6 +388,25 @@ class BioinfoAILiteratureDaily:
         # 限制数量
         max_papers = self.config['report'].get('max_papers', 50)
         new_papers = new_papers[:max_papers]
+        
+        # 按时间近到远排序（优先使用publication_date，其次使用year）
+        def get_sort_date(paper: PaperMetadata) -> datetime:
+            """获取用于排序的日期（统一为 offset-naive）"""
+            if paper.publication_date:
+                paper_date = paper.publication_date
+                # 处理时区问题：确保返回的 datetime 是 offset-naive
+                if paper_date.tzinfo is not None:
+                    # 转换为本地时间（去掉时区信息）
+                    paper_date = paper_date.replace(tzinfo=None)
+                return paper_date
+            elif paper.year:
+                # 只有年份，使用该年的最后一天作为排序基准（确保同年论文排在前面）
+                return datetime(paper.year, 12, 31)
+            else:
+                # 没有日期信息，排到最后
+                return datetime(1900, 1, 1)
+        
+        new_papers.sort(key=get_sort_date, reverse=True)  # reverse=True 表示近到远
         
         return new_papers
     
@@ -666,6 +725,191 @@ class BioinfoAILiteratureDaily:
 """
         return text
     
+    def _generate_source_statistics(self, papers: List[PaperMetadata]) -> Dict[str, Any]:
+        """
+        生成文献来源统计
+        
+        Args:
+            papers: 论文列表
+            
+        Returns:
+            包含统计信息的字典
+        """
+        from collections import Counter
+        
+        # 统计来源
+        source_counts = Counter()
+        source_names = {
+            PaperSource.PUBMED: "PubMed",
+            PaperSource.ARXIV: "arXiv",
+            PaperSource.BIORXIV: "bioRxiv",
+            PaperSource.SEMANTIC_SCHOLAR: "Semantic Scholar",
+            PaperSource.UNKNOWN: "未知来源",
+            PaperSource.MANUAL: "手动添加"
+        }
+        
+        for paper in papers:
+            source = paper.source if hasattr(paper, 'source') else PaperSource.UNKNOWN
+            source_counts[source] += 1
+        
+        # 转换为列表格式，便于显示
+        stats = []
+        total = len(papers)
+        for source, count in source_counts.most_common():
+            name = source_names.get(source, source.value if hasattr(source, 'value') else str(source))
+            percentage = (count / total * 100) if total > 0 else 0
+            stats.append({
+                'name': name,
+                'count': count,
+                'percentage': percentage,
+                'source': source
+            })
+        
+        return {
+            'total': total,
+            'sources': stats,
+            'source_counts': dict(source_counts)
+        }
+    
+    def _format_source_statistics_html(self, stats: Dict[str, Any]) -> str:
+        """
+        格式化来源统计为HTML（包含简单图表）
+        
+        Args:
+            stats: 统计信息字典
+            
+        Returns:
+            HTML格式的统计图表
+        """
+        if not stats['sources']:
+            return ""
+        
+        # 颜色映射
+        colors = {
+            'PubMed': '#4CAF50',
+            'arXiv': '#2196F3',
+            'bioRxiv': '#9C27B0',
+            'Semantic Scholar': '#FF9800',
+            '未知来源': '#9E9E9E',
+            '手动添加': '#607D8B'
+        }
+        
+        html = """
+        <div class="source-stats">
+            <h3>📈 文献来源统计</h3>
+            <div class="stats-container">
+        """
+        
+        # 生成条形图
+        max_count = max(s['count'] for s in stats['sources']) if stats['sources'] else 1
+        
+        for source_info in stats['sources']:
+            name = source_info['name']
+            count = source_info['count']
+            percentage = source_info['percentage']
+            color = colors.get(name, '#607D8B')
+            bar_width = (count / max_count * 100) if max_count > 0 else 0
+            
+            html += f"""
+                <div class="stat-item">
+                    <div class="stat-label">
+                        <span class="stat-name">{name}</span>
+                        <span class="stat-count">{count} 篇 ({percentage:.1f}%)</span>
+                    </div>
+                    <div class="stat-bar-container">
+                        <div class="stat-bar" style="width: {bar_width}%; background-color: {color};"></div>
+                    </div>
+                </div>
+            """
+        
+        html += """
+            </div>
+        </div>
+        """
+        
+        return html
+    
+    def _format_source_statistics_text(self, stats: Dict[str, Any]) -> str:
+        """
+        格式化来源统计为纯文本（ASCII图表）
+        
+        Args:
+            stats: 统计信息字典
+            
+        Returns:
+            文本格式的统计图表
+        """
+        if not stats['sources']:
+            return ""
+        
+        text = "\n文献来源统计:\n"
+        text += "-" * 50 + "\n"
+        
+        max_count = max(s['count'] for s in stats['sources']) if stats['sources'] else 1
+        bar_length = 30  # 条形图最大长度
+        
+        for source_info in stats['sources']:
+            name = source_info['name']
+            count = source_info['count']
+            percentage = source_info['percentage']
+            bar_width = int((count / max_count * bar_length)) if max_count > 0 else 0
+            bar = "█" * bar_width + "░" * (bar_length - bar_width)
+            
+            text += f"{name:20s} {bar} {count:3d} 篇 ({percentage:5.1f}%)\n"
+        
+        text += "-" * 50 + "\n"
+        
+        return text
+    
+    def _translate_abstract(self, abstract: str) -> Optional[str]:
+        """
+        使用LLM将英文摘要翻译成中文
+        
+        Args:
+            abstract: 英文摘要
+            
+        Returns:
+            中文翻译，如果翻译失败则返回None
+        """
+        if not abstract or len(abstract.strip()) == 0:
+            return None
+        
+        try:
+            from core.llm.openai import OpenAIProvider
+            from core.config import get_config
+            config = get_config()
+            if not config.llm.api_key:
+                logger.warning("LLM不可用，无法翻译摘要")
+                return None
+            
+            llm_client = OpenAIProvider(config.llm)
+            
+            # 构建翻译提示词
+            prompt = f"""请将以下英文摘要翻译成中文，要求：
+1. 保持学术性和专业性
+2. 准确传达原文意思
+3. 语言流畅自然
+4. 只返回翻译结果，不要添加任何解释或说明
+
+英文摘要：
+{abstract[:2000]}  # 限制长度避免token过多
+"""
+            
+            translated = llm_client.generate(prompt, max_tokens=1000, temperature=0.3)
+            
+            # 清理翻译结果（移除可能的引号或多余内容）
+            translated = translated.strip()
+            if translated.startswith('"') and translated.endswith('"'):
+                translated = translated[1:-1]
+            if translated.startswith("'") and translated.endswith("'"):
+                translated = translated[1:-1]
+            
+            return translated.strip()
+            
+        except Exception as e:
+            logger.warning(f"翻译摘要失败: {e}")
+            return None
+    
     def _format_summary_html(self, summary: str) -> str:
         """
         将Markdown格式的总结转换为格式化的HTML
@@ -788,14 +1032,176 @@ class BioinfoAILiteratureDaily:
         else:
             return self._format_text_email(papers, summary, paper_summaries)
     
+    def _get_journal_impact_factor(self, journal_name: Optional[str]) -> Optional[float]:
+        """
+        获取期刊影响因子
+        
+        Args:
+            journal_name: 期刊名称
+            
+        Returns:
+            影响因子（如果找到），否则返回None
+        """
+        if not journal_name:
+            return None
+        
+        # 常见期刊影响因子映射（2023-2024年数据，可根据需要更新）
+        # 数据来源：Journal Citation Reports (JCR)
+        impact_factors = {
+            # Nature 系列
+            "Nature": 64.8,
+            "Nature Biotechnology": 46.9,
+            "Nature Methods": 48.0,
+            "Nature Genetics": 30.8,
+            "Nature Cell Biology": 21.3,
+            "Nature Medicine": 82.9,
+            "Nature Communications": 16.6,
+            "Nature Machine Intelligence": 25.9,
+            "Nature Computational Science": 11.2,
+            "Nature Protocols": 14.3,
+            "Nature Reviews Genetics": 42.7,
+            "Nature Reviews Methods Primers": 20.0,
+            
+            # Science 系列
+            "Science": 56.9,
+            "Science Advances": 13.6,
+            
+            # Cell 系列
+            "Cell": 64.5,
+            "Cell Systems": 9.5,
+            "Cell Reports": 8.1,
+            
+            # 生物信息学相关
+            "Bioinformatics": 5.8,
+            "Nucleic Acids Research": 14.9,
+            "Genome Research": 11.0,
+            "Genome Biology": 12.3,
+            "PLOS Computational Biology": 4.3,
+            "BMC Bioinformatics": 3.0,
+            "Briefings in Bioinformatics": 9.5,
+            "Database": 3.5,
+            
+            # 计算生物学
+            "Journal of Computational Biology": 1.7,
+            "Computational Biology and Chemistry": 2.9,
+            
+            # 其他高影响因子期刊
+            "Cell": 64.5,
+            "The Lancet": 168.9,
+            "New England Journal of Medicine": 176.1,
+            "JAMA": 120.7,
+            "PNAS": 11.1,
+            "eLife": 7.7,
+            "PLOS Biology": 9.8,
+            "Genome Biology": 12.3,
+        }
+        
+        # 尝试精确匹配
+        if journal_name in impact_factors:
+            return impact_factors[journal_name]
+        
+        # 尝试不区分大小写匹配
+        journal_lower = journal_name.lower()
+        for journal, if_value in impact_factors.items():
+            if journal.lower() == journal_lower:
+                return if_value
+        
+        # 尝试部分匹配（处理期刊名称变体）
+        for journal, if_value in impact_factors.items():
+            if journal.lower() in journal_lower or journal_lower in journal.lower():
+                return if_value
+        
+        return None
+    
+    def _format_publication_date(self, paper: PaperMetadata) -> str:
+        """
+        格式化发布日期，显示年月
+        
+        Args:
+            paper: 论文元数据
+            
+        Returns:
+            格式化的日期字符串，如 "2024年3月" 或 "2024年"
+        """
+        if paper.publication_date:
+            # 有精确日期，显示年月
+            paper_date = paper.publication_date
+            # 处理时区问题：确保是 offset-naive
+            if paper_date.tzinfo is not None:
+                paper_date = paper_date.replace(tzinfo=None)
+            return paper_date.strftime('%Y年%m月')
+        elif paper.year:
+            # 只有年份，显示年份
+            return f"{paper.year}年"
+        else:
+            return "未知"
+    
+    def _format_theme_display(self) -> str:
+        """
+        格式化主题显示，从查询字符串中提取关键词并优化显示
+        
+        Returns:
+            格式化的主题字符串，如 "bioinformatics + AI"
+        """
+        search_cfg = self.config.get('search', {})
+        keywords = search_cfg.get('keywords') or []
+        semantic_keywords = search_cfg.get('semantic_keywords') or []
+        
+        # 优先使用语义关键词（更友好）
+        if semantic_keywords:
+            if isinstance(semantic_keywords, str):
+                semantic_keywords = [semantic_keywords]
+            # 直接使用语义关键词，用 + 连接
+            return " + ".join(semantic_keywords)
+        
+        # 如果没有语义关键词，从查询字符串中提取
+        if isinstance(keywords, str):
+            keywords = [keywords]
+        
+        if not keywords:
+            return "未指定主题"
+        
+        # 从查询字符串中提取关键词（去掉括号、AND/OR等）
+        extracted_keywords = []
+        for kw in keywords:
+            if isinstance(kw, str):
+                # 如果包含 AND/OR，尝试提取括号中的关键词
+                if ' AND ' in kw.upper() or ' OR ' in kw.upper():
+                    # 提取括号中的内容
+                    matches = re.findall(r'\(([^)]+)\)', kw)
+                    if matches:
+                        extracted_keywords.extend(matches)
+                    else:
+                        # 如果没有括号，按 AND/OR 分割
+                        parts = re.split(r'\s+(?:AND|OR)\s+', kw, flags=re.IGNORECASE)
+                        # 清理每个部分（去掉可能的括号）
+                        cleaned = [re.sub(r'^\(|\)$', '', p.strip()) for p in parts]
+                        extracted_keywords.extend(cleaned)
+                else:
+                    # 简单关键词，直接使用
+                    cleaned = kw.strip()
+                    # 去掉可能的括号
+                    cleaned = re.sub(r'^\(|\)$', '', cleaned)
+                    extracted_keywords.append(cleaned)
+        
+        # 去重并保持顺序
+        seen = set()
+        unique_keywords = []
+        for kw in extracted_keywords:
+            kw_clean = kw.strip()
+            if kw_clean and kw_clean.lower() not in seen:
+                seen.add(kw_clean.lower())
+                unique_keywords.append(kw_clean)
+        
+        if unique_keywords:
+            return " + ".join(unique_keywords)
+        else:
+            return "未指定主题"
+    
     def _format_html_email(self, papers: List[PaperMetadata], summary: Optional[str] = None, paper_summaries: Optional[Dict[str, str]] = None) -> str:
         """格式化HTML邮件"""
-        # 主题名称：使用英文检索关键词（期刊为英文）
-        search_cfg = self.config.get('search', {})
-        expanded_keywords = search_cfg.get('keywords') or []
-        if isinstance(expanded_keywords, str):
-            expanded_keywords = [expanded_keywords]
-        theme = " + ".join(expanded_keywords) if expanded_keywords else "未指定主题"
+        # 主题名称：优化显示格式
+        theme = self._format_theme_display()
         
         html = f"""
         <!DOCTYPE html>
@@ -813,6 +1219,15 @@ class BioinfoAILiteratureDaily:
                 .summary ul, .summary ol {{ margin: 10px 0; padding-left: 25px; }}
                 .summary li {{ margin: 8px 0; line-height: 1.8; }}
                 .summary strong {{ color: #2e7d32; font-weight: 600; }}
+                .source-stats {{ background-color: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #2196F3; }}
+                .source-stats h3 {{ color: #1976D2; margin-top: 0; font-size: 18px; }}
+                .stats-container {{ margin-top: 15px; }}
+                .stat-item {{ margin-bottom: 15px; }}
+                .stat-label {{ display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }}
+                .stat-name {{ font-weight: 600; color: #333; }}
+                .stat-count {{ color: #666; }}
+                .stat-bar-container {{ width: 100%; height: 25px; background-color: #e0e0e0; border-radius: 12px; overflow: hidden; }}
+                .stat-bar {{ height: 100%; border-radius: 12px; transition: width 0.3s ease; }}
                 .paper {{ margin-bottom: 30px; padding: 15px; border-left: 4px solid #4CAF50; background-color: #f9f9f9; }}
                 .title {{ font-size: 18px; font-weight: bold; color: #2c3e50; margin-bottom: 10px; }}
                 .meta {{ color: #7f8c8d; font-size: 14px; margin-bottom: 10px; }}
@@ -831,6 +1246,11 @@ class BioinfoAILiteratureDaily:
         """
         # 构建检索说明块
         html += self._build_search_description_html()
+        
+        # 生成并添加来源统计
+        if len(papers) > 0:
+            source_stats = self._generate_source_statistics(papers)
+            html += self._format_source_statistics_html(source_stats)
         
         # 添加总结（如果有）
         if summary:
@@ -865,16 +1285,27 @@ class BioinfoAILiteratureDaily:
                 except Exception:
                     authors_str = "未知"
             
-            # 处理摘要：优先显示中文总结，如果没有则显示英文摘要
+            # 处理摘要：优先显示中文总结，如果没有则显示翻译后的摘要或英文摘要
             abstract_html = ""
             paper_id = paper.doi or paper.title or str(i)
             chinese_summary = None
+            translated_abstract = None
+            
             if paper_summaries:
-                # 尝试通过DOI、标题或索引获取中文总结
+                # 尝试通过DOI、标题或索引获取中文总结或翻译
                 chinese_summary = (paper_summaries.get(paper.doi) or 
                                  paper_summaries.get(paper.title) or 
                                  paper_summaries.get(paper_id) or
                                  paper_summaries.get(str(i)))
+            
+            # 检查是否是翻译的摘要（如果启用了翻译且没有中文总结，则可能是翻译）
+            translate_enabled = self.config.get('report', {}).get('translate_abstract', False)
+            if not chinese_summary and translate_enabled and paper.abstract:
+                # 尝试获取翻译后的摘要
+                translated_abstract = (paper_summaries.get(paper.doi) or 
+                                     paper_summaries.get(paper.title) or 
+                                     paper_summaries.get(paper_id) or
+                                     paper_summaries.get(str(i)))
             
             if chinese_summary:
                 # 显示中文总结
@@ -884,8 +1315,16 @@ class BioinfoAILiteratureDaily:
                 if paper.abstract and self.config.get('report', {}).get('show_english_abstract', False):
                     abstract_text = paper.abstract[:300].replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                     abstract_html += f'<div class="abstract" style="margin-top: 10px; font-size: 0.9em; color: #666;"><strong>英文摘要:</strong> {abstract_text}...</div>'
+            elif translated_abstract:
+                # 显示翻译后的摘要
+                translated_text = translated_abstract.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                abstract_html = f'<div class="abstract"><strong>中文摘要:</strong> {translated_text}</div>'
+                # 如果配置了显示英文摘要，也显示
+                if paper.abstract and self.config.get('report', {}).get('show_english_abstract', False):
+                    abstract_text = paper.abstract[:300].replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    abstract_html += f'<div class="abstract" style="margin-top: 10px; font-size: 0.9em; color: #666;"><strong>英文摘要:</strong> {abstract_text}...</div>'
             elif paper.abstract:
-                # 没有中文总结，显示英文摘要
+                # 没有中文总结或翻译，显示英文摘要
                 abstract_text = paper.abstract[:500]
                 abstract_text = abstract_text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                 abstract_html = f'<div class="abstract"><strong>摘要:</strong> {abstract_text}{"..." if len(paper.abstract) > 500 else ""}</div>'
@@ -894,13 +1333,22 @@ class BioinfoAILiteratureDaily:
             title = paper.title or '无标题'
             title = title.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
             
+            # 格式化发布日期（年月）
+            pub_date_str = self._format_publication_date(paper)
+            
+            # 获取影响因子
+            impact_factor = self._get_journal_impact_factor(paper.journal)
+            journal_display = paper.journal or '未知'
+            if impact_factor:
+                journal_display += f" (IF: {impact_factor:.1f})"
+            
             html += f"""
                 <div class="paper">
                     <div class="title">{i}. {title}</div>
                     <div class="meta">
                         <strong>作者:</strong> {authors_str}<br>
-                        <strong>期刊:</strong> {paper.journal or '未知'}<br>
-                        <strong>年份:</strong> {paper.year or '未知'}
+                        <strong>期刊:</strong> {journal_display}<br>
+                        <strong>发表日期:</strong> {pub_date_str}
                         {f'<br><strong>DOI:</strong> {paper.doi}' if paper.doi else ''}
                     </div>
                     {abstract_html}
@@ -921,12 +1369,8 @@ class BioinfoAILiteratureDaily:
     
     def _format_text_email(self, papers: List[PaperMetadata], summary: Optional[str] = None, paper_summaries: Optional[Dict[str, str]] = None) -> str:
         """格式化纯文本邮件"""
-        # 主题名称：使用英文检索关键词（期刊为英文）
-        search_cfg = self.config.get('search', {})
-        expanded_keywords = search_cfg.get('keywords') or []
-        if isinstance(expanded_keywords, str):
-            expanded_keywords = [expanded_keywords]
-        theme = " + ".join(expanded_keywords) if expanded_keywords else "未指定主题"
+        # 主题名称：优化显示格式
+        theme = self._format_theme_display()
         
         text = f"""
 主题文献推送（主题：{theme}）
@@ -938,6 +1382,11 @@ class BioinfoAILiteratureDaily:
 """
         # 添加检索说明
         text += self._build_search_description_text()
+        
+        # 生成并添加来源统计
+        if len(papers) > 0:
+            source_stats = self._generate_source_statistics(papers)
+            text += self._format_source_statistics_text(source_stats)
         
         # 添加总结（如果有）
         if summary:
@@ -976,28 +1425,51 @@ class BioinfoAILiteratureDaily:
                 except Exception:
                     authors_str = "未知"
             
-            # 处理摘要：优先显示中文总结
+            # 处理摘要：优先显示中文总结，如果没有则显示翻译后的摘要或英文摘要
             abstract_text = ""
             paper_id = paper.doi or paper.title or str(i)
             chinese_summary = None
+            translated_abstract = None
+            
             if paper_summaries:
                 chinese_summary = (paper_summaries.get(paper.doi) or 
                                  paper_summaries.get(paper.title) or 
                                  paper_summaries.get(paper_id) or
                                  paper_summaries.get(str(i)))
             
+            # 检查是否是翻译的摘要
+            translate_enabled = self.config.get('report', {}).get('translate_abstract', False)
+            if not chinese_summary and translate_enabled and paper.abstract:
+                translated_abstract = (paper_summaries.get(paper.doi) or 
+                                     paper_summaries.get(paper.title) or 
+                                     paper_summaries.get(paper_id) or
+                                     paper_summaries.get(str(i)))
+            
             if chinese_summary:
                 abstract_text = f'中文总结: {chinese_summary}'
+                if paper.abstract and self.config.get('report', {}).get('show_english_abstract', False):
+                    abstract_text += f'\n   英文摘要: {paper.abstract[:300]}...'
+            elif translated_abstract:
+                abstract_text = f'中文摘要: {translated_abstract}'
                 if paper.abstract and self.config.get('report', {}).get('show_english_abstract', False):
                     abstract_text += f'\n   英文摘要: {paper.abstract[:300]}...'
             elif paper.abstract:
                 abstract_text = f'摘要: {paper.abstract[:500]}{"..." if len(paper.abstract) > 500 else ""}'
             
+            # 格式化发布日期（年月）
+            pub_date_str = self._format_publication_date(paper)
+            
+            # 获取影响因子
+            impact_factor = self._get_journal_impact_factor(paper.journal)
+            journal_display = paper.journal or '未知'
+            if impact_factor:
+                journal_display += f" (IF: {impact_factor:.1f})"
+            
             text += f"""
 {i}. {paper.title or '无标题'}
    作者: {authors_str}
-   期刊: {paper.journal or '未知'}
-   年份: {paper.year or '未知'}
+   期刊: {journal_display}
+   发表日期: {pub_date_str}
    {f'DOI: {paper.doi}' if paper.doi else ''}
    {f'链接: {paper.url}' if paper.url else ''}
    {abstract_text}
@@ -1020,6 +1492,37 @@ class BioinfoAILiteratureDaily:
         Returns:
             是否发送成功
         """
+        # 如果启用了摘要翻译，翻译所有摘要
+        if self.config.get('report', {}).get('translate_abstract', False):
+            logger.info("开始翻译摘要...")
+            if not paper_summaries:
+                paper_summaries = {}
+            
+            for i, paper in enumerate(papers):
+                if paper.abstract:
+                    # 检查是否已有中文总结（优先保留）
+                    paper_id = paper.doi or paper.title or str(i)
+                    has_existing_summary = (
+                        (paper.doi and paper.doi in paper_summaries) or
+                        (paper.title and paper.title in paper_summaries) or
+                        (paper_id in paper_summaries) or
+                        (str(i) in paper_summaries)
+                    )
+                    
+                    # 如果没有中文总结，则翻译摘要
+                    if not has_existing_summary:
+                        translated = self._translate_abstract(paper.abstract)
+                        if translated:
+                            # 使用多个键存储，方便后续查找
+                            if paper.doi:
+                                paper_summaries[paper.doi] = translated
+                            if paper.title:
+                                paper_summaries[paper.title] = translated
+                            paper_summaries[paper_id] = translated
+                            paper_summaries[str(i)] = translated
+                            logger.info(f"✅ 已翻译论文 {i+1}/{len(papers)}: {paper.title[:50] if paper.title else '无标题'}...")
+            
+            logger.info(f"摘要翻译完成，共翻译 {sum(1 for v in paper_summaries.values() if v)} 篇论文的摘要")
         if not papers:
             logger.info("没有新文献，跳过邮件发送")
             return True

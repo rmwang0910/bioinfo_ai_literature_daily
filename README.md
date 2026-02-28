@@ -8,12 +8,15 @@
 ## ✨ 核心特性
 
 - 🧠 **LLM驱动的智能决策**：自然语言需求解析，自动关键词扩展和验证
-- 🔍 **智能文献检索**：支持PubMed等数据库
+- 🔍 **智能文献检索**：支持PubMed、arXiv、bioRxiv等多源数据库
 - 📊 **自动文献总结**：使用LLM生成文献总结和中文摘要
 - 📧 **自动邮件推送**：支持HTML格式，美观易读
 - 🎯 **严格关键词验证**：三级匹配标准（严格匹配/部分匹配/不匹配）
 - 🔄 **智能去重**：自动记录已发送文献，避免重复推送
 - ⏰ **定时任务**：支持每日自动推送
+- 📅 **精确日期显示**：文献发表日期精确到年月（如"2024年3月"）
+- 📈 **期刊影响因子**：自动显示期刊影响因子（IF值）
+- 🔢 **智能排序**：按时间从近到远自动排序，优先显示最新文献
 
 ## 🚀 快速开始
 
@@ -79,6 +82,14 @@ python agent_main.py
 # 命令行模式（自然语言）
 python agent_main.py --mode interactive "找2026年关于单细胞的文献，发送到example@qq.com"
 
+# 命令行模式（带参数覆盖，不依赖config.yaml）
+python agent_main.py --mode interactive "找单细胞和AI的文献" \
+  --max-results-per-keyword 100 \
+  --validation-strictness strict \
+  --max-papers 50 \
+  --use-unified-search true \
+  --email example@qq.com
+
 # 定时触发模式（使用config.yaml配置）
 python agent_main.py --mode scheduled
 ```
@@ -89,6 +100,31 @@ python agent_main.py --mode scheduled
 3. 搜索文献并进行严格验证
 4. 生成文献总结和中文摘要
 5. 发送格式化的邮件报告
+
+#### 命令行参数说明（交互式模式）
+
+以下参数可以在交互式模式下覆盖 `config.yaml` 的配置，实现不依赖本地配置文件：
+
+**搜索相关**：
+- `--max-results-per-keyword N`: 每个关键词最多返回的论文数（默认20）
+- `--validation-strictness {normal|strict|very_strict}`: 验证严格度级别
+- `--strict-validation {true|false}`: 是否启用严格关键词验证
+- `--use-unified-search {true|false}`: 是否使用统一检索（PubMed + arXiv + bioRxiv）
+- `--skip-sent-dedup {true|false}`: 是否跳过已发送文献去重（测试用）
+- `--min-date YYYY-MM-DD`: 最小日期
+- `--max-date YYYY-MM-DD`: 最大日期
+- `--max-core-keywords-for-and N`: 默认仅对前N个核心关键词使用AND组合（默认2）
+- `--enforce-all-keywords-and {true|false}`: 强制所有关键词使用AND组合
+
+**报告相关**：
+- `--max-papers N`: 最多发送的文献数量（默认50）
+- `--translate-abstract {true|false}`: 是否将英文摘要翻译成中文（覆盖config.yaml中的report.translate_abstract）
+
+**基础参数**：
+- `--keywords KEYWORD1 KEYWORD2 ...`: 搜索关键词列表
+- `--days N`: 搜索最近N天的文献
+- `--email EMAIL`: 收件人邮箱地址
+- `--config PATH`: 配置文件路径（默认: config.yaml）
 
 ### 使用基础模式
 
@@ -163,7 +199,14 @@ filter:
 report:
   max_papers: 50  # 最多发送的论文数量
   format: "html"  # 邮件格式：html 或 text
+  translate_abstract: false  # 是否将英文摘要翻译成中文
 ```
+
+**报告特性**：
+- 文献按时间从近到远自动排序
+- 发表日期精确到年月显示
+- 自动显示期刊影响因子（支持常见期刊）
+- 支持HTML和纯文本两种格式
 
 ### 严格关键词验证
 
@@ -180,6 +223,22 @@ report:
 - 中文关键词自动扩展为英文检索词（如"单细胞" → "single cell", "scRNA-seq"）
 - 支持同义词扩展，提高检索覆盖率
 - 报告中使用英文关键词，符合学术规范
+
+### 报告格式优化
+
+**日期显示**：
+- 有精确日期时显示年月（如"2024年3月"）
+- 仅有年份时显示年份（如"2024年"）
+
+**期刊影响因子**：
+- 自动识别常见期刊并显示影响因子（IF值）
+- 支持Nature系列、Science系列、Cell系列、生物信息学期刊等
+- 显示格式：`期刊名 (IF: 46.9)`
+
+**排序规则**：
+- 自动按时间从近到远排序
+- 优先使用精确发布日期，其次使用年份
+- 确保最新文献优先显示
 
 ## 🎯 使用示例
 

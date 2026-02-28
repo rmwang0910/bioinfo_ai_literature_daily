@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 项目特定
+cache/
+logs/
+outputs/
+*.log
+
+# 配置文件（包含敏感信息）
+config.yaml
+!config.yaml.example
+
+# 测试文件
+test*.py
+*_test.py
+
+# 临时文件
+*.tmp
+*.bak
+*.cache

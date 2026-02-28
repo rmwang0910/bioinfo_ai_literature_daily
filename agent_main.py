@@ -15,11 +15,6 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import timedelta
 
-# 添加 BioLitKG 路径
-biolitkg_path = Path(__file__).parent.parent.parent / "AI" / "BioLitKG"
-if str(biolitkg_path) not in sys.path:
-    sys.path.insert(0, str(biolitkg_path))
-
 # 配置logging
 logging.basicConfig(
     level=logging.INFO,
@@ -27,14 +22,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# 导入 BioLitKG 模块
+# 导入本地配置模块（独立，不依赖 BioLitKG）
 try:
-    from core.llm.openai import OpenAIProvider
     from core.config import get_config
 except ImportError as e:
-    logger.warning(f"无法导入LLM模块: {e}，将使用简单模式")
-    OpenAIProvider = None
+    logger.warning(f"无法导入配置模块: {e}")
     get_config = None
+
+# 导入 LLM 模块（优先使用本地模块）
+try:
+    from core.llm.openai import OpenAIProvider
+    logger.info("✅ 成功导入本地 LLM 模块")
+except ImportError as e:
+    # 如果本地没有，尝试从 BioLitKG 导入（向后兼容）
+    biolitkg_path = Path(__file__).parent.parent.parent / "AI" / "BioLitKG"
+    if biolitkg_path.exists() and str(biolitkg_path) not in sys.path:
+        sys.path.insert(0, str(biolitkg_path))
+    try:
+        from core.llm.openai import OpenAIProvider
+        logger.info("✅ 从 BioLitKG 导入 LLM 模块（向后兼容）")
+    except ImportError as e2:
+        logger.warning(f"无法导入LLM模块: {e2}，将使用简单模式")
+        OpenAIProvider = None
 
 from main import BioinfoAILiteratureDaily
 
@@ -889,15 +898,14 @@ class LiteratureAgent:
                     logger.warning(f"过滤无效关键词: {kw_str}")
             
             if cleaned_keywords:
-                # 使用LLM将中文/混合关键词扩展为适合PubMed的英文检索词
+                # 使用LLM将中文/混合关键词扩展为适合PubMed的英文检索词（用于参考和验证）
                 expanded_keywords = cleaned_keywords
-                # 是否要求“必须通过LLM扩展”
                 force_expand = getattr(self, "force_llm_expand_keywords", False)
                 
                 if self.use_llm:
                     try:
                         expanded_keywords = self._expand_search_keywords_with_llm(cleaned_keywords)
-                        logger.info(f"✅ 关键词扩展结果（用于检索）: {expanded_keywords}")
+                        logger.info(f"✅ 关键词扩展结果（用于检索参考）: {expanded_keywords}")
                     except Exception as e:
                         if force_expand:
                             # 强制模式下，LLM扩展失败视为致命错误
@@ -905,34 +913,45 @@ class LiteratureAgent:
                             logger.error(msg)
                             raise RuntimeError(msg)
                         else:
-                            logger.warning(f"使用LLM扩展关键词失败，使用原始关键词: {e}")
+                            logger.warning(f"使用LLM扩展关键词失败，暂时仅使用原始关键词进行检索: {e}")
                             expanded_keywords = cleaned_keywords
                 
-                # 强制只使用英文关键词进行检索（移除所有包含中文的关键词）
-                english_expanded = self._filter_english_keywords(expanded_keywords)
-                if not english_expanded:
-                    if force_expand:
-                        # 强制扩展模式：不允许回退到默认关键词，直接报错中止
-                        msg = (
-                            "强制通过LLM扩展关键词已开启，但未能从扩展结果中生成任何英文检索词。"
-                            "请在指令中调整/简化关键词，或暂时关闭force_llm_expand_keywords。"
-                        )
-                        logger.error(msg)
-                        raise RuntimeError(msg)
-                    # 非强制模式：根据运行模式决定行为
-                    if self.mode == "interactive":
-                        logger.error("扩展后的英文关键词为空，交互式模式下不会回退到配置文件默认关键词。"
-                                     "请在指令中直接提供英文关键词（例如：single cell, CRISPR, organoid）。")
-                        # 显式清空搜索关键词，后续流程会提示用户
-                        self.base_agent.config['search']['keywords'] = []
-                    else:
-                        logger.warning("扩展后的英文关键词为空，将继续使用配置文件中的默认搜索关键词。")
-                else:
-                    # 将英文关键词用于搜索（覆盖配置中的默认值）
-                    self.base_agent.config['search']['keywords'] = english_expanded
-                    logger.info(f"✅ 更新搜索关键词（仅英文，用于PubMed检索）: {english_expanded}")
+                # 从配置中读取AND核心关键词个数与强制全AND开关
+                search_cfg = self.base_agent.config.get('search', {})
+                try:
+                    max_core = int(search_cfg.get('max_core_keywords_for_and', 2))
+                except Exception:
+                    max_core = 2
+                enforce_all = bool(search_cfg.get('enforce_all_keywords_and', False))
+
+                # 关键修复：使用扩展后的英文关键词构建查询，而不是原始中文关键词
+                # 如果LLM扩展成功，使用扩展后的英文关键词；否则使用原始关键词（可能是英文）
+                query_keywords = expanded_keywords if expanded_keywords != cleaned_keywords else cleaned_keywords
                 
-                # 同时保留语义层面的原始关键词，供验证表等使用
+                # 默认只对少数核心关键词使用AND，其余交给LLM严格验证
+                core_keywords = query_keywords
+                if len(query_keywords) > max_core and not enforce_all:
+                    core_keywords = query_keywords[:max_core]
+                    logger.info(
+                        f"解析到关键词较多，默认仅对以下核心关键词使用AND组合: {core_keywords}；"
+                        f"其余关键词将在严格验证阶段由LLM判断相关性。"
+                    )
+                elif enforce_all:
+                    logger.info(f"已启用强制全AND模式，将对所有关键词使用AND组合: {query_keywords}")
+
+                # 构建查询字符串：只对 core_keywords 使用 AND
+                # 这个查询会用于所有搜索源（PubMed、arXiv、bioRxiv），所以必须使用英文
+                if len(core_keywords) > 1:
+                    query = " AND ".join([f"({kw})" for kw in core_keywords])
+                else:
+                    query = core_keywords[0] if core_keywords else ""
+
+                # 将单个查询字符串作为keywords列表的唯一元素
+                # main.py 中会识别出其中的AND，不再二次组合
+                self.base_agent.config['search']['keywords'] = [query]
+                logger.info(f"✅ 更新搜索查询（用于所有检索源，已转换为英文）: {query}")
+                
+                # 同时保留语义层面的原始关键词，供严格验证和验证表使用
                 self.base_agent.config['search']['semantic_keywords'] = cleaned_keywords
                 logger.info(f"✅ 保留语义关键词（用于验证）: {cleaned_keywords}")
             else:
@@ -995,16 +1014,21 @@ class LiteratureAgent:
             if 'include_keywords' in filter_config:
                 self.base_agent.config['filter']['include_keywords'] = filter_config['include_keywords']
     
-    def run_with_request(self, user_input: str = None):
+    def run_with_request(self, user_input: str = None, override_config: Optional[Dict[str, Any]] = None):
         """
         根据用户需求运行智能体
         
         Args:
             user_input: 用户输入的自然语言需求（交互式模式必需，定时模式可选）
+            override_config: 命令行参数覆盖的配置项（字典格式）
         """
         logger.info("=" * 80)
         logger.info("文献智能体")
         logger.info("=" * 80)
+        
+        # 应用命令行参数覆盖的配置
+        if override_config:
+            self._apply_config_overrides(override_config)
         
         if self.mode == "scheduled":
             # 定时触发模式：直接使用config.yaml配置
@@ -1019,6 +1043,23 @@ class LiteratureAgent:
             logger.info(f"用户需求: {user_input}")
             logger.info("")
             return self._run_interactive_mode(user_input)
+    
+    def _apply_config_overrides(self, overrides: Dict[str, Any]):
+        """
+        应用命令行参数覆盖的配置
+        
+        Args:
+            overrides: 配置覆盖字典，格式如 {'search': {'max_results_per_keyword': 100}, 'report': {'max_papers': 50}}
+        """
+        for section, values in overrides.items():
+            if section not in self.base_agent.config:
+                self.base_agent.config[section] = {}
+            
+            if isinstance(values, dict):
+                for key, value in values.items():
+                    if value is not None:  # 只覆盖非None的值
+                        self.base_agent.config[section][key] = value
+                        logger.info(f"✅ 配置覆盖: {section}.{key} = {value}")
     
     def _run_scheduled_mode(self):
         """定时触发模式：直接使用config.yaml配置"""
@@ -1327,25 +1368,53 @@ class LiteratureAgent:
             except Exception as je:
                 logger.warning(f"解析LLM扩展关键词JSON失败，将使用原始关键词。原始片段: {raw_json[:200]}..., 错误: {je}")
                 return keywords
-            expanded = data.get("expanded_keywords") or []
-            # 清理：去重、去空、转字符串
-            cleaned = []
-            for kw in expanded:
-                kw_str = str(kw).strip()
-                if kw_str and kw_str not in cleaned:
-                    cleaned.append(kw_str)
+            # 优先使用 keyword_mapping（如果存在），否则使用 expanded_keywords
+            keyword_mapping = data.get("keyword_mapping", {})
+            expanded = data.get("expanded_keywords", [])
             
-            if not cleaned:
-                logger.warning("LLM扩展后的关键词列表为空，使用原始关键词")
-                return keywords
+            # 如果有关键词映射，优先使用（保留每个原始关键词对应的扩展词）
+            if keyword_mapping:
+                # 为每个原始关键词选择最佳扩展词（第一个）
+                primary_expanded = []
+                for orig_kw in keywords:
+                    orig_kw_str = str(orig_kw).strip()
+                    if orig_kw_str in keyword_mapping:
+                        mapped = keyword_mapping[orig_kw_str]
+                        if mapped and len(mapped) > 0:
+                            # 选择第一个（通常是最常用的）
+                            primary_expanded.append(str(mapped[0]).strip())
+                
+                # 如果主要扩展词存在，使用它们；否则使用扁平列表
+                if primary_expanded:
+                    # 清理：去重、去空
+                    cleaned = []
+                    for kw in primary_expanded:
+                        kw_str = str(kw).strip()
+                        if kw_str and kw_str not in cleaned:
+                            cleaned.append(kw_str)
+                    
+                    if cleaned:
+                        # 进一步过滤：只保留英文关键词
+                        english_cleaned = self._filter_english_keywords(cleaned)
+                        if english_cleaned:
+                            logger.info(f"✅ 使用用户关键词对应的主要扩展词: {english_cleaned}")
+                            return english_cleaned
             
-            # 进一步过滤：只保留英文关键词（不包含中文字符）
-            english_cleaned = self._filter_english_keywords(cleaned)
-            if not english_cleaned:
-                logger.warning("LLM扩展的关键词全部包含中文或无效，将回退使用原始关键词（后续会再次过滤为英文）。")
-                return keywords
+            # 回退到扁平列表
+            if expanded:
+                cleaned = []
+                for kw in expanded:
+                    kw_str = str(kw).strip()
+                    if kw_str and kw_str not in cleaned:
+                        cleaned.append(kw_str)
+                
+                if cleaned:
+                    english_cleaned = self._filter_english_keywords(cleaned)
+                    if english_cleaned:
+                        return english_cleaned
             
-            return english_cleaned
+            logger.warning("LLM扩展后的关键词列表为空或无效，使用原始关键词")
+            return keywords
         except Exception as e:
             logger.warning(f"LLM扩展关键词失败: {e}，使用原始关键词")
             return keywords
@@ -1473,10 +1542,28 @@ class LiteratureAgent:
         validation_details = keyword_validation_info.get('validation_details', {})
         strict_count = keyword_validation_info.get('strict_matched', 0)
         
-        # 获取关键词列表（用于检索的英文关键词）
-        keywords = self.base_agent.config['search'].get('keywords', [])
-        if isinstance(keywords, str):
-            keywords = [keywords]
+        # 获取语义关键词列表（用于验证的关键词，与keyword_evidence的key对应）
+        # keyword_evidence的key是基于semantic_keywords生成的，所以这里必须使用semantic_keywords
+        semantic_keywords = self.base_agent.config['search'].get('semantic_keywords', [])
+        if not semantic_keywords:
+            # 如果没有semantic_keywords，回退到keywords（可能是英文）
+            keywords = self.base_agent.config['search'].get('keywords', [])
+            if isinstance(keywords, str):
+                keywords = [keywords]
+            # 如果keywords是查询字符串（包含AND/OR），尝试提取关键词
+            if keywords and isinstance(keywords[0], str) and (' AND ' in keywords[0] or ' OR ' in keywords[0]):
+                # 尝试从查询字符串中提取关键词
+                import re
+                query = keywords[0]
+                # 提取括号中的关键词
+                extracted = re.findall(r'\(([^)]+)\)', query)
+                if extracted:
+                    keywords = extracted
+                else:
+                    # 如果没有括号，按AND/OR分割
+                    keywords = re.split(r'\s+(?:AND|OR)\s+', query)
+            semantic_keywords = keywords
+        keywords = semantic_keywords
         
         # 如果只有一个关键词，简化表格格式
         if len(keywords) == 1:
@@ -1502,7 +1589,31 @@ class LiteratureAgent:
                 
                 # 获取第一个（也是唯一一个）关键词的证据
                 kw = keywords[0] if keywords else ""
-                evidence = keyword_evidence.get(kw, "未提及")
+                # 尝试多种可能的key格式匹配
+                evidence = None
+                # 1. 直接匹配
+                if kw in keyword_evidence:
+                    evidence = keyword_evidence[kw]
+                else:
+                    # 2. 尝试不区分大小写匹配
+                    for key, value in keyword_evidence.items():
+                        if key.lower() == kw.lower():
+                            evidence = value
+                            break
+                    # 3. 如果还是找不到，尝试部分匹配
+                    if not evidence:
+                        kw_lower = kw.lower()
+                        for key, value in keyword_evidence.items():
+                            if kw_lower in key.lower() or key.lower() in kw_lower:
+                                evidence = value
+                                break
+                
+                if not evidence:
+                    # 如果还是找不到，尝试获取第一个可用的证据
+                    if keyword_evidence:
+                        evidence = list(keyword_evidence.values())[0]
+                    else:
+                        evidence = "未提及"
                 # 证据内容控制在40字符以内，保持简洁
                 if len(evidence) > 40:
                     evidence = evidence[:37] + "..."
@@ -1535,11 +1646,29 @@ class LiteratureAgent:
                 # 合并所有关键词的证据，用分号分隔
                 evidence_parts = []
                 for kw in keywords:
-                    ev = keyword_evidence.get(kw, "")
-                    if ev and ev not in ["未提及", "未检查"]:
+                    # 尝试多种可能的key格式匹配
+                    ev = None
+                    # 1. 直接匹配
+                    if kw in keyword_evidence:
+                        ev = keyword_evidence[kw]
+                    else:
+                        # 2. 尝试不区分大小写匹配
+                        for key, value in keyword_evidence.items():
+                            if key.lower() == kw.lower():
+                                ev = value
+                                break
+                        # 3. 如果还是找不到，尝试部分匹配（用于处理查询字符串中的关键词）
+                        if not ev:
+                            kw_lower = kw.lower()
+                            for key, value in keyword_evidence.items():
+                                if kw_lower in key.lower() or key.lower() in kw_lower:
+                                    ev = value
+                                    break
+                    
+                    if ev and ev not in ["未提及", "未检查", ""]:
                         # 简化证据文本，去掉冗余描述
                         ev_clean = ev.replace("摘要中提及", "").replace("方法中", "").replace("结果中", "").strip()
-                        if ev_clean:
+                        if ev_clean and ev_clean not in ["未提及", "未检查"]:
                             evidence_parts.append(ev_clean[:25])  # 每个关键词证据最多25字符
                 
                 # 合并证据，总长度控制在60字符以内
@@ -1548,7 +1677,14 @@ class LiteratureAgent:
                     if len(combined_evidence) > 60:
                         combined_evidence = combined_evidence[:57] + "..."
                 else:
-                    combined_evidence = "未找到实质性使用证据"
+                    # 如果所有关键词都没有证据，尝试获取所有可用的证据
+                    all_evidence = [v for v in keyword_evidence.values() if v and v not in ["未提及", "未检查", ""]]
+                    if all_evidence:
+                        combined_evidence = "；".join([e[:20] for e in all_evidence[:3]])  # 最多显示3个证据
+                        if len(combined_evidence) > 60:
+                            combined_evidence = combined_evidence[:57] + "..."
+                    else:
+                        combined_evidence = "未找到实质性使用证据"
                 
                 match_status = "✅"
                 table += f"| {row_index} | {title} | {combined_evidence} | {match_status} |\n"
@@ -1609,7 +1745,65 @@ def main():
     parser.add_argument(
         '--max-papers',
         type=int,
-        help='最多发送的文献数量'
+        help='最多发送的文献数量（覆盖config.yaml中的report.max_papers）'
+    )
+    
+    parser.add_argument(
+        '--translate-abstract',
+        type=lambda x: x.lower() in ['true', '1', 'yes', 'on'],
+        help='是否将英文摘要翻译成中文（true/false，覆盖config.yaml中的report.translate_abstract）'
+    )
+    
+    parser.add_argument(
+        '--max-results-per-keyword',
+        type=int,
+        help='每个关键词最多返回的论文数（覆盖config.yaml中的search.max_results_per_keyword，默认20）'
+    )
+    
+    parser.add_argument(
+        '--validation-strictness',
+        choices=['normal', 'strict', 'very_strict'],
+        help='验证严格度级别（覆盖config.yaml中的search.validation_strictness）'
+    )
+    
+    parser.add_argument(
+        '--strict-validation',
+        type=lambda x: x.lower() in ['true', '1', 'yes', 'on'],
+        help='是否启用严格关键词验证（true/false，覆盖config.yaml中的search.strict_keyword_validation）'
+    )
+    
+    parser.add_argument(
+        '--use-unified-search',
+        type=lambda x: x.lower() in ['true', '1', 'yes', 'on'],
+        help='是否使用统一检索（PubMed + arXiv + bioRxiv，true/false，覆盖config.yaml中的search.use_unified_search）'
+    )
+    
+    parser.add_argument(
+        '--skip-sent-dedup',
+        type=lambda x: x.lower() in ['true', '1', 'yes', 'on'],
+        help='是否跳过已发送文献去重（true/false，覆盖config.yaml中的search.skip_sent_dedup）'
+    )
+    
+    parser.add_argument(
+        '--min-date',
+        help='最小日期（格式：YYYY-MM-DD，覆盖config.yaml中的search.min_date）'
+    )
+    
+    parser.add_argument(
+        '--max-date',
+        help='最大日期（格式：YYYY-MM-DD，覆盖config.yaml中的search.max_date）'
+    )
+    
+    parser.add_argument(
+        '--max-core-keywords-for-and',
+        type=int,
+        help='默认仅对前N个核心关键词使用AND组合（覆盖config.yaml中的search.max_core_keywords_for_and，默认2）'
+    )
+    
+    parser.add_argument(
+        '--enforce-all-keywords-and',
+        type=lambda x: x.lower() in ['true', '1', 'yes', 'on'],
+        help='强制所有关键词使用AND组合（true/false，覆盖config.yaml中的search.enforce_all_keywords_and）'
     )
     
     parser.add_argument(
@@ -1621,6 +1815,43 @@ def main():
     
     # 创建智能体（根据模式）
     agent = LiteratureAgent(config_path=args.config, mode=args.mode)
+    
+    # 构建配置覆盖字典（从命令行参数）
+    override_config = {}
+    
+    # 搜索配置覆盖
+    if any([args.max_results_per_keyword, args.validation_strictness, args.strict_validation is not None,
+            args.use_unified_search is not None, args.skip_sent_dedup is not None,
+            args.min_date, args.max_date, args.max_core_keywords_for_and,
+            args.enforce_all_keywords_and is not None]):
+        override_config['search'] = {}
+        if args.max_results_per_keyword is not None:
+            override_config['search']['max_results_per_keyword'] = args.max_results_per_keyword
+        if args.validation_strictness:
+            override_config['search']['validation_strictness'] = args.validation_strictness
+        if args.strict_validation is not None:
+            override_config['search']['strict_keyword_validation'] = args.strict_validation
+        if args.use_unified_search is not None:
+            override_config['search']['use_unified_search'] = args.use_unified_search
+        if args.skip_sent_dedup is not None:
+            override_config['search']['skip_sent_dedup'] = args.skip_sent_dedup
+        if args.min_date:
+            override_config['search']['min_date'] = args.min_date
+        if args.max_date:
+            override_config['search']['max_date'] = args.max_date
+        if args.max_core_keywords_for_and is not None:
+            override_config['search']['max_core_keywords_for_and'] = args.max_core_keywords_for_and
+        if args.enforce_all_keywords_and is not None:
+            override_config['search']['enforce_all_keywords_and'] = args.enforce_all_keywords_and
+    
+    # 报告配置覆盖
+    if args.max_papers is not None or args.translate_abstract is not None:
+        if 'report' not in override_config:
+            override_config['report'] = {}
+        if args.max_papers is not None:
+            override_config['report']['max_papers'] = args.max_papers
+        if args.translate_abstract is not None:
+            override_config['report']['translate_abstract'] = args.translate_abstract
     
     # 处理用户输入
     if args.mode == "scheduled":
@@ -1661,9 +1892,9 @@ def main():
         else:
             user_input = None
     
-    # 运行智能体
+    # 运行智能体（传入配置覆盖）
     try:
-        agent.run_with_request(user_input)
+        agent.run_with_request(user_input, override_config=override_config if override_config else None)
     except KeyboardInterrupt:
         print("\n\n用户中断")
     except Exception as e:

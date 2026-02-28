@@ -17,6 +17,11 @@ search:
   # 每个关键词最多返回的论文数
   max_results_per_keyword: 20
   
+  # 是否使用 BioLitKG 的统一检索（PubMed + arXiv 等多源）
+  # true：在当前代码仓库中存在 BioLitKG/literature 时，同时从 PubMed 和 arXiv 等源检索
+  # false：仅使用 PubMedClient
+  use_unified_search: false
+  
   # 搜索最近N天的文献（如果设置了min_date，则忽略此选项）
   days_back: 7
   
@@ -64,3 +69,6 @@ report:
   
   # 邮件格式：html 或 text
   format: "html"
+  
+  # 是否将英文摘要翻译成中文（使用LLM翻译）
+  translate_abstract: false
