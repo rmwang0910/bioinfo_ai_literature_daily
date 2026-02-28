@@ -15,9 +15,11 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import timedelta
 
-# 配置logging
+# 配置logging：默认只在控制台输出重要日志（WARNING及以上）
+log_level_name = os.environ.get("BIOAI_LOG_LEVEL", "WARNING").upper()
+log_level = getattr(logging, log_level_name, logging.WARNING)
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -354,8 +356,30 @@ class LiteratureAgent:
         # 移除常见的时间表达（避免干扰关键词提取）
         user_input_clean = re.sub(r'\d{4}年', ' ', user_input_clean)  # 移除"2026年"
         user_input_clean = re.sub(r'最近\d+天', ' ', user_input_clean)  # 移除"最近7天"
+        # 新增：移除"最近N年/近N年/过去N年"这类时间短语，避免形成"找最近"这类伪关键词
+        user_input_clean = re.sub(r'找?最近\d+年', ' ', user_input_clean)
+        user_input_clean = re.sub(r'(近|过去)\d+年', ' ', user_input_clean)
         user_input_clean = re.sub(r'发送到', ' ', user_input_clean)  # 移除"发送到"
         user_input_clean = re.sub(r'\s+', ' ', user_input_clean).strip()
+        
+        # 优先处理"最近N年/近N年/过去N年 + XXX文献"模式，用于抽取主题关键词
+        # 例如："找最近3年抑郁症和代谢物文献"
+        if not keywords:
+            year_kw_match = re.search(r'(?:最近|近|过去)\d+年([^，,。\.]+?)文献', user_input)
+            if year_kw_match:
+                raw_kw_str = year_kw_match.group(1)
+                # 用常见连接词拆分：和/及/与/、/以及
+                parts = re.split(r'和|及|与|、|以及', raw_kw_str)
+                for part in parts:
+                    part = part.strip()
+                    if not part:
+                        continue
+                    # 去掉常见无意义后缀
+                    part = re.sub(r'(的|相关|研究|文献)$', '', part).strip()
+                    if not part:
+                        continue
+                    if self._is_valid_keyword(part):
+                        keywords.append(part)
         
         # 优先处理"或者"、"或"分隔的关键词
         if '或者' in user_input_clean or '或' in user_input_clean:
@@ -665,8 +689,20 @@ class LiteratureAgent:
                 # LLM解析的结果覆盖简单解析（如果LLM提供了更准确的信息）
                 for key, value in llm_parsed.items():
                     if value is not None:  # 只使用LLM提供的非空值
-                        if key == 'keywords' and value:
-                            # 清理和验证LLM返回的关键词
+                        if key == 'topic_keywords' and value:
+                            # 处理新的两层结构：主题关键词
+                            cleaned_keywords = [kw for kw in value if self._is_valid_keyword(str(kw))]
+                            if cleaned_keywords:
+                                merged['topic_keywords'] = cleaned_keywords
+                            else:
+                                logger.warning(f"LLM返回的主题关键词全部无效")
+                        elif key == 'article_type_keywords' and value:
+                            # 处理新的两层结构：文章类型关键词
+                            cleaned_types = [at_kw for at_kw in value if at_kw and str(at_kw).strip()]
+                            if cleaned_types:
+                                merged['article_type_keywords'] = cleaned_types
+                        elif key == 'keywords' and value:
+                            # 向后兼容：处理旧的keywords字段
                             cleaned_keywords = [kw for kw in value if self._is_valid_keyword(str(kw))]
                             if cleaned_keywords:
                                 merged['keywords'] = cleaned_keywords
@@ -689,7 +725,12 @@ class LiteratureAgent:
                             merged['filter'] = value
                 
                 # 对关键词做一次语义去重，避免 'single cell' / 'single-cell' 这种重复概念
-                if 'keywords' in merged and isinstance(merged['keywords'], list):
+                if 'topic_keywords' in merged and isinstance(merged['topic_keywords'], list):
+                    merged['topic_keywords'] = self._deduplicate_semantic_keywords(
+                        [str(k) for k in merged['topic_keywords']]
+                    )
+                elif 'keywords' in merged and isinstance(merged['keywords'], list):
+                    # 向后兼容
                     merged['keywords'] = self._deduplicate_semantic_keywords(
                         [str(k) for k in merged['keywords']]
                     )
@@ -717,11 +758,18 @@ class LiteratureAgent:
         
         paper_summaries = {}
         
-        logger.info(f"开始为 {len(papers)} 篇论文生成中文总结...")
+        total = len(papers)
+        # 使用WARNING级别，让用户在精简日志模式下也能看到“进入总结阶段”
+        logger.warning(f"开始为 {total} 篇论文生成中文总结（可能稍有耗时，请耐心等待）...")
         
         # 逐篇处理，更可靠
         for i, paper in enumerate(papers, 1):
             try:
+                # 定期打印进度，避免用户误以为卡住
+                if i == 1 or i % 5 == 0 or i == total:
+                    title_preview = paper.title[:50] if paper.title else "无标题"
+                    logger.warning(f"中文总结进度: 第 {i}/{total} 篇论文（当前: {title_preview}）")
+                
                 summary = self._summarize_single_paper(paper, i)
                 if summary:
                     # 使用多种key，确保能匹配到
@@ -737,7 +785,8 @@ class LiteratureAgent:
             except Exception as e:
                 logger.warning(f"✗ 论文 {i}/{len(papers)}: 生成总结时出错: {e}")
         
-        logger.info(f"已为 {len(set(paper_summaries.values()))} 篇论文生成中文总结")
+        # 使用WARNING级别，总结生成完毕
+        logger.warning(f"已为 {len(set(paper_summaries.values()))} 篇论文生成中文总结")
         return paper_summaries
     
     def _summarize_single_paper(self, paper, index: int = 0) -> Optional[str]:
@@ -885,9 +934,27 @@ class LiteratureAgent:
             user_input: 用户原始输入（用于LLM判断关键词运算符）
         """
         # 更新搜索配置
-        if 'keywords' in parsed_request and parsed_request['keywords']:
-            keywords = parsed_request['keywords']
-            logger.info(f"准备更新关键词，原始关键词: {keywords}")
+        # 优先使用新的两层结构：topic_keywords（主题关键词）和 article_type_keywords（文章类型关键词）
+        topic_keywords = None
+        article_type_keywords = None
+        
+        if 'topic_keywords' in parsed_request and parsed_request['topic_keywords']:
+            topic_keywords = parsed_request['topic_keywords']
+            logger.info(f"✅ 检测到主题关键词: {topic_keywords}")
+        
+        if 'article_type_keywords' in parsed_request and parsed_request.get('article_type_keywords'):
+            article_type_keywords = parsed_request['article_type_keywords']
+            logger.info(f"✅ 检测到文章类型关键词: {article_type_keywords}")
+        
+        # 向后兼容：如果没有新的两层结构，使用旧的 keywords 字段
+        if not topic_keywords and 'keywords' in parsed_request and parsed_request['keywords']:
+            topic_keywords = parsed_request['keywords']
+            logger.info(f"使用向后兼容模式，将keywords作为主题关键词: {topic_keywords}")
+        
+        # 处理主题关键词（用于第一层检索）
+        if topic_keywords:
+            keywords = topic_keywords
+            logger.info(f"准备更新主题关键词，原始关键词: {keywords}")
             # 清理和验证关键词
             cleaned_keywords = []
             for kw in keywords:
@@ -954,6 +1021,25 @@ class LiteratureAgent:
                 # 同时保留语义层面的原始关键词，供严格验证和验证表使用
                 self.base_agent.config['search']['semantic_keywords'] = cleaned_keywords
                 logger.info(f"✅ 保留语义关键词（用于验证）: {cleaned_keywords}")
+                
+                # 保存文章类型关键词（用于第二层过滤）
+                if article_type_keywords:
+                    # 清理文章类型关键词
+                    cleaned_article_types = []
+                    for at_kw in article_type_keywords:
+                        at_kw_str = str(at_kw).strip()
+                        if at_kw_str:
+                            cleaned_article_types.append(at_kw_str)
+                    
+                    if cleaned_article_types:
+                        self.base_agent.config['search']['article_type_keywords'] = cleaned_article_types
+                        logger.info(f"✅ 保存文章类型关键词（用于第二层过滤）: {cleaned_article_types}")
+                    else:
+                        # 清除文章类型关键词
+                        self.base_agent.config['search'].pop('article_type_keywords', None)
+                else:
+                    # 清除文章类型关键词
+                    self.base_agent.config['search'].pop('article_type_keywords', None)
             else:
                 logger.warning("所有关键词都被过滤，使用配置文件中的默认关键词")
         else:
@@ -962,8 +1048,10 @@ class LiteratureAgent:
                 logger.warning(f"parsed_request 内容: {parsed_request}")
         
         # 如果LLM没有提供keyword_operator，使用LLM智能判断（需要在有keywords的情况下）
-        if 'keywords' in parsed_request and parsed_request['keywords']:
-            keywords = parsed_request['keywords']
+        # 优先使用topic_keywords，向后兼容使用keywords
+        keywords_for_operator = topic_keywords or parsed_request.get('keywords', [])
+        if keywords_for_operator:
+            keywords = keywords_for_operator
             if 'keyword_operator' not in parsed_request or not parsed_request['keyword_operator']:
                 if self.use_llm and len(keywords) > 1:
                     # 检查是否已包含逻辑运算符
@@ -1095,9 +1183,10 @@ class LiteratureAgent:
         success = self.base_agent.send_email(papers, summary=summary, paper_summaries=paper_summaries)
         
         if success:
-            logger.info("=" * 80)
-            logger.info("智能体任务完成！")
-            logger.info("=" * 80)
+            # 使用WARNING级别，确保在默认精简日志下也能看到任务完成提示
+            logger.warning("=" * 80)
+            logger.warning("智能体任务完成！")
+            logger.warning("=" * 80)
         else:
             logger.error("邮件发送失败")
     
@@ -1169,9 +1258,10 @@ class LiteratureAgent:
         success = self.base_agent.send_email(papers, summary=summary, paper_summaries=paper_summaries)
         
         if success:
-            logger.info("=" * 80)
-            logger.info("智能体任务完成！")
-            logger.info("=" * 80)
+            # 使用WARNING级别，确保在默认精简日志下也能看到任务完成提示
+            logger.warning("=" * 80)
+            logger.warning("智能体任务完成！")
+            logger.warning("=" * 80)
         else:
             logger.error("邮件发送失败")
     
@@ -1357,17 +1447,29 @@ class LiteratureAgent:
         try:
             response = self.llm_client.generate(prompt, max_tokens=400, temperature=0.2)
             import json, re
-            # 使用非贪婪匹配，只取第一个完整的JSON对象，避免意外多余内容
-            json_match = re.search(r'\{.*?\}', response, re.DOTALL)
-            if not json_match:
+            # 尽量提取**完整**的JSON对象：
+            # - 使用findall并选择最长的那一段，避免非贪婪匹配截断嵌套结构
+            # - 仍然只能基于大括号启发式，但在LLM严格提示下通常足够
+            json_candidates = re.findall(r'\{[\s\S]*\}', response)
+            if not json_candidates:
                 logger.warning(f"无法从LLM扩展关键词响应中提取JSON，原始响应: {response[:200]}...")
                 return keywords
-            raw_json = json_match.group(0)
+            # 选择最长的候选，尽可能包含完整mapping
+            raw_json = max(json_candidates, key=len).strip()
             try:
                 data = json.loads(raw_json)
             except Exception as je:
-                logger.warning(f"解析LLM扩展关键词JSON失败，将使用原始关键词。原始片段: {raw_json[:200]}..., 错误: {je}")
-                return keywords
+                # 尝试使用 ast.literal_eval 作为宽松解析（允许单引号、尾逗号等）
+                try:
+                    import ast
+                    data = ast.literal_eval(raw_json)
+                    logger.warning(f"JSON解析失败，但通过literal_eval成功解析关键词扩展结果: {raw_json[:200]}..., 原始错误: {je}")
+                except Exception as je2:
+                    logger.warning(
+                        f"解析LLM扩展关键词JSON失败，将使用原始关键词。"
+                        f"原始片段: {raw_json[:200]}..., 错误1: {je}; 错误2: {je2}"
+                    )
+                    return keywords
             # 优先使用 keyword_mapping（如果存在），否则使用 expanded_keywords
             keyword_mapping = data.get("keyword_mapping", {})
             expanded = data.get("expanded_keywords", [])

@@ -228,7 +228,8 @@ class PubMedClient(BaseLiteratureClient):
                 return []
 
             if not pmids:
-                self.logger.info(f"No results found for query: {query}")
+                # 使用WARNING级别，确保在默认精简日志下仍能看到检索结果规模
+                self.logger.warning(f"No results found on PubMed for query: {query}")
                 return []
 
             # Fetch paper details
@@ -238,7 +239,8 @@ class PubMedClient(BaseLiteratureClient):
             if self.cache:
                 self.cache.set("pubmed", "search", cache_params, papers)
 
-            self.logger.info(f"Found {len(papers)} papers on PubMed for query: {query}")
+            # 使用WARNING级别，便于用户在精简日志模式下感知检索规模
+            self.logger.warning(f"Found {len(papers)} papers on PubMed for query: {query}")
             return papers
 
         except Exception as e:

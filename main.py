@@ -19,9 +19,11 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import smtplib
 
-# 配置logging
+# 配置logging：默认只在控制台输出重要日志（WARNING及以上）
+log_level_name = os.environ.get("BIOAI_LOG_LEVEL", "WARNING").upper()
+log_level = getattr(logging, log_level_name, logging.WARNING)
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -359,7 +361,8 @@ class BioinfoAILiteratureDaily:
             strict_keyword_validation=strict_validation,
             validation_strictness=validation_strictness
         )
-        logger.info(f"过滤后剩余 {len(filtered_papers)} 篇论文（严格度: {validation_strictness}）")
+        # 使用WARNING级别，向用户展示严格验证后的论文数
+        logger.warning(f"过滤后剩余 {len(filtered_papers)} 篇论文（严格度: {validation_strictness}）")
         
         # 保存关键词验证信息（用于生成验证表）
         self._keyword_validation_info = keyword_validation_info
@@ -383,7 +386,8 @@ class BioinfoAILiteratureDaily:
                 if not is_sent:
                     new_papers.append(paper)
             
-            logger.info(f"去除已发送文献后，剩余 {len(new_papers)} 篇新论文")
+            # 使用WARNING级别，向用户展示去重后的新论文数
+            logger.warning(f"去除已发送文献后，剩余 {len(new_papers)} 篇新论文")
         
         # 限制数量
         max_papers = self.config['report'].get('max_papers', 50)
@@ -426,7 +430,9 @@ class BioinfoAILiteratureDaily:
         filtered = []
         keyword_validation_info = {}  # 存储关键词验证信息
         
-        min_abstract_length = filter_config.get('min_abstract_length', 100)
+        # 统一处理摘要长度阈值，防止 None 与 int 比较导致错误
+        raw_min_len = filter_config.get('min_abstract_length', 100)
+        min_abstract_length = raw_min_len if isinstance(raw_min_len, (int, float)) else 0
         exclude_keywords = [kw.lower() for kw in filter_config.get('exclude_keywords', [])]
         include_keywords = [kw.lower() for kw in filter_config.get('include_keywords', [])]
         
@@ -439,7 +445,8 @@ class BioinfoAILiteratureDaily:
             # 多个关键词且为AND关系：要求所有关键词都实质性包含
             # 单个关键词：也进行严格验证，只检查该技术是否被实质性使用
             if keyword_operator == 'AND' or len(semantic_keywords) == 1:
-                logger.info(f"进行严格关键词验证，要求实质性包含以下关键词: {semantic_keywords}（严格度: {validation_strictness}）")
+                # 使用WARNING级别，让用户在精简日志模式下也能看到“已进入严格验证阶段”
+                logger.warning(f"进行严格关键词验证，要求实质性包含以下关键词: {semantic_keywords}（严格度: {validation_strictness}）")
                 return self._strict_validate_keywords(papers, semantic_keywords, filter_config, validation_strictness)
         
         filtered_count = 0
@@ -484,13 +491,18 @@ class BioinfoAILiteratureDaily:
         
         Args:
             papers: 论文列表
-            keywords: 关键词列表
+            keywords: 主题关键词列表（用于第一层验证）
             filter_config: 过滤配置
             validation_strictness: 验证严格度级别（'normal', 'strict', 'very_strict'）
         
         Returns:
             (严格匹配的论文列表, 关键词匹配验证信息)
         """
+        # 获取文章类型关键词（用于第二层过滤）
+        article_type_keywords = self.config.get('search', {}).get('article_type_keywords', [])
+        if article_type_keywords:
+            logger.info(f"启用两层验证：主题关键词={keywords}，文章类型关键词={article_type_keywords}")
+        
         # 检查是否有LLM可用
         try:
             from core.llm.openai import OpenAIProvider
@@ -519,7 +531,16 @@ class BioinfoAILiteratureDaily:
         partial_matched = []
         validation_info = {}
         
-        min_abstract_length = filter_config.get('min_abstract_length', 100)
+        # 统一处理摘要长度阈值，防止 None 与 int 比较导致错误
+        raw_min_len = filter_config.get('min_abstract_length', 100)
+        min_abstract_length = raw_min_len if isinstance(raw_min_len, (int, float)) else 0
+        
+        total_papers = len(papers)
+        if total_papers > 0:
+            # 使用WARNING级别提示进入严格验证阶段，并给出总论文数，避免用户误以为程序卡死
+            logger.warning(
+                f"进入严格验证阶段，共 {total_papers} 篇候选论文，将使用LLM逐篇检查关键词匹配情况，请耐心等待..."
+            )
         
         for i, paper in enumerate(papers, 1):
             # 基础过滤：摘要长度
@@ -535,13 +556,21 @@ class BioinfoAILiteratureDaily:
             # 使用LLM验证关键词（采用更严格的验证策略）
             try:
                 abstract = paper.abstract[:1500] if paper.abstract else "无摘要"  # 增加摘要长度限制，获取更多上下文
+                # 格式化文章类型关键词（如果存在）
+                article_types_str = ", ".join(article_type_keywords) if article_type_keywords else "null"
                 prompt = prompt_template.format(
                     title=paper.title or '无标题',
                     abstract=abstract,
-                    keywords=", ".join(keywords)
+                    keywords=", ".join(keywords),
+                    article_type_keywords=article_types_str
                 )
                 
                 # 使用更低的temperature和更多的token，确保判断更严格
+                # 定期打印进度日志，让用户看到严格验证的推进情况
+                if i == 1 or i % 10 == 0 or i == total_papers:
+                    title_preview = paper.title[:50] if paper.title else "无标题"
+                    logger.warning(f"严格验证进度: 第 {i}/{total_papers} 篇论文（当前: {title_preview}）")
+                
                 response = llm_client.generate(prompt, max_tokens=400, temperature=0.0)  # 温度设为0，更确定性
                 
                 # 解析JSON响应
@@ -555,6 +584,20 @@ class BioinfoAILiteratureDaily:
                     reason = result.get('reason', '')
                     match_level = result.get('match_level', 'none')
                     matched_keywords = result.get('matched_keywords', [])
+                    
+                    # 检查文章类型匹配（第二层过滤）
+                    article_type_match = True  # 默认匹配（如果没有文章类型要求）
+                    matched_article_types = []
+                    if article_type_keywords:
+                        article_type_match = result.get('article_type_match', False)
+                        matched_article_types = result.get('matched_article_types', [])
+                        
+                        # 如果主题关键词匹配但文章类型不匹配，降级为部分匹配
+                        if all_match and not article_type_match:
+                            logger.info(f"⚠️  主题关键词匹配但文章类型不匹配: {paper.title[:50] if paper.title else '无标题'}")
+                            all_match = False
+                            match_level = 'partial'
+                            reason = f"主题关键词匹配，但文章类型不匹配（期望：{', '.join(article_type_keywords)}，实际：{', '.join(matched_article_types) if matched_article_types else '无匹配'}）"
                     
                     # 根据严格度级别进行额外检查
                     if validation_strictness in ['strict', 'very_strict']:
@@ -590,10 +633,17 @@ class BioinfoAILiteratureDaily:
                         'keyword_evidence': keyword_evidence,
                         'reason': reason,
                         'match_level': match_level,
-                        'matched_keywords': matched_keywords
+                        'matched_keywords': matched_keywords,
+                        'article_type_match': article_type_match,
+                        'matched_article_types': matched_article_types
                     }
                     
-                    if all_match and match_level == 'strict':
+                    # 严格匹配需要同时满足：主题关键词匹配 + 文章类型匹配（如果提供了文章类型要求）
+                    is_strict_match = all_match and match_level == 'strict'
+                    if article_type_keywords:
+                        is_strict_match = is_strict_match and article_type_match
+                    
+                    if is_strict_match:
                         strict_matched.append(paper)
                         logger.info(f"✅ 严格匹配: {paper.title[:50] if paper.title else '无标题'}")
                     else:
@@ -614,7 +664,8 @@ class BioinfoAILiteratureDaily:
                 else:
                     partial_matched.append(paper)
         
-        logger.info(f"严格匹配: {len(strict_matched)} 篇，部分匹配: {len(partial_matched)} 篇")
+        # 使用WARNING级别，向用户展示严格匹配与部分匹配的数量
+        logger.warning(f"严格匹配: {len(strict_matched)} 篇，部分匹配: {len(partial_matched)} 篇")
         
         # 返回严格匹配的论文和验证信息
         return strict_matched, {
@@ -629,7 +680,9 @@ class BioinfoAILiteratureDaily:
         filtered = []
         validation_info = {}
         
-        min_abstract_length = filter_config.get('min_abstract_length', 100)
+        # 统一处理摘要长度阈值，防止 None 与 int 比较导致错误
+        raw_min_len = filter_config.get('min_abstract_length', 100)
+        min_abstract_length = raw_min_len if isinstance(raw_min_len, (int, float)) else 0
         
         for paper in papers:
             if min_abstract_length > 0:
@@ -1637,16 +1690,18 @@ class BioinfoAILiteratureDaily:
         papers = self.search_literature()
         
         if not papers:
-            logger.info("未找到新文献")
+            # 使用WARNING级别，明确告诉用户“没有新文献”
+            logger.warning("未找到新文献")
             return
         
         # 2. 发送邮件
         success = self.send_email(papers)
         
         if success:
-            logger.info("=" * 80)
-            logger.info("推送完成！")
-            logger.info("=" * 80)
+            # 基础模式也给出清晰完成提示
+            logger.warning("=" * 80)
+            logger.warning("推送完成！")
+            logger.warning("=" * 80)
         else:
             logger.error("推送失败，请检查配置和网络连接")
 

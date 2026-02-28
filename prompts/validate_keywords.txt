@@ -25,8 +25,30 @@
 - ❌ 只是提到技术名称，但没有说明如何应用或产生数据
 
 -----------------------------
+【两层验证逻辑】
+
+**第一层：主题关键词验证**
+给定主题关键词列表：{keywords}
+这些是研究主题或技术概念，需要在研究方法、核心数据或主要结论中实质性使用。
+
+**重要提示**：
+- 如果关键词是中文（如"抑郁症"、"代谢物"），需要在英文摘要中查找对应的英文术语（如"depression"、"metabolites"）进行匹配
+- 关键词可以是中文或英文，但论文摘要通常是英文，请根据语义进行跨语言匹配
+- 例如："抑郁症"应匹配摘要中的"depression"、"major depressive disorder"等术语
+
+**第二层：文章类型过滤（如果提供了article_type_keywords）**
+给定文章类型关键词列表：{article_type_keywords}
+这些是文章类型或研究设计，需要判断论文是否属于这些类型之一：
+- "回顾性分析" / "retrospective analysis"：研究明确说明是回顾性研究、回顾性队列研究、回顾性分析
+- "综述" / "review"：研究是综述文章、系统综述、meta分析、文献综述
+- "检测方法" / "detection method"：研究的核心贡献是检测方法、诊断方法、检测技术
+
+**重要**：如果提供了文章类型关键词，论文必须同时满足：
+1. 所有主题关键词都实质性匹配
+2. 至少匹配一个文章类型关键词
+
+-----------------------------
 【区分三种匹配等级】
-给定关键词列表：{keywords}
 
 请根据论文标题和摘要，将论文归类为以下三种之一：
 - ✅ 严格匹配（strict）：  
@@ -49,7 +71,8 @@
 论文标题: {title}
 论文摘要: {abstract}
 
-关键词列表: {keywords}
+主题关键词列表: {keywords}
+文章类型关键词列表: {article_type_keywords}
 
 -----------------------------
 【输出要求】
@@ -64,13 +87,18 @@
 - `reason`: 字符串  
   - 如果不是严格匹配，请说明原因（例如：“仅single-cell匹配，AI仅在引言中提及”）
 - `matched_keywords`: 列表  
-  - 列出所有被判定为“实质性使用”的关键词
+  - 列出所有被判定为"实质性使用"的主题关键词
+- `matched_article_types`: 列表（如果提供了article_type_keywords）
+  - 列出所有匹配的文章类型关键词
+- `article_type_match`: 布尔值（如果提供了article_type_keywords）
+  - true：论文至少匹配一个文章类型关键词
+  - false：论文不匹配任何文章类型关键词
 - `match_level`: 字符串  
-  - "strict" 表示 ✅ 严格匹配（所有关键词都匹配）  
-  - "partial" 表示 ⚠️ 部分匹配  
-  - "none" 表示 ❌ 不匹配
+  - "strict" 表示 ✅ 严格匹配（所有主题关键词都匹配，且如果提供了文章类型关键词则至少匹配一个）  
+  - "partial" 表示 ⚠️ 部分匹配（部分主题关键词匹配，或主题关键词匹配但文章类型不匹配）  
+  - "none" 表示 ❌ 不匹配（主题关键词和文章类型都不匹配）
 
-示例输出（严格匹配，两个关键词都匹配）：
+示例输出（严格匹配，主题关键词和文章类型都匹配）：
 {{
   "all_keywords_match": true,
   "keyword_evidence": {{
@@ -79,7 +107,23 @@
   }},
   "reason": "",
   "matched_keywords": ["single cell", "AI"],
+  "matched_article_types": ["review"],
+  "article_type_match": true,
   "match_level": "strict"
+}}
+
+示例输出（主题关键词匹配但文章类型不匹配，应判定为partial）：
+{{
+  "all_keywords_match": true,
+  "keyword_evidence": {{
+    "single cell": "方法中使用scRNA-seq获取主要数据",
+    "AI": "使用深度学习模型进行细胞类型预测"
+  }},
+  "reason": "主题关键词匹配，但文章类型不匹配（是原创研究而非综述）",
+  "matched_keywords": ["single cell", "AI"],
+  "matched_article_types": [],
+  "article_type_match": false,
+  "match_level": "partial"
 }}
 
 示例输出（部分匹配，只匹配single cell）：

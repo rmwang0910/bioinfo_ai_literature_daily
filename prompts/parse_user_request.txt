@@ -3,8 +3,14 @@
 用户需求：{user_input}
 
 请提取以下信息（如果用户没有明确说明，使用默认值或从上下文推断）：
-1. 搜索关键词（多个关键词用列表形式，支持PubMed查询语法）
-2. 时间范围（非常重要，请仔细解析）：
+1. **主题关键词**（topic_keywords）：用于第一层检索的核心生物学/医学概念关键词
+   - 例如："三碱基重复"、"疾病"、"单细胞"、"AI"等
+   - 这些是研究主题或技术概念，用于在数据库中检索相关文献
+2. **文章类型关键词**（article_type_keywords）：用于第二层过滤的文章类型或研究方法关键词
+   - 例如："回顾性分析"、"综述"、"检测方法"、"meta分析"、"系统综述"等
+   - 这些是文章类型或研究设计，用于在检索结果中筛选特定类型的文献
+   - 如果用户没有明确提到文章类型，此字段设为null或空列表
+3. 时间范围（非常重要，请仔细解析）：
    - days_back: 最近N天（如果用户说"最近7天"、"最近一周"、"最近一个月"等）
    - min_date和max_date: 日期范围（格式：YYYY-MM-DD），支持以下表达方式：
      * 单个年份："2026年" → min_date: "2026-01-01", max_date: "2026-12-31"
@@ -24,7 +30,8 @@
 
 请以JSON格式输出，格式如下：
 {{
-    "keywords": ["keyword1", "keyword2"],
+    "topic_keywords": ["keyword1", "keyword2"],
+    "article_type_keywords": ["review", "retrospective analysis"] 或 null,
     "keyword_operator": "AND",
     "days_back": null,
     "min_date": "2026-01-01",
@@ -37,6 +44,12 @@
         "include_keywords": []
     }}
 }}
+
+**重要说明**：
+- `topic_keywords`：用于第一层数据库检索的主题关键词（如"三碱基重复"、"疾病"）
+- `article_type_keywords`：用于第二层LLM过滤的文章类型关键词（如"综述"、"回顾性分析"、"检测方法"）
+- 如果用户没有明确提到文章类型要求，`article_type_keywords` 设为 null 或 []
+- 为了向后兼容，如果无法区分，可以将所有关键词放在 `topic_keywords` 中，`article_type_keywords` 设为 null
 
 重要提示：
 - **日期解析优先级**：

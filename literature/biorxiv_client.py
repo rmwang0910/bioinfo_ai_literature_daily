@@ -185,12 +185,14 @@ class BioRxivClient(BaseLiteratureClient):
                 page += 1
             
             if len(all_papers) == 0:
-                self.logger.info(
+                # 使用WARNING级别，便于用户在精简日志模式下感知检索规模
+                self.logger.warning(
                     f"bioRxiv search (via Europe PMC) returned 0 results for query: '{query}'. "
                     f"This may indicate that there are no matching preprints on bioRxiv."
                 )
             else:
-                self.logger.info(f"Found {len(all_papers)} papers on bioRxiv (via Europe PMC) for query: {query}")
+                # 使用WARNING级别，便于用户在精简日志模式下感知检索规模
+                self.logger.warning(f"Found {len(all_papers)} papers on bioRxiv (via Europe PMC) for query: {query}")
             
             return all_papers[:max_results]
             

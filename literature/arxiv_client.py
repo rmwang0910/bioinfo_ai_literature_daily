@@ -166,8 +166,9 @@ class ArxivClient(BaseLiteratureClient):
             # Cache results
             if self.cache:
                 self.cache.set("arxiv", "search", cache_params, papers)
-
-            self.logger.info(f"Found {len(papers)} papers on arXiv for query: {query}")
+            
+            # 使用WARNING级别，便于用户在精简日志模式下感知检索规模
+            self.logger.warning(f"Found {len(papers)} papers on arXiv for query: {query}")
             return papers
 
         except Exception as e:
