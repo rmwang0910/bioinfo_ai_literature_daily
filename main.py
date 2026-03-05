@@ -499,7 +499,8 @@ class BioinfoAILiteratureDaily:
             (严格匹配的论文列表, 关键词匹配验证信息)
         """
         # 获取文章类型关键词（用于第二层过滤）
-        article_type_keywords = self.config.get('search', {}).get('article_type_keywords', [])
+        search_cfg = self.config.get('search', {}) or {}
+        article_type_keywords = search_cfg.get('article_type_keywords', [])
         if article_type_keywords:
             logger.info(f"启用两层验证：主题关键词={keywords}，文章类型关键词={article_type_keywords}")
         
@@ -558,11 +559,14 @@ class BioinfoAILiteratureDaily:
                 abstract = paper.abstract[:1500] if paper.abstract else "无摘要"  # 增加摘要长度限制，获取更多上下文
                 # 格式化文章类型关键词（如果存在）
                 article_types_str = ", ".join(article_type_keywords) if article_type_keywords else "null"
+                # 关键词逻辑描述（如果有），用于指导LLM在严格验证阶段正确处理 AND / OR 关系
+                logical_desc = search_cfg.get('logical_keywords_description') or ""
                 prompt = prompt_template.format(
                     title=paper.title or '无标题',
                     abstract=abstract,
                     keywords=", ".join(keywords),
-                    article_type_keywords=article_types_str
+                    article_type_keywords=article_types_str,
+                    logical_keywords_description=logical_desc
                 )
                 
                 # 使用更低的temperature和更多的token，确保判断更严格

@@ -10,7 +10,12 @@
    - 例如："回顾性分析"、"综述"、"检测方法"、"meta分析"、"系统综述"等
    - 这些是文章类型或研究设计，用于在检索结果中筛选特定类型的文献
    - 如果用户没有明确提到文章类型，此字段设为null或空列表
-3. 时间范围（非常重要，请仔细解析）：
+3. **关键词逻辑描述**（logical_keywords_description）：用自然语言简要说明用户期望的 AND / OR 关系
+   - 例如：
+     - "儿童相关概念（child, children, pediatric）视为同一组OR关系；新生儿相关概念（neonate, neonatal, newborn）视为另一组OR关系；两组之间采用AND。"
+     - "抑郁症 和 代谢物 必须同时出现（AND）；代谢物相关词如metabolite, metabolites视为同一组OR。"
+   - 这一字段将传递给后续的严格验证阶段，用于指导LLM按组别进行 AND/OR 判断
+4. 时间范围（非常重要，请仔细解析）：
    - days_back: 最近N天（如果用户说"最近7天"、"最近一周"、"最近一个月"等）
    - min_date和max_date: 日期范围（格式：YYYY-MM-DD），支持以下表达方式：
      * 单个年份："2026年" → min_date: "2026-01-01", max_date: "2026-12-31"
@@ -32,6 +37,7 @@
 {{
     "topic_keywords": ["keyword1", "keyword2"],
     "article_type_keywords": ["review", "retrospective analysis"] 或 null,
+    "logical_keywords_description": "简洁描述各关键词之间的AND/OR关系，例如：'儿童相关概念（child, children, pediatric）OR，新生儿相关概念（neonate, neonatal, newborn）OR，两组之间AND。'",
     "keyword_operator": "AND",
     "days_back": null,
     "min_date": "2026-01-01",

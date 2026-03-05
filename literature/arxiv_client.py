@@ -146,7 +146,10 @@ class ArxivClient(BaseLiteratureClient):
             )
 
             # Execute search
-            results = self.client.results(search)
+            # 说明：在实际环境中，arxiv.Client().results(search) 曾出现 0 条结果，
+            # 而直接使用 search.results() 可以正常返回。
+            # 为了与官方示例行为保持一致，这里改为使用 Search.results()。
+            results = list(search.results())
 
             # Convert to PaperMetadata
             papers = [self._arxiv_to_metadata(result) for result in results]

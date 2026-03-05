@@ -715,6 +715,9 @@ class LiteratureAgent:
                             # 如果设置了min_date/max_date，清除days_back（避免冲突）
                             if key in ['min_date', 'max_date']:
                                 merged.pop('days_back', None)
+                        elif key == 'logical_keywords_description' and value:
+                            # 保存关键词逻辑的自然语言描述，供严格验证阶段使用
+                            merged['logical_keywords_description'] = str(value).strip()
                         elif key == 'keyword_operator' and value:
                             merged['keyword_operator'] = value
                         elif key == 'to_email' and value:
@@ -936,7 +939,7 @@ class LiteratureAgent:
         # 更新搜索配置
         # 优先使用新的两层结构：topic_keywords（主题关键词）和 article_type_keywords（文章类型关键词）
         topic_keywords = None
-        article_type_keywords = None
+        article_type_keywords: List[str] | None = None
 
         # LLM 解析得到的主题关键词
         if 'topic_keywords' in parsed_request and parsed_request['topic_keywords']:
@@ -961,8 +964,49 @@ class LiteratureAgent:
                 logger.info(f"使用向后兼容模式，将keywords作为主题关键词: {topic_keywords}")
 
         if 'article_type_keywords' in parsed_request and parsed_request.get('article_type_keywords'):
-            article_type_keywords = parsed_request['article_type_keywords']
+            article_type_keywords = list(parsed_request['article_type_keywords'])
             logger.info(f"✅ 检测到文章类型关键词: {article_type_keywords}")
+
+        # 进一步用启发式规则，把明显属于“文章类型”的词从 topic_keywords 中剥离到 article_type_keywords，
+        # 避免它们出现在严格主题关键词列表中（例如 "回顾性研究"、"review"、"retrospective study" 等）。
+        ARTICLE_TYPE_HINTS = [
+            "回顾性", "回顾性研究", "队列研究", "病例对照", "病例系列",
+            "综述", "系统综述", "meta分析", "meta-analysis",
+            "review", "systematic review", "retrospective", "retrospective study",
+            "case report", "case series", "detection method", "diagnostic",
+            "screening", "methodology"
+        ]
+        if topic_keywords:
+            cleaned_topic: List[str] = []
+            extra_article_types: List[str] = []
+            for kw in topic_keywords:
+                kw_str = str(kw).strip()
+                if not kw_str:
+                    continue
+                if any(hint.lower() in kw_str.lower() for hint in ARTICLE_TYPE_HINTS):
+                    extra_article_types.append(kw_str)
+                else:
+                    cleaned_topic.append(kw_str)
+            if extra_article_types:
+                logger.info(f"🔎 启发式识别到文章类型关键词，将从主题关键词中剥离: {extra_article_types}")
+                topic_keywords = cleaned_topic or None
+                if article_type_keywords is None:
+                    article_type_keywords = []
+                # 合并去重
+                at_set = {str(x).strip() for x in article_type_keywords if str(x).strip()}
+                for at in extra_article_types:
+                    if at not in at_set:
+                        article_type_keywords.append(at)
+                        at_set.add(at)
+                logger.info(f"✅ 最终文章类型关键词: {article_type_keywords}")
+
+        # 记录关键词逻辑描述（如果有），用于严格验证阶段指导 AND/OR 行为
+        logical_desc = parsed_request.get('logical_keywords_description')
+        if logical_desc:
+            if 'search' not in self.base_agent.config:
+                self.base_agent.config['search'] = {}
+            self.base_agent.config['search']['logical_keywords_description'] = str(logical_desc).strip()
+            logger.info(f"✅ 记录关键词逻辑描述（用于严格验证阶段）：{logical_desc}")
         
         # 处理主题关键词（用于第一层检索）
         if topic_keywords:
@@ -978,62 +1022,82 @@ class LiteratureAgent:
                     logger.warning(f"过滤无效关键词: {kw_str}")
             
             if cleaned_keywords:
-                # 使用LLM将中文/混合关键词扩展为适合PubMed的英文检索词（用于参考和验证）
-                expanded_keywords = cleaned_keywords
-                force_expand = getattr(self, "force_llm_expand_keywords", False)
+                # 特殊情况：用户在交互模式下手动输入了完整 PubMed 检索式，
+                # 例如 "(child OR neonatal) electrolyte disorders genetic variants"
+                # 这类“高级查询”已经包含 AND/OR/NOT 等逻辑，不应该再被拆分和LLM扩展，
+                # 否则会出现 "(child) AND (children)" 之类的意外组合。
+                advanced_query = False
+                if len(cleaned_keywords) == 1:
+                    q = cleaned_keywords[0]
+                    upper_q = q.upper()
+                    if any(op in upper_q for op in [" AND ", " OR ", " NOT "]) or "[" in q or ":" in q:
+                        advanced_query = True
                 
-                if self.use_llm:
-                    try:
-                        expanded_keywords = self._expand_search_keywords_with_llm(cleaned_keywords)
-                        logger.info(f"✅ 关键词扩展结果（用于检索参考）: {expanded_keywords}")
-                    except Exception as e:
-                        if force_expand:
-                            # 强制模式下，LLM扩展失败视为致命错误
-                            msg = f"强制LLM关键词扩展开启，但扩展失败: {e}。请检查LLM配置或修改关键词后重试。"
-                            logger.error(msg)
-                            raise RuntimeError(msg)
-                        else:
-                            logger.warning(f"使用LLM扩展关键词失败，暂时仅使用原始关键词进行检索: {e}")
-                            expanded_keywords = cleaned_keywords
-                
-                # 从配置中读取AND核心关键词个数与强制全AND开关
-                search_cfg = self.base_agent.config.get('search', {})
-                try:
-                    max_core = int(search_cfg.get('max_core_keywords_for_and', 2))
-                except Exception:
-                    max_core = 2
-                enforce_all = bool(search_cfg.get('enforce_all_keywords_and', False))
-
-                # 关键修复：使用扩展后的英文关键词构建查询，而不是原始中文关键词
-                # 如果LLM扩展成功，使用扩展后的英文关键词；否则使用原始关键词（可能是英文）
-                query_keywords = expanded_keywords if expanded_keywords != cleaned_keywords else cleaned_keywords
-                
-                # 默认只对少数核心关键词使用AND，其余交给LLM严格验证
-                core_keywords = query_keywords
-                if len(query_keywords) > max_core and not enforce_all:
-                    core_keywords = query_keywords[:max_core]
-                    logger.info(
-                        f"解析到关键词较多，默认仅对以下核心关键词使用AND组合: {core_keywords}；"
-                        f"其余关键词将在严格验证阶段由LLM判断相关性。"
-                    )
-                elif enforce_all:
-                    logger.info(f"已启用强制全AND模式，将对所有关键词使用AND组合: {query_keywords}")
-
-                # 构建查询字符串：只对 core_keywords 使用 AND
-                # 这个查询会用于所有搜索源（PubMed、arXiv、bioRxiv），所以必须使用英文
-                if len(core_keywords) > 1:
-                    query = " AND ".join([f"({kw})" for kw in core_keywords])
+                if advanced_query:
+                    # 直接将用户提供的完整检索式作为查询，不再做LLM扩展和核心关键词裁剪
+                    query = cleaned_keywords[0]
+                    self.base_agent.config['search']['keywords'] = [query]
+                    logger.info(f"✅ 检测到高级检索式，直接使用用户提供的查询: {query}")
+                    # 语义关键词仍然保存原始 cleaned_keywords，供严格验证使用
+                    self.base_agent.config['search']['semantic_keywords'] = cleaned_keywords
+                    logger.info(f"✅ 保留语义关键词（用于验证）: {cleaned_keywords}")
                 else:
-                    query = core_keywords[0] if core_keywords else ""
-
-                # 将单个查询字符串作为keywords列表的唯一元素
-                # main.py 中会识别出其中的AND，不再二次组合
-                self.base_agent.config['search']['keywords'] = [query]
-                logger.info(f"✅ 更新搜索查询（用于所有检索源，已转换为英文）: {query}")
+                    # 常规情况：使用LLM将中文/混合关键词扩展为适合PubMed的英文检索词（用于参考和验证）
+                    expanded_keywords = cleaned_keywords
+                    force_expand = getattr(self, "force_llm_expand_keywords", False)
+                    
+                    if self.use_llm:
+                        try:
+                            expanded_keywords = self._expand_search_keywords_with_llm(cleaned_keywords)
+                            logger.info(f"✅ 关键词扩展结果（用于检索参考）: {expanded_keywords}")
+                        except Exception as e:
+                            if force_expand:
+                                # 强制模式下，LLM扩展失败视为致命错误
+                                msg = f"强制LLM关键词扩展开启，但扩展失败: {e}。请检查LLM配置或修改关键词后重试。"
+                                logger.error(msg)
+                                raise RuntimeError(msg)
+                            else:
+                                logger.warning(f"使用LLM扩展关键词失败，暂时仅使用原始关键词进行检索: {e}")
+                                expanded_keywords = cleaned_keywords
                 
-                # 同时保留语义层面的原始关键词，供严格验证和验证表使用
-                self.base_agent.config['search']['semantic_keywords'] = cleaned_keywords
-                logger.info(f"✅ 保留语义关键词（用于验证）: {cleaned_keywords}")
+                    # 从配置中读取AND核心关键词个数与强制全AND开关
+                    search_cfg = self.base_agent.config.get('search', {})
+                    try:
+                        max_core = int(search_cfg.get('max_core_keywords_for_and', 2))
+                    except Exception:
+                        max_core = 2
+                    enforce_all = bool(search_cfg.get('enforce_all_keywords_and', False))
+                
+                    # 关键修复：使用扩展后的英文关键词构建查询，而不是原始中文关键词
+                    # 如果LLM扩展成功，使用扩展后的英文关键词；否则使用原始关键词（可能是英文）
+                    query_keywords = expanded_keywords if expanded_keywords != cleaned_keywords else cleaned_keywords
+                    
+                    # 默认只对少数核心关键词使用AND，其余交给LLM严格验证
+                    core_keywords = query_keywords
+                    if len(query_keywords) > max_core and not enforce_all:
+                        core_keywords = query_keywords[:max_core]
+                        logger.info(
+                            f"解析到关键词较多，默认仅对以下核心关键词使用AND组合: {core_keywords}；"
+                            f"其余关键词将在严格验证阶段由LLM判断相关性。"
+                        )
+                    elif enforce_all:
+                        logger.info(f"已启用强制全AND模式，将对所有关键词使用AND组合: {query_keywords}")
+        
+                    # 构建查询字符串：只对 core_keywords 使用 AND
+                    # 这个查询会用于所有搜索源（PubMed、arXiv、bioRxiv），所以必须使用英文
+                    if len(core_keywords) > 1:
+                        query = " AND ".join([f"({kw})" for kw in core_keywords])
+                    else:
+                        query = core_keywords[0] if core_keywords else ""
+        
+                    # 将单个查询字符串作为keywords列表的唯一元素
+                    # main.py 中会识别出其中的AND，不再二次组合
+                    self.base_agent.config['search']['keywords'] = [query]
+                    logger.info(f"✅ 更新搜索查询（用于所有检索源，已转换为英文）: {query}")
+                    
+                    # 同时保留语义层面的原始关键词，供严格验证和验证表使用
+                    self.base_agent.config['search']['semantic_keywords'] = cleaned_keywords
+                    logger.info(f"✅ 保留语义关键词（用于验证）: {cleaned_keywords}")
                 
                 # 保存文章类型关键词（用于第二层过滤）
                 if article_type_keywords:

@@ -9,6 +9,7 @@ from typing import List, Optional
 from datetime import datetime
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from http.client import IncompleteRead
 
 from .base_client import (
     BaseLiteratureClient,
@@ -418,13 +419,45 @@ class PubMedClient(BaseLiteratureClient):
             for i in range(0, len(pmids), batch_size):
                 batch_pmids = pmids[i:i + batch_size]
 
-                self._rate_limit_delay()
-                try:
-                    records = self._run_with_timeout(self._do_efetch, batch_pmids)
-                except FuturesTimeoutError:
-                    self.logger.warning(f"PubMed efetch timed out after {self.api_timeout}s for batch {i//batch_size + 1}")
-                    continue
+                # 对每个 batch 增加重试机制，防止网络抖动导致 IncompleteRead 直接丢失整批结果
+                max_retries = 3
+                records = []
+                for attempt in range(1, max_retries + 1):
+                    self._rate_limit_delay()
+                    try:
+                        records = self._run_with_timeout(self._do_efetch, batch_pmids)
+                        break
+                    except FuturesTimeoutError:
+                        self.logger.warning(
+                            f"PubMed efetch timed out after {self.api_timeout}s "
+                            f"for batch {i//batch_size + 1}, attempt {attempt}/{max_retries}"
+                        )
+                        if attempt == max_retries:
+                            # 最终失败，放弃这一批，但继续后续批次
+                            records = []
+                    except IncompleteRead as e:
+                        self.logger.warning(
+                            f"PubMed efetch IncompleteRead for batch {i//batch_size + 1}, "
+                            f"attempt {attempt}/{max_retries}: {e}"
+                        )
+                        if attempt == max_retries:
+                            self.logger.error(
+                                f"Giving up on batch {i//batch_size + 1} due to repeated IncompleteRead errors"
+                            )
+                            records = []
+                    except Exception as e:
+                        # 其他异常也按“可重试”处理，最多重试 max_retries 次
+                        self.logger.warning(
+                            f"Error fetching PubMed batch {i//batch_size + 1}, "
+                            f"attempt {attempt}/{max_retries}: {e}"
+                        )
+                        if attempt == max_retries:
+                            self.logger.error(
+                                f"Giving up on batch {i//batch_size + 1} due to repeated errors"
+                            )
+                            records = []
 
+                # 将成功获取到的记录转成元数据
                 for record in records:
                     paper = self._medline_to_metadata(record)
                     if paper:
@@ -433,6 +466,7 @@ class PubMedClient(BaseLiteratureClient):
             return papers
 
         except Exception as e:
+            # 兜底异常（极少触发），保持与原有日志兼容
             self.logger.error(f"Error fetching paper details: {e}")
             return []
 
