@@ -937,19 +937,32 @@ class LiteratureAgent:
         # 优先使用新的两层结构：topic_keywords（主题关键词）和 article_type_keywords（文章类型关键词）
         topic_keywords = None
         article_type_keywords = None
-        
+
+        # LLM 解析得到的主题关键词
         if 'topic_keywords' in parsed_request and parsed_request['topic_keywords']:
             topic_keywords = parsed_request['topic_keywords']
             logger.info(f"✅ 检测到主题关键词: {topic_keywords}")
-        
+
+        # 用户在交互式流程中可能**手动修改了 keywords**，
+        # 这时应当以用户提供的 keywords 为准，覆盖原来的 topic_keywords，
+        # 以避免像 "(child OR neonatal)" 被拆成 "(child) AND (neonatal)" 这样的情况。
+        raw_keywords = parsed_request.get('keywords')
+        if raw_keywords:
+            # 如果 topic_keywords 已存在且与 keywords 不同，认为是“用户手动覆盖”
+            if topic_keywords and raw_keywords != topic_keywords:
+                logger.info(
+                    f"检测到用户手动修改关键词，将覆盖LLM解析的主题关键词: "
+                    f"topic_keywords={topic_keywords} -> keywords={raw_keywords}"
+                )
+                topic_keywords = raw_keywords
+            elif not topic_keywords:
+                # 向后兼容：没有 topic_keywords 时，直接使用 keywords
+                topic_keywords = raw_keywords
+                logger.info(f"使用向后兼容模式，将keywords作为主题关键词: {topic_keywords}")
+
         if 'article_type_keywords' in parsed_request and parsed_request.get('article_type_keywords'):
             article_type_keywords = parsed_request['article_type_keywords']
             logger.info(f"✅ 检测到文章类型关键词: {article_type_keywords}")
-        
-        # 向后兼容：如果没有新的两层结构，使用旧的 keywords 字段
-        if not topic_keywords and 'keywords' in parsed_request and parsed_request['keywords']:
-            topic_keywords = parsed_request['keywords']
-            logger.info(f"使用向后兼容模式，将keywords作为主题关键词: {topic_keywords}")
         
         # 处理主题关键词（用于第一层检索）
         if topic_keywords:
