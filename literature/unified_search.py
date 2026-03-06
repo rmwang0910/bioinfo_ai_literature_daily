@@ -14,6 +14,7 @@ from .base_client import PaperMetadata, PaperSource
 from .arxiv_client import ArxivClient
 from .pubmed_client import PubMedClient
 from .biorxiv_client import BioRxivClient
+from .openalex_client import OpenAlexClient
 from core.config import get_config
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,9 @@ class UnifiedLiteratureSearch:
         
         if biorxiv_enabled:
             self.clients[PaperSource.BIORXIV] = BioRxivClient()
+            
+        # Initialize OpenAlex enricher
+        self.openalex_client = OpenAlexClient(email=pubmed_email)
 
         self.pdf_extractor = None  # PDF提取功能暂时禁用
 
@@ -168,6 +172,13 @@ class UnifiedLiteratureSearch:
         # Limit total results
         if total_max_results:
             all_papers = all_papers[:total_max_results]
+            
+        # Enrich with OpenAlex data (citations, OA status, etc.)
+        if self.openalex_client:
+            logger.info("Enriching papers with OpenAlex data...")
+            # Run in background or parallel if list is long? 
+            # For now, do it synchronously as it's fast enough for <50 papers
+            self.openalex_client.enrich_papers(all_papers)
 
         # Extract full text if requested
         if extract_full_text:

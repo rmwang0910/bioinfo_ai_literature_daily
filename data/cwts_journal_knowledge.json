@@ -1,0 +1,3451 @@
+{
+  "journals": [
+    {
+      "name": "Springer eBooks",
+      "source_id": "S4306463937",
+      "issn_l": null,
+      "publisher": "Springer Nature",
+      "fields": [
+        "Social sciences and humanities",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Social Practices",
+        "Business Management",
+        "Liquid Mixtures",
+        "Density Functional Theory",
+        "Nuclear Structure"
+      ],
+      "coreness_score": 2252908
+    },
+    {
+      "name": "arXiv (Cornell University)",
+      "source_id": "S4306400194",
+      "issn_l": null,
+      "publisher": "Cornell University",
+      "fields": [
+        "Mathematics and computer science",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Algebraic Geometry",
+        "Natural Language Processing",
+        "Symplectic Topology",
+        "Cluster Algebras",
+        "Deep Learning"
+      ],
+      "coreness_score": 1738076
+    },
+    {
+      "name": "PubMed",
+      "source_id": "S4306525036",
+      "issn_l": null,
+      "publisher": "National Institutes of Health",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Health Information Technology",
+        "Dental Materials",
+        "Tuberculosis",
+        "Dental Implantology",
+        "Metabolic Syndrome"
+      ],
+      "coreness_score": 1731424
+    },
+    {
+      "name": "SSRN Electronic Journal",
+      "source_id": "S4210172589",
+      "issn_l": "1556-5068",
+      "publisher": "RELX Group (Netherlands)",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Asset Pricing",
+        "Corporate Governance",
+        "Macroeconomic Analysis",
+        "Banking and Finance",
+        "Financial Reporting"
+      ],
+      "coreness_score": 999598
+    },
+    {
+      "name": "Lecture notes in computer science",
+      "source_id": "S106296714",
+      "issn_l": "0302-9743",
+      "publisher": "Springer Science+Business Media",
+      "fields": [
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Formal Methods",
+        "Program Analysis",
+        "Cryptographic Schemes",
+        "Image Segmentation",
+        "Semantic Web"
+      ],
+      "coreness_score": 768990
+    },
+    {
+      "name": "Routledge eBooks",
+      "source_id": "S4306463855",
+      "issn_l": null,
+      "publisher": "Informa",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "International Relations",
+        "Teacher Professional Development",
+        "Therapeutic Alliance",
+        "Social Movements",
+        "Cultural Studies"
+      ],
+      "coreness_score": 512910
+    },
+    {
+      "name": "Elsevier eBooks",
+      "source_id": "S4306463230",
+      "issn_l": null,
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences",
+        "Life and earth sciences",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Nanotoxicology",
+        "Equine Health",
+        "Climate Change",
+        "Nanoparticle Drug Delivery",
+        "Dietary Fiber"
+      ],
+      "coreness_score": 421861
+    },
+    {
+      "name": "RePEc: Research Papers in Economics",
+      "source_id": "S4306401271",
+      "issn_l": null,
+      "publisher": "Federal Reserve Bank of St. Louis",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Macroeconomic Analysis",
+        "International Trade",
+        "Labor Market Trends",
+        "Banking and Finance",
+        "Economic Development"
+      ],
+      "coreness_score": 407479
+    },
+    {
+      "name": "ChemInform",
+      "source_id": "S41354064",
+      "issn_l": "0931-7597",
+      "publisher": "Wiley",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Asymmetric Catalysis",
+        "C-H Functionalization",
+        "Cross-Coupling Catalysis",
+        "Gold Catalysis",
+        "Heterocyclic Medicinal Chemistry"
+      ],
+      "coreness_score": 386960
+    },
+    {
+      "name": "Proceedings of SPIE, the International Society for Optical Engineering/Proceedings of SPIE",
+      "source_id": "S183492911",
+      "issn_l": "0277-786X",
+      "publisher": "SPIE",
+      "fields": [
+        "Physical sciences and engineering",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Electron Beam Lithography",
+        "Adaptive Optics",
+        "Fiber Optic Sensors",
+        "Digital Image Correlation",
+        "Image Segmentation"
+      ],
+      "coreness_score": 310382
+    },
+    {
+      "name": "bioRxiv (Cold Spring Harbor Laboratory)",
+      "source_id": "S4306402567",
+      "issn_l": null,
+      "publisher": "Cold Spring Harbor Laboratory",
+      "fields": [
+        "Social sciences and humanities",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "RNA-seq Analysis",
+        "Chromatin Regulation",
+        "COVID-19",
+        "Single-Cell Transcriptomics",
+        "Neuronal Oscillations"
+      ],
+      "coreness_score": 303489
+    },
+    {
+      "name": "PLoS ONE",
+      "source_id": "S202381698",
+      "issn_l": "1932-6203",
+      "publisher": "Public Library of Science",
+      "fields": [
+        "Biomedical and health sciences",
+        "Social sciences and humanities",
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Tuberculosis",
+        "MicroRNA",
+        "HIV/AIDS Prevention",
+        "Malaria",
+        "HIV/AIDS"
+      ],
+      "coreness_score": 295522
+    },
+    {
+      "name": "Cambridge University Press eBooks",
+      "source_id": "S4306462995",
+      "issn_l": null,
+      "publisher": "Cambridge University Press",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Cultural Studies",
+        "Ancient Mediterranean Studies",
+        "International Criminal Law",
+        "Moral Philosophy",
+        "Medieval Studies"
+      ],
+      "coreness_score": 223270
+    },
+    {
+      "name": "Oxford University Press eBooks",
+      "source_id": "S4306463708",
+      "issn_l": null,
+      "publisher": "Oxford University Press",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Consciousness Studies",
+        "Moral Philosophy",
+        "Ancient Mediterranean Studies",
+        "Linguistic Theory",
+        "Cultural Studies"
+      ],
+      "coreness_score": 165610
+    },
+    {
+      "name": "Reactions Weekly",
+      "source_id": "S14436165",
+      "issn_l": "0114-9954",
+      "publisher": "Adis, Springer Healthcare",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Cancer Immunotherapy",
+        "Hypersensitivity Reactions",
+        "Lung Cancer",
+        "Fungal Infections",
+        "COVID-19"
+      ],
+      "coreness_score": 159570
+    },
+    {
+      "name": "Applied Physics Letters",
+      "source_id": "S105243760",
+      "issn_l": "0003-6951",
+      "publisher": "American Institute of Physics",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "III-Nitride Semiconductors",
+        "Quantum Dot Physics",
+        "Magnetic Skyrmions",
+        "Lead-free Piezoceramics",
+        "Organic Solar Cells"
+      ],
+      "coreness_score": 139535
+    },
+    {
+      "name": "Research Square (Research Square)",
+      "source_id": "S4306402450",
+      "issn_l": null,
+      "publisher": "Research Square (United States)",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "COVID-19",
+        "Gut Microbiome",
+        "Maternal and Child Health",
+        "Malaria"
+      ],
+      "coreness_score": 134200
+    },
+    {
+      "name": "DOAJ (DOAJ: Directory of Open Access Journals)",
+      "source_id": "S4306401280",
+      "issn_l": null,
+      "publisher": "DOAJ: Directory of Open Access Journals",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Qualitative Research",
+        "Language Teaching",
+        "Education",
+        "Healthcare in Brazil",
+        "Tourism Impact Analysis"
+      ],
+      "coreness_score": 128903
+    },
+    {
+      "name": "The Astrophysical Journal",
+      "source_id": "S1980519",
+      "issn_l": "0004-637X",
+      "publisher": "IOP Publishing",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Galaxy Formation",
+        "Stellar Astrophysics",
+        "Solar Physics",
+        "Star Formation",
+        "Black Hole Astrophysics"
+      ],
+      "coreness_score": 127852
+    },
+    {
+      "name": "Blood",
+      "source_id": "S200071133",
+      "issn_l": "0006-4971",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Acute Myeloid Leukemia",
+        "Lymphoma Classification",
+        "Multiple Myeloma",
+        "Hematopoietic Stem Cells",
+        "Chronic Lymphocytic Leukemia"
+      ],
+      "coreness_score": 106454
+    },
+    {
+      "name": "Monthly Notices of the Royal Astronomical Society",
+      "source_id": "S195663288",
+      "issn_l": "0035-8711",
+      "publisher": "Oxford University Press",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Galaxy Formation",
+        "Stellar Astrophysics",
+        "Black Hole Astrophysics",
+        "Star Formation",
+        "Gravitational Waves"
+      ],
+      "coreness_score": 106159
+    },
+    {
+      "name": "Palgrave Macmillan UK eBooks",
+      "source_id": "S4306463716",
+      "issn_l": null,
+      "publisher": "Palgrave Macmillan",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Cultural Studies",
+        "International Relations",
+        "Social Movements",
+        "European Integration",
+        "Knowledge Management"
+      ],
+      "coreness_score": 105632
+    },
+    {
+      "name": "Journal of Applied Physics",
+      "source_id": "S187991544",
+      "issn_l": "0021-8979",
+      "publisher": "American Institute of Physics",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Magnetic Skyrmions",
+        "Quantum Dot Physics",
+        "Lead-free Piezoceramics",
+        "III-Nitride Semiconductors",
+        "Zinc Oxide"
+      ],
+      "coreness_score": 104705
+    },
+    {
+      "name": "Journal of Clinical Oncology",
+      "source_id": "S15137598",
+      "issn_l": "0732-183X",
+      "publisher": "Lippincott Williams & Wilkins",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Lung Cancer",
+        "Cancer Immunotherapy",
+        "Colorectal Cancer",
+        "Prostate Cancer",
+        "Breast Cancer"
+      ],
+      "coreness_score": 104071
+    },
+    {
+      "name": "Journal of Biological Chemistry",
+      "source_id": "S140251998",
+      "issn_l": "0021-9258",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Ras Signaling",
+        "DNA Damage Response",
+        "Bacterial Physiology",
+        "Membrane Trafficking",
+        "Alzheimer's Disease"
+      ],
+      "coreness_score": 102908
+    },
+    {
+      "name": "Physical Review B",
+      "source_id": "S6791298",
+      "issn_l": "1098-0121",
+      "publisher": "American Physical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "High-Temperature Superconductivity",
+        "Semiconductor Spintronics",
+        "Magnetic Skyrmions",
+        "Density Functional Theory",
+        "Graphene"
+      ],
+      "coreness_score": 98979
+    },
+    {
+      "name": "Journal of Physics Conference Series",
+      "source_id": "S4210187594",
+      "issn_l": "1742-6588",
+      "publisher": "IOP Publishing",
+      "fields": [
+        "Physical sciences and engineering",
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Particle Physics",
+        "Nuclear Structure",
+        "Low-Energy Electron Interactions",
+        "High-Temperature Superconductivity",
+        "Science Education"
+      ],
+      "coreness_score": 96083
+    },
+    {
+      "name": "Choice Reviews Online",
+      "source_id": "S2764375719",
+      "issn_l": "0009-4978",
+      "publisher": "Association of College and Research Libraries",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Cultural Studies",
+        "International Relations",
+        "Indigenous Health",
+        "Film Industry",
+        "Ancient Mediterranean Studies"
+      ],
+      "coreness_score": 93554
+    },
+    {
+      "name": "Journal of Alloys and Compounds",
+      "source_id": "S67716761",
+      "issn_l": "0925-8388",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Upconversion Nanoparticles",
+        "Lithium-ion Batteries",
+        "Hydrogen Storage",
+        "Metallic Glasses",
+        "Supercapacitors"
+      ],
+      "coreness_score": 93314
+    },
+    {
+      "name": "Astronomy and Astrophysics",
+      "source_id": "S205231332",
+      "issn_l": "0004-6361",
+      "publisher": "EDP Sciences",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Stellar Astrophysics",
+        "Galaxy Formation",
+        "Star Formation",
+        "Solar Physics",
+        "Black Hole Astrophysics"
+      ],
+      "coreness_score": 91704
+    },
+    {
+      "name": "Optics Express",
+      "source_id": "S178776955",
+      "issn_l": "1094-4087",
+      "publisher": "Optica Publishing Group",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Silicon Photonics",
+        "Plasmonics",
+        "Optical Manipulation",
+        "Metamaterials",
+        "Optical Fiber Communication"
+      ],
+      "coreness_score": 86330
+    },
+    {
+      "name": "AIP conference proceedings",
+      "source_id": "S2764696622",
+      "issn_l": "0094-243X",
+      "publisher": "American Institute of Physics",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Structural Health Monitoring",
+        "Nuclear Structure",
+        "Hadron Physics",
+        "Free-Electron Lasers",
+        "Nanofluid Heat Transfer"
+      ],
+      "coreness_score": 84295
+    },
+    {
+      "name": "Physical Review Letters",
+      "source_id": "S24807848",
+      "issn_l": "0031-9007",
+      "publisher": "American Physical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Quantum Information",
+        "Ultracold Gases",
+        "Semiconductor Spintronics",
+        "High-Temperature Superconductivity",
+        "Particle Physics"
+      ],
+      "coreness_score": 84260
+    },
+    {
+      "name": "The Journal of Chemical Physics",
+      "source_id": "S77047749",
+      "issn_l": "0021-9606",
+      "publisher": "American Institute of Physics",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Density Functional Theory",
+        "Glass Transition",
+        "Protein Structure Prediction",
+        "Quantum Coherence",
+        "Supercritical Fluids"
+      ],
+      "coreness_score": 77937
+    },
+    {
+      "name": "CRC Press eBooks",
+      "source_id": "S4306463075",
+      "issn_l": null,
+      "publisher": "Informa",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Soil Mechanics",
+        "Rock Mechanics",
+        "Asphalt Materials",
+        "Geotechnical Engineering",
+        "Unsaturated Soil Mechanics"
+      ],
+      "coreness_score": 77104
+    },
+    {
+      "name": "IEEE Access",
+      "source_id": "S2485537415",
+      "issn_l": "2169-3536",
+      "publisher": "Institute of Electrical and Electronics Engineers",
+      "fields": [
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Deep Learning",
+        "5G Wireless Networks",
+        "Internet of Things",
+        "Blockchain IoT",
+        "Robotic Control"
+      ],
+      "coreness_score": 76481
+    },
+    {
+      "name": "Journal of High Energy Physics",
+      "source_id": "S187585107",
+      "issn_l": "1029-8479",
+      "publisher": "Springer Nature",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Holographic Field Theories",
+        "Particle Physics",
+        "Hadron Physics",
+        "Dark Matter",
+        "Neutrino Physics"
+      ],
+      "coreness_score": 72826
+    },
+    {
+      "name": "The Science of The Total Environment",
+      "source_id": "S86852077",
+      "issn_l": "0048-9697",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Life and earth sciences",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Antibiotic Resistance",
+        "Persistent Organic Pollutants",
+        "Soil Carbon Dynamics",
+        "Microplastic Pollution",
+        "Atmospheric Aerosols"
+      ],
+      "coreness_score": 72050
+    },
+    {
+      "name": "Journal of the American Chemical Society",
+      "source_id": "S111155417",
+      "issn_l": "0002-7863",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Transition Metal Catalysis",
+        "Asymmetric Catalysis",
+        "Protein Structure Prediction",
+        "Supramolecular Chemistry",
+        "C-H Functionalization"
+      ],
+      "coreness_score": 71991
+    },
+    {
+      "name": "Advanced materials research",
+      "source_id": "S67425620",
+      "issn_l": "1022-6680",
+      "publisher": "Trans Tech Publications",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Machining Operations",
+        "Geopolymer Technology",
+        "Photocatalysis",
+        "Advanced Steels",
+        "Ceramic Materials"
+      ],
+      "coreness_score": 71752
+    },
+    {
+      "name": "Sustainability",
+      "source_id": "S10134376",
+      "issn_l": "2071-1050",
+      "publisher": "Multidisciplinary Digital Publishing Institute",
+      "fields": [
+        "Social sciences and humanities",
+        "Life and earth sciences",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Ecosystem Services",
+        "Environmental Economics",
+        "Tourism Impact Analysis",
+        "Corporate Social Responsibility",
+        "Circular Economy"
+      ],
+      "coreness_score": 66761
+    },
+    {
+      "name": "SAE technical papers on CD-ROM/SAE technical paper series",
+      "source_id": "S4210202285",
+      "issn_l": "0148-7191",
+      "publisher": null,
+      "fields": [
+        "Physical sciences and engineering",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Combustion Chemistry",
+        "Electric Vehicles",
+        "Vehicle Dynamics Control",
+        "Catalytic Nanomaterials",
+        "Brain Injury Biomechanics"
+      ],
+      "coreness_score": 63283
+    },
+    {
+      "name": "Physical review. D. Particles, fields, gravitation, and cosmology/Physical review. D, Particles, fields, gravitation, and cosmology",
+      "source_id": "S4210210554",
+      "issn_l": "1550-2368",
+      "publisher": "American Physical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Particle Physics",
+        "Cosmological Parameters",
+        "Holographic Field Theories",
+        "Hadron Physics",
+        "Gravitational Waves"
+      ],
+      "coreness_score": 62869
+    },
+    {
+      "name": "De Gruyter eBooks",
+      "source_id": "S4306463091",
+      "issn_l": null,
+      "publisher": "De Gruyter",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Linguistic Theory",
+        "Ancient Mediterranean Studies",
+        "Moral Philosophy",
+        "Language Discourse",
+        "Conversation Analysis"
+      ],
+      "coreness_score": 62658
+    },
+    {
+      "name": "All Days",
+      "source_id": "S4363604106",
+      "issn_l": null,
+      "publisher": null,
+      "fields": [
+        "Physical sciences and engineering",
+        "Life and earth sciences",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Hydraulic Fracturing",
+        "Drilling Fluids",
+        "Pore-scale Imaging",
+        "Reservoir Management",
+        "Shale Gas Pore"
+      ],
+      "coreness_score": 61817
+    },
+    {
+      "name": "Physical Review A",
+      "source_id": "S164566984",
+      "issn_l": "1050-2947",
+      "publisher": "American Physical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Quantum Information",
+        "Ultracold Gases",
+        "Low-Energy Electron Interactions",
+        "Attosecond Physics",
+        "Slow Light"
+      ],
+      "coreness_score": 61466
+    },
+    {
+      "name": "Physical review. B./Physical review. B",
+      "source_id": "S4210237713",
+      "issn_l": "2469-9950",
+      "publisher": "American Physical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Topological Materials",
+        "High-Temperature Superconductivity",
+        "Magnetic Skyrmions",
+        "Semiconductor Spintronics",
+        "Two-Dimensional Materials"
+      ],
+      "coreness_score": 60865
+    },
+    {
+      "name": "Physical review. D/Physical review. D.",
+      "source_id": "S4210238307",
+      "issn_l": "2470-0010",
+      "publisher": "American Physical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Particle Physics",
+        "Cosmological Parameters",
+        "Holographic Field Theories",
+        "Hadron Physics",
+        "Gravitational Waves"
+      ],
+      "coreness_score": 56671
+    },
+    {
+      "name": "International Journal of Hydrogen Energy",
+      "source_id": "S48860480",
+      "issn_l": "0360-3199",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering",
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Hydrogen Storage",
+        "Electrocatalysis",
+        "Fuel Cell Membranes",
+        "Catalytic CO2 Hydrogenation",
+        "Solid Oxide Fuel Cells"
+      ],
+      "coreness_score": 56654
+    },
+    {
+      "name": "Acta Crystallographica Section E Structure Reports Online",
+      "source_id": "S146636433",
+      "issn_l": "1600-5368",
+      "publisher": "International Union of Crystallography",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Crystallography",
+        "Metal-Organic Frameworks",
+        "Platinum-Based Chemotherapy",
+        "Organotin Chemistry",
+        "Nonlinear Optical Materials"
+      ],
+      "coreness_score": 55853
+    },
+    {
+      "name": "The Journal of Physical Chemistry C",
+      "source_id": "S95739953",
+      "issn_l": "1932-7447",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Photocatalysis",
+        "Plasmonic Nanoparticles",
+        "Organic Solar Cells",
+        "Electrocatalysis",
+        "Quantum Dots"
+      ],
+      "coreness_score": 55823
+    },
+    {
+      "name": "Organic Letters",
+      "source_id": "S201989124",
+      "issn_l": "1523-7052",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Physical sciences and engineering",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Asymmetric Catalysis",
+        "C-H Functionalization",
+        "Photoredox Catalysis",
+        "Gold Catalysis",
+        "Cross-Coupling Catalysis"
+      ],
+      "coreness_score": 55724
+    },
+    {
+      "name": "Tetrahedron Letters",
+      "source_id": "S133942674",
+      "issn_l": "0040-4039",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Asymmetric Catalysis",
+        "Cross-Coupling Catalysis",
+        "Peptide Synthesis",
+        "Chemical Glycobiology",
+        "Multicomponent Reactions"
+      ],
+      "coreness_score": 54527
+    },
+    {
+      "name": "Construction and Building Materials",
+      "source_id": "S29980478",
+      "issn_l": "0950-0618",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Geopolymer Technology",
+        "Asphalt Materials",
+        "Fiber Reinforced Concrete",
+        "FRP Composites",
+        "Recycled Aggregate Concrete"
+      ],
+      "coreness_score": 53853
+    },
+    {
+      "name": "VS Verlag für Sozialwissenschaften eBooks",
+      "source_id": "S4306464262",
+      "issn_l": null,
+      "publisher": "Springer VS",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Social Practices",
+        "Media Framing",
+        "Political Science",
+        "European Integration",
+        "Welfare State Politics"
+      ],
+      "coreness_score": 53297
+    },
+    {
+      "name": "Zootaxa",
+      "source_id": "S171471881",
+      "issn_l": "1175-5326",
+      "publisher": "Q15088586",
+      "fields": [
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Coleoptera Phylogeny",
+        "Amphibian Declines",
+        "Marine Biodiversity",
+        "Stream Ecosystems",
+        "Insect Evolution"
+      ],
+      "coreness_score": 52444
+    },
+    {
+      "name": "Communications in computer and information science",
+      "source_id": "S2764900261",
+      "issn_l": "1865-0929",
+      "publisher": "Springer Science+Business Media",
+      "fields": [
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Natural Language Processing",
+        "Deep Learning",
+        "Semantic Web",
+        "Cloud Computing",
+        "Agile Software Development"
+      ],
+      "coreness_score": 51907
+    },
+    {
+      "name": "Acta Horticulturae",
+      "source_id": "S4210196743",
+      "issn_l": "0567-7572",
+      "publisher": "International Society for Horticultural Science",
+      "fields": [
+        "Life and earth sciences",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Fruit Ripening",
+        "Fruit Tree Physiology",
+        "Plant Metabolite Production",
+        "Plant Architecture",
+        "Berry Genetics"
+      ],
+      "coreness_score": 51842
+    },
+    {
+      "name": "Angewandte Chemie International Edition",
+      "source_id": "S67393510",
+      "issn_l": "1433-7851",
+      "publisher": "Wiley",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Asymmetric Catalysis",
+        "C-H Functionalization",
+        "Transition Metal Catalysis",
+        "Supramolecular Chemistry",
+        "Main Group Chemistry"
+      ],
+      "coreness_score": 51357
+    },
+    {
+      "name": "Journal of Applied Polymer Science",
+      "source_id": "S200764475",
+      "issn_l": "0021-8995",
+      "publisher": "Wiley",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Polymer Crystallization",
+        "Nanocomposites",
+        "Hydrogel Biomedical Applications",
+        "Self-Healing Polymers",
+        "Living Polymerization"
+      ],
+      "coreness_score": 51290
+    },
+    {
+      "name": "Angewandte Chemie",
+      "source_id": "S4210200754",
+      "issn_l": "0044-8249",
+      "publisher": "Wiley",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Asymmetric Catalysis",
+        "C-H Functionalization",
+        "Transition Metal Catalysis",
+        "Supramolecular Chemistry",
+        "Main Group Chemistry"
+      ],
+      "coreness_score": 51202
+    },
+    {
+      "name": "Advances in intelligent systems and computing",
+      "source_id": "S2764905038",
+      "issn_l": "2194-5357",
+      "publisher": "Springer Nature",
+      "fields": [
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Multi-Criteria Decision Making",
+        "Swarm Intelligence",
+        "Cloud Computing",
+        "Human-Automation Interaction",
+        "Sentiment Analysis"
+      ],
+      "coreness_score": 50890
+    },
+    {
+      "name": "Materials Science and Engineering A",
+      "source_id": "S154732359",
+      "issn_l": "0921-5093",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Nanomaterials",
+        "Advanced Steels",
+        "Magnesium Alloys",
+        "Aluminium Alloys",
+        "Superalloys"
+      ],
+      "coreness_score": 50562
+    },
+    {
+      "name": "Geophysical Research Letters",
+      "source_id": "S36624081",
+      "issn_l": "0094-8276",
+      "publisher": "American Geophysical Union",
+      "fields": [
+        "Life and earth sciences",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Climate Change",
+        "Space Weather",
+        "Seismicity",
+        "Oceanic Modeling",
+        "Mars Exploration"
+      ],
+      "coreness_score": 50333
+    },
+    {
+      "name": "IGI Global eBooks",
+      "source_id": "S4306463409",
+      "issn_l": null,
+      "publisher": "IGI Global",
+      "fields": [
+        "Social sciences and humanities",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Blended Learning",
+        "Technology Acceptance",
+        "Knowledge Management",
+        "E-Government",
+        "Social Media Addiction"
+      ],
+      "coreness_score": 49841
+    },
+    {
+      "name": "Energies",
+      "source_id": "S198098182",
+      "issn_l": "1996-1073",
+      "publisher": "Multidisciplinary Digital Publishing Institute",
+      "fields": [
+        "Mathematics and computer science",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Microgrid Control",
+        "Building Energy Efficiency",
+        "Biomass Pyrolysis",
+        "Demand Response",
+        "Electric Vehicle Integration"
+      ],
+      "coreness_score": 49739
+    },
+    {
+      "name": "ACS Applied Materials & Interfaces",
+      "source_id": "S164001016",
+      "issn_l": "1944-8244",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Lithium-ion Batteries",
+        "Organic Solar Cells",
+        "Electrocatalysis",
+        "Perovskite Solar Cells",
+        "Lithium Batteries"
+      ],
+      "coreness_score": 49525
+    },
+    {
+      "name": "Journal of Geophysical Research Atmospheres",
+      "source_id": "S207178839",
+      "issn_l": "0148-0227",
+      "publisher": "American Geophysical Union",
+      "fields": [
+        "Physical sciences and engineering",
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Space Weather",
+        "Atmospheric Aerosols",
+        "Oceanic Modeling",
+        "Aerosol Climate Hydrology",
+        "Mars Exploration"
+      ],
+      "coreness_score": 49436
+    },
+    {
+      "name": "HAL (Le Centre pour la Communication Scientifique Directe)",
+      "source_id": "S4306402512",
+      "issn_l": null,
+      "publisher": "Centre National de la Recherche Scientifique",
+      "fields": [
+        "Social sciences and humanities",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Sociology of Public Action",
+        "Machine Translation",
+        "Semantic Web",
+        "Program Analysis",
+        "Formal Methods"
+      ],
+      "coreness_score": 49233
+    },
+    {
+      "name": "Journal of Power Sources",
+      "source_id": "S177147899",
+      "issn_l": "0378-7753",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Lithium-ion Batteries",
+        "Fuel Cell Membranes",
+        "Solid Oxide Fuel Cells",
+        "Lithium Batteries",
+        "Electrocatalysis"
+      ],
+      "coreness_score": 49231
+    },
+    {
+      "name": "Electrochimica Acta",
+      "source_id": "S198339081",
+      "issn_l": "0013-4686",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Lithium-ion Batteries",
+        "Electrocatalysis",
+        "Supercapacitors",
+        "Electrochemical Biosensors",
+        "Lithium Batteries"
+      ],
+      "coreness_score": 49108
+    },
+    {
+      "name": "The Journal of Organic Chemistry",
+      "source_id": "S205050996",
+      "issn_l": "0022-3263",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Physical sciences and engineering",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Asymmetric Catalysis",
+        "C-H Functionalization",
+        "Photoredox Catalysis",
+        "Gold Catalysis",
+        "Cross-Coupling Catalysis"
+      ],
+      "coreness_score": 48416
+    },
+    {
+      "name": "Journal of Virology",
+      "source_id": "S96615428",
+      "issn_l": "0022-538X",
+      "publisher": "American Society for Microbiology",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "HIV/AIDS",
+        "Herpesviruses",
+        "Influenza",
+        "Viral-Related Cancers",
+        "Gene Therapy"
+      ],
+      "coreness_score": 47739
+    },
+    {
+      "name": "Sensors",
+      "source_id": "S101949793",
+      "issn_l": "1424-8220",
+      "publisher": "Multidisciplinary Digital Publishing Institute",
+      "fields": [
+        "Mathematics and computer science",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Fiber Optic Sensors",
+        "Indoor Localization",
+        "Deep Learning",
+        "Wireless Sensor Networks",
+        "SLAM"
+      ],
+      "coreness_score": 47312
+    },
+    {
+      "name": "The Journal of the Acoustical Society of America",
+      "source_id": "S11296630",
+      "issn_l": "0001-4966",
+      "publisher": "Acoustical Society of America",
+      "fields": [
+        "Biomedical and health sciences",
+        "Physical sciences and engineering",
+        "Mathematics and computer science",
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Hearing Loss and Cognition",
+        "Seafloor Mapping",
+        "Speech Perception",
+        "Acoustic Metamaterials",
+        "Marine Mammal Ecology"
+      ],
+      "coreness_score": 47074
+    },
+    {
+      "name": "Ceramics International",
+      "source_id": "S106928643",
+      "issn_l": "0272-8842",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Ceramic Materials",
+        "Lead-free Piezoceramics",
+        "Upconversion Nanoparticles",
+        "Bone Tissue Engineering",
+        "Solid Oxide Fuel Cells"
+      ],
+      "coreness_score": 46634
+    },
+    {
+      "name": "The Journal of Urology",
+      "source_id": "S30525748",
+      "issn_l": "0022-5347",
+      "publisher": "Lippincott Williams & Wilkins",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Prostate Cancer",
+        "Lower Urinary Tract",
+        "Bladder Cancer",
+        "Kidney Stones",
+        "Renal Cell Carcinoma"
+      ],
+      "coreness_score": 46342
+    },
+    {
+      "name": "Investigative Ophthalmology & Visual Science",
+      "source_id": "S76304953",
+      "issn_l": "0146-0404",
+      "publisher": "Cadmus Press",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Macular Degeneration",
+        "Glaucoma",
+        "Retinal Degeneration",
+        "Myopia",
+        "Dry Eye Disease"
+      ],
+      "coreness_score": 45698
+    },
+    {
+      "name": "BRILL eBooks",
+      "source_id": "S4306462964",
+      "issn_l": null,
+      "publisher": "Brill",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Ancient Mediterranean Studies",
+        "Biblical Studies",
+        "Islamic Reform",
+        "Medieval Studies",
+        "Linguistic Theory"
+      ],
+      "coreness_score": 45097
+    },
+    {
+      "name": "Inorganic Chemistry",
+      "source_id": "S171072222",
+      "issn_l": "0020-1669",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Transition Metal Catalysis",
+        "Metal-Organic Frameworks",
+        "Molecular Magnetism",
+        "Platinum-Based Chemotherapy",
+        "Nonlinear Optical Materials"
+      ],
+      "coreness_score": 44599
+    },
+    {
+      "name": "Chemosphere",
+      "source_id": "S203465130",
+      "issn_l": "0045-6535",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Life and earth sciences",
+        "Physical sciences and engineering",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Persistent Organic Pollutants",
+        "Advanced Oxidation Processes",
+        "Antibiotic Resistance",
+        "Aquatic Ecotoxicology",
+        "Heavy Metal Contamination"
+      ],
+      "coreness_score": 44438
+    },
+    {
+      "name": "Chemical Communications",
+      "source_id": "S152760256",
+      "issn_l": "1359-7345",
+      "publisher": "Royal Society of Chemistry",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Metal-Organic Frameworks",
+        "Supramolecular Chemistry",
+        "C-H Functionalization",
+        "DNA Nanotechnology",
+        "Fluorescent Chemosensors"
+      ],
+      "coreness_score": 44071
+    },
+    {
+      "name": "Materials science forum",
+      "source_id": "S87940674",
+      "issn_l": "0255-5476",
+      "publisher": "Trans Tech Publications",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Power Electronics",
+        "Nanomaterials",
+        "Advanced Steels",
+        "Aluminium Alloys",
+        "Magnesium Alloys"
+      ],
+      "coreness_score": 43539
+    },
+    {
+      "name": "Optics Letters",
+      "source_id": "S134390580",
+      "issn_l": "0146-9592",
+      "publisher": "Optica Publishing Group",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Optical Manipulation",
+        "Silicon Photonics",
+        "Fiber Optic Sensors",
+        "Optical Frequency Combs",
+        "Photonic Crystal Fibers"
+      ],
+      "coreness_score": 42374
+    },
+    {
+      "name": "Environmental Science & Technology",
+      "source_id": "S13479253",
+      "issn_l": "0013-936X",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Life and earth sciences",
+        "Physical sciences and engineering",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Persistent Organic Pollutants",
+        "Atmospheric Aerosols",
+        "Antibiotic Resistance",
+        "Advanced Oxidation Processes",
+        "Mercury Toxicology"
+      ],
+      "coreness_score": 41854
+    },
+    {
+      "name": "Scientific Reports",
+      "source_id": "S196734849",
+      "issn_l": "2045-2322",
+      "publisher": "Nature Portfolio",
+      "fields": [
+        "Biomedical and health sciences",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Gut Microbiome",
+        "MicroRNA",
+        "Metamaterials",
+        "Malaria",
+        "Complex Networks"
+      ],
+      "coreness_score": 41775
+    },
+    {
+      "name": "Langmuir",
+      "source_id": "S75741262",
+      "issn_l": "0743-7463",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Surfactant Aggregation",
+        "Lipid Rafts",
+        "Mussel-Inspired Surface Chemistry",
+        "Superhydrophobic Surfaces",
+        "Molecular Electronics"
+      ],
+      "coreness_score": 41510
+    },
+    {
+      "name": "Japanese Journal of Applied Physics",
+      "source_id": "S143744711",
+      "issn_l": "0021-4922",
+      "publisher": "Institute of Physics",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "III-Nitride Semiconductors",
+        "Lead-free Piezoceramics",
+        "Quantum Dot Physics",
+        "Atomic Layer Deposition",
+        "Plasmonics"
+      ],
+      "coreness_score": 41479
+    },
+    {
+      "name": "Chemical Engineering Journal",
+      "source_id": "S149937609",
+      "issn_l": "1385-8947",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering",
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Advanced Oxidation Processes",
+        "Adsorption",
+        "Photocatalytic Materials",
+        "Catalytic Nanomaterials",
+        "Supercapacitors"
+      ],
+      "coreness_score": 41069
+    },
+    {
+      "name": "Food Chemistry",
+      "source_id": "S98026630",
+      "issn_l": "0308-8146",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Life and earth sciences",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Antioxidants",
+        "Food Nanoemulsions",
+        "Dietary Fiber",
+        "Wine Microbiology",
+        "Meat Quality"
+      ],
+      "coreness_score": 40856
+    },
+    {
+      "name": "medRxiv (Cold Spring Harbor Laboratory)",
+      "source_id": "S4306400573",
+      "issn_l": null,
+      "publisher": "Cold Spring Harbor Laboratory",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "COVID-19",
+        "COVID-19 Modeling",
+        "Genomic Studies",
+        "COVID-19 Diagnostics"
+      ],
+      "coreness_score": 40109
+    },
+    {
+      "name": "Physics of Plasmas",
+      "source_id": "S66354037",
+      "issn_l": "1070-664X",
+      "publisher": "American Institute of Physics",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Plasma Physics",
+        "Laser-Plasma Physics",
+        "Dusty Plasmas",
+        "Space Weather"
+      ],
+      "coreness_score": 39696
+    },
+    {
+      "name": "Applied Mechanics and Materials",
+      "source_id": "S128754310",
+      "issn_l": "1660-9336",
+      "publisher": "Trans Tech Publications",
+      "fields": [
+        "Physical sciences and engineering",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Machining Operations",
+        "Robot Manipulators",
+        "Gear Dynamics",
+        "Concrete-Filled Steel Tubes",
+        "Machine Fault Diagnosis"
+      ],
+      "coreness_score": 39530
+    },
+    {
+      "name": "IOP Conference Series Earth and Environmental Science",
+      "source_id": "S4210195883",
+      "issn_l": "1755-1307",
+      "publisher": "IOP Publishing",
+      "fields": [
+        "Physical sciences and engineering",
+        "Social sciences and humanities",
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Rock Mechanics",
+        "Cavitation in Hydropower",
+        "Building Energy Efficiency",
+        "Ecosystem Services",
+        "Life Cycle Assessment"
+      ],
+      "coreness_score": 39388
+    },
+    {
+      "name": "Bioresource Technology",
+      "source_id": "S21442059",
+      "issn_l": "0960-8524",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Life and earth sciences",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Anaerobic Digestion",
+        "Biofuel Production",
+        "Microalgae Biofuels",
+        "Microbial Nitrogen Cycling",
+        "Biomass Pyrolysis"
+      ],
+      "coreness_score": 39316
+    },
+    {
+      "name": "Macromolecules",
+      "source_id": "S177196338",
+      "issn_l": "0024-9297",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Living Polymerization",
+        "Block Copolymers",
+        "Polymer Crystallization",
+        "Organic Solar Cells",
+        "Hydrogel Biomedical Applications"
+      ],
+      "coreness_score": 39231
+    },
+    {
+      "name": "Analytical Chemistry",
+      "source_id": "S191963794",
+      "issn_l": "0003-2700",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Biomedical and health sciences",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Mass Spectrometry",
+        "DNA Nanotechnology",
+        "Microfluidics",
+        "Metabolomics"
+      ],
+      "coreness_score": 38918
+    },
+    {
+      "name": "Physics Letters B",
+      "source_id": "S173952182",
+      "issn_l": "0370-2693",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Particle Physics",
+        "Holographic Field Theories",
+        "Hadron Physics",
+        "Cosmological Parameters",
+        "Quark-Gluon Plasma"
+      ],
+      "coreness_score": 38260
+    },
+    {
+      "name": "Journal of Magnetism and Magnetic Materials",
+      "source_id": "S3649266",
+      "issn_l": "0304-8853",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Magnetic Skyrmions",
+        "Magnetocaloric Materials",
+        "Ferrite Nanoparticles",
+        "Metallic Glasses",
+        "Magnetic Materials"
+      ],
+      "coreness_score": 38035
+    },
+    {
+      "name": "Applied Surface Science",
+      "source_id": "S42323631",
+      "issn_l": "0169-4332",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Photocatalytic Materials",
+        "Photocatalysis",
+        "Zinc Oxide",
+        "Superhydrophobic Surfaces",
+        "Femtosecond Laser Micromachining"
+      ],
+      "coreness_score": 37412
+    },
+    {
+      "name": "Environmental Science and Pollution Research",
+      "source_id": "S87561820",
+      "issn_l": "0944-1344",
+      "publisher": "Springer Science+Business Media",
+      "fields": [
+        "Social sciences and humanities",
+        "Life and earth sciences",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Environmental Economics",
+        "Heavy Metal Contamination",
+        "Adsorption",
+        "Persistent Organic Pollutants",
+        "Antibiotic Resistance"
+      ],
+      "coreness_score": 36607
+    },
+    {
+      "name": "Remote Sensing",
+      "source_id": "S43295729",
+      "issn_l": "2072-4292",
+      "publisher": "Multidisciplinary Digital Publishing Institute",
+      "fields": [
+        "Life and earth sciences",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Remote Sensing",
+        "Hyperspectral Image Analysis",
+        "Forest Lidar Mapping",
+        "SAR Interferometry",
+        "Aerosol Climate Hydrology"
+      ],
+      "coreness_score": 36281
+    },
+    {
+      "name": "Fuel",
+      "source_id": "S164770093",
+      "issn_l": "0016-2361",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Biomass Pyrolysis",
+        "Combustion Chemistry",
+        "Biodiesel Production",
+        "Coalbed Methane",
+        "Catalytic CO2 Hydrogenation"
+      ],
+      "coreness_score": 36197
+    },
+    {
+      "name": "RSC Advances",
+      "source_id": "S2481244646",
+      "issn_l": "2046-2069",
+      "publisher": "Royal Society of Chemistry",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Lithium-ion Batteries",
+        "Photocatalytic Materials",
+        "Supercapacitors",
+        "Photocatalysis",
+        "Graphene"
+      ],
+      "coreness_score": 36029
+    },
+    {
+      "name": "Nuclear Instruments and Methods in Physics Research Section A Accelerators Spectrometers Detectors and Associated Equipment",
+      "source_id": "S145630073",
+      "issn_l": "0168-9002",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Particle Detectors",
+        "Scintillation Detectors",
+        "Free-Electron Lasers",
+        "Neutron Imaging",
+        "High-Energy Astrophysics"
+      ],
+      "coreness_score": 35749
+    },
+    {
+      "name": "The Journal of Physical Chemistry A",
+      "source_id": "S146709414",
+      "issn_l": "1089-5639",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Density Functional Theory",
+        "Atmospheric Aerosols",
+        "Excited-State Proton Transfer",
+        "Noncovalent Interactions",
+        "Combustion Chemistry"
+      ],
+      "coreness_score": 35484
+    },
+    {
+      "name": "Proceedings of the National Academy of Sciences",
+      "source_id": "S125754415",
+      "issn_l": "0027-8424",
+      "publisher": "National Academy of Sciences",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Bacterial Physiology",
+        "Protein Structure Prediction",
+        "Regulatory T Cells",
+        "DNA Damage Response",
+        "Chromatin Regulation"
+      ],
+      "coreness_score": 35413
+    },
+    {
+      "name": "Sensors and Actuators B Chemical",
+      "source_id": "S98455728",
+      "issn_l": "0925-4005",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Gas Sensors",
+        "Electrochemical Biosensors",
+        "DNA Nanotechnology",
+        "Fluorescent Chemosensors",
+        "Chemical Sensors"
+      ],
+      "coreness_score": 34829
+    },
+    {
+      "name": "Nucleic Acids Research",
+      "source_id": "S134668137",
+      "issn_l": "0305-1048",
+      "publisher": "Oxford University Press",
+      "fields": [
+        "Biomedical and health sciences",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "DNA Damage Response",
+        "Chromatin Regulation",
+        "Ribosome Structure",
+        "Bacterial Physiology",
+        "G-Quadruplexes"
+      ],
+      "coreness_score": 34377
+    },
+    {
+      "name": "Duke University Press eBooks",
+      "source_id": "S4306463122",
+      "issn_l": null,
+      "publisher": "Duke University Press",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Anthropology of Globalization",
+        "Clientelism",
+        "Posthumanist Performativity",
+        "Cultural Studies",
+        "Music and Culture"
+      ],
+      "coreness_score": 33932
+    },
+    {
+      "name": "IOP Conference Series Materials Science and Engineering",
+      "source_id": "S4210189194",
+      "issn_l": "1757-8981",
+      "publisher": "IOP Publishing",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Geopolymer Technology",
+        "Nanomaterials",
+        "Ductile Fracture",
+        "Natural Fiber Composites",
+        "Fiber Reinforced Concrete"
+      ],
+      "coreness_score": 33736
+    },
+    {
+      "name": "The Journal of Physical Chemistry B",
+      "source_id": "S185621672",
+      "issn_l": "1520-5207",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Protein Structure Prediction",
+        "Quantum Coherence",
+        "Lipid Rafts",
+        "Ionic Liquids",
+        "Surfactant Aggregation"
+      ],
+      "coreness_score": 33332
+    },
+    {
+      "name": "IFAC Proceedings Volumes",
+      "source_id": "S2898246533",
+      "issn_l": "1474-6670",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Networked Control Systems",
+        "Robotic Control",
+        "Model Predictive Control",
+        "Process Fault Diagnosis",
+        "System Identification"
+      ],
+      "coreness_score": 33221
+    },
+    {
+      "name": "Journal of Neuroscience",
+      "source_id": "S5555990",
+      "issn_l": "0270-6474",
+      "publisher": "Society for Neuroscience",
+      "fields": [
+        "Biomedical and health sciences",
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Synaptic Plasticity",
+        "Neurobiology of Addiction",
+        "Cognitive Control",
+        "Neuronal Oscillations",
+        "Memory and Navigation"
+      ],
+      "coreness_score": 33169
+    },
+    {
+      "name": "Journal of Materials Chemistry A",
+      "source_id": "S2764437742",
+      "issn_l": "2050-7488",
+      "publisher": "Royal Society of Chemistry",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Lithium-ion Batteries",
+        "Electrocatalysis",
+        "Supercapacitors",
+        "Lithium Batteries",
+        "Photocatalytic Materials"
+      ],
+      "coreness_score": 33162
+    },
+    {
+      "name": "The Journal of Immunology",
+      "source_id": "S38008053",
+      "issn_l": "0022-1767",
+      "publisher": "American Association of Immunologists",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Regulatory T Cells",
+        "Natural Killer Cells",
+        "Dendritic Cells",
+        "Innate Immunity",
+        "TH17 Cells"
+      ],
+      "coreness_score": 33081
+    },
+    {
+      "name": "Journal of The Electrochemical Society",
+      "source_id": "S138759888",
+      "issn_l": "0013-4651",
+      "publisher": "Institute of Physics",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Lithium-ion Batteries",
+        "Electrocatalysis",
+        "Solid Oxide Fuel Cells",
+        "Fuel Cell Membranes",
+        "Lithium Batteries"
+      ],
+      "coreness_score": 32760
+    },
+    {
+      "name": "The International Journal of Advanced Manufacturing Technology",
+      "source_id": "S77056576",
+      "issn_l": "0268-3768",
+      "publisher": "Springer Science+Business Media",
+      "fields": [
+        "Physical sciences and engineering",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Machining Operations",
+        "Ductile Fracture",
+        "Electrical Discharge Machining",
+        "Metal Additive Manufacturing",
+        "Friction Stir Welding"
+      ],
+      "coreness_score": 32101
+    },
+    {
+      "name": "International Journal of Molecular Sciences",
+      "source_id": "S10623703",
+      "issn_l": "1422-0067",
+      "publisher": "Multidisciplinary Digital Publishing Institute",
+      "fields": [
+        "Life and earth sciences",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Abiotic Stress",
+        "Plant Development",
+        "MicroRNA",
+        "Exosome Biology",
+        "Alzheimer's Disease"
+      ],
+      "coreness_score": 32036
+    },
+    {
+      "name": "Dalton Transactions",
+      "source_id": "S166159787",
+      "issn_l": "1477-9226",
+      "publisher": "Royal Society of Chemistry",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Transition Metal Catalysis",
+        "Metal-Organic Frameworks",
+        "Molecular Magnetism",
+        "Platinum-Based Chemotherapy",
+        "Main Group Chemistry"
+      ],
+      "coreness_score": 31998
+    },
+    {
+      "name": "Frontiers in Psychology",
+      "source_id": "S9692511",
+      "issn_l": "1664-1078",
+      "publisher": "Frontiers Media",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Cognitive Control",
+        "Work Engagement",
+        "Mental Health",
+        "Language Processing",
+        "Auditory Processing"
+      ],
+      "coreness_score": 31964
+    },
+    {
+      "name": "Palgrave Macmillan US eBooks",
+      "source_id": "S4306463717",
+      "issn_l": null,
+      "publisher": "Palgrave Macmillan",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Cultural Studies",
+        "International Relations",
+        "Medieval Studies",
+        "Social Movements",
+        "Anthropology of Globalization"
+      ],
+      "coreness_score": 31858
+    },
+    {
+      "name": "Fertility and Sterility",
+      "source_id": "S45445671",
+      "issn_l": "0015-0282",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Polycystic Ovary Syndrome",
+        "Fertility Preservation",
+        "Male Infertility",
+        "Endometriosis",
+        "Infertility"
+      ],
+      "coreness_score": 31795
+    },
+    {
+      "name": "Gastroenterology",
+      "source_id": "S143352558",
+      "issn_l": "0016-5085",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Inflammatory Bowel Disease",
+        "Functional Bowel Disorders",
+        "Helicobacter pylori",
+        "Gastroesophageal Reflux",
+        "Esophageal Cancer"
+      ],
+      "coreness_score": 31692
+    },
+    {
+      "name": "International Journal of Environmental Research and Public Health",
+      "source_id": "S15239247",
+      "issn_l": "1660-4601",
+      "publisher": "Multidisciplinary Digital Publishing Institute",
+      "fields": [
+        "Biomedical and health sciences",
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Mental Health",
+        "Obesity",
+        "Smoking Cessation",
+        "Air Pollution",
+        "Physical Activity"
+      ],
+      "coreness_score": 31450
+    },
+    {
+      "name": "Journal of Agricultural and Food Chemistry",
+      "source_id": "S134644764",
+      "issn_l": "0021-8561",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Biomedical and health sciences",
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Antioxidants",
+        "Wine Microbiology",
+        "Food Nanoemulsions",
+        "Olive Oil",
+        "Oxidative Stress"
+      ],
+      "coreness_score": 31437
+    },
+    {
+      "name": "Energy",
+      "source_id": "S2497375143",
+      "issn_l": "0360-5442",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Waste Heat Recovery",
+        "Biomass Pyrolysis",
+        "Renewable Energy Systems",
+        "Combustion Chemistry",
+        "Wind Energy"
+      ],
+      "coreness_score": 31405
+    },
+    {
+      "name": "International Journal of Radiation Oncology*Biology*Physics",
+      "source_id": "S110533041",
+      "issn_l": "0360-3016",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Radiotherapy Physics",
+        "Prostate Cancer",
+        "Head and Neck Cancer",
+        "Breast Cancer",
+        "Lung Cancer"
+      ],
+      "coreness_score": 30814
+    },
+    {
+      "name": "Edward Elgar Publishing eBooks",
+      "source_id": "S4306463223",
+      "issn_l": null,
+      "publisher": "Edward Elgar Publishing",
+      "fields": [
+        "Social sciences and humanities"
+      ],
+      "micro_topics": [
+        "Entrepreneurship",
+        "Institutional Economics",
+        "Welfare State Politics",
+        "Sustainability Transitions",
+        "Macroeconomic Implications"
+      ],
+      "coreness_score": 30723
+    },
+    {
+      "name": "Cancer Research",
+      "source_id": "S168522863",
+      "issn_l": "0008-5472",
+      "publisher": "American Association for Cancer Research",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Cancer Stem Cells",
+        "HER2 Signaling",
+        "Cancer Immunotherapy",
+        "Breast Cancer",
+        "MicroRNA"
+      ],
+      "coreness_score": 30112
+    },
+    {
+      "name": "Transportation Research Record Journal of the Transportation Research Board",
+      "source_id": "S145575934",
+      "issn_l": "0361-1981",
+      "publisher": "SAGE Publishing",
+      "fields": [
+        "Mathematics and computer science",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Asphalt Materials",
+        "Traffic Safety",
+        "Public Transport",
+        "Traffic Flow",
+        "Active Travel"
+      ],
+      "coreness_score": 29562
+    },
+    {
+      "name": "Journal of Mathematical Analysis and Applications",
+      "source_id": "S151579836",
+      "issn_l": "0022-247X",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Fractional Laplacian",
+        "Fractional Differential Equations",
+        "Complex Analysis",
+        "Banach Spaces",
+        "Iterative Algorithms"
+      ],
+      "coreness_score": 29384
+    },
+    {
+      "name": "Physical review. A/Physical review, A",
+      "source_id": "S4210182288",
+      "issn_l": "2469-9926",
+      "publisher": "American Physical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Quantum Information",
+        "Ultracold Gases",
+        "Attosecond Physics",
+        "Low-Energy Electron Interactions",
+        "Quantum Computing"
+      ],
+      "coreness_score": 29245
+    },
+    {
+      "name": "IEEE Transactions on Magnetics",
+      "source_id": "S50523690",
+      "issn_l": "0018-9464",
+      "publisher": "IEEE Magnetics Society",
+      "fields": [
+        "Physical sciences and engineering",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Magnetic Skyrmions",
+        "Electric Motor Drives",
+        "Magnetostriction",
+        "Finite-Difference Time-Domain",
+        "Magnetic Materials"
+      ],
+      "coreness_score": 29018
+    },
+    {
+      "name": "Physical Review E",
+      "source_id": "S35412551",
+      "issn_l": "1539-3755",
+      "publisher": "American Physical Society",
+      "fields": [
+        "Mathematics and computer science",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Critical Phenomena",
+        "Glass Transition",
+        "Complex Networks",
+        "Liquid Crystals",
+        "Synchronization"
+      ],
+      "coreness_score": 28639
+    },
+    {
+      "name": "Industrial & Engineering Chemistry Research",
+      "source_id": "S202680183",
+      "issn_l": "0888-5885",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Process Optimization",
+        "Supercritical Fluids",
+        "Carbon Capture",
+        "Zeolite Chemistry",
+        "Catalytic CO2 Hydrogenation"
+      ],
+      "coreness_score": 28439
+    },
+    {
+      "name": "Journal of Chromatography A",
+      "source_id": "S176136234",
+      "issn_l": "0021-9673",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Chiral Separation",
+        "Analytical Chemistry",
+        "Microfluidics",
+        "Protein Aggregation",
+        "Pesticide Residue Analysis"
+      ],
+      "coreness_score": 28189
+    },
+    {
+      "name": "Key engineering materials",
+      "source_id": "S75411654",
+      "issn_l": "1013-9826",
+      "publisher": "Trans Tech Publications",
+      "fields": [
+        "Physical sciences and engineering",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Bone Tissue Engineering",
+        "Ceramic Materials",
+        "Machining Operations",
+        "Ductile Fracture",
+        "Fatigue Mechanics"
+      ],
+      "coreness_score": 28158
+    },
+    {
+      "name": "Neurology",
+      "source_id": "S79704628",
+      "issn_l": "0028-3878",
+      "publisher": "Lippincott Williams & Wilkins",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Multiple Sclerosis",
+        "Alzheimer's Disease",
+        "Epilepsy",
+        "Parkinson's Disease",
+        "Stroke"
+      ],
+      "coreness_score": 27496
+    },
+    {
+      "name": "Journal of Hazardous Materials",
+      "source_id": "S145089992",
+      "issn_l": "0304-3894",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering",
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Adsorption",
+        "Advanced Oxidation Processes",
+        "Antibiotic Resistance",
+        "Microplastic Pollution",
+        "Bioremediation"
+      ],
+      "coreness_score": 27460
+    },
+    {
+      "name": "Surface and Coatings Technology",
+      "source_id": "S76010543",
+      "issn_l": "0257-8972",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Thin Film Mechanics",
+        "Thermal Barrier Coatings",
+        "Diamond Nanotechnology",
+        "Magnesium Alloys",
+        "Electrodeposition"
+      ],
+      "coreness_score": 27251
+    },
+    {
+      "name": "Plant Disease",
+      "source_id": "S135458494",
+      "issn_l": "0191-2917",
+      "publisher": "American Phytopathological Society",
+      "fields": [
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Fungal Pathogen Diversity",
+        "Viral RNA Silencing",
+        "Phytophthora Research",
+        "Plant Pathogenic Bacteria",
+        "Fungicide Resistance"
+      ],
+      "coreness_score": 27109
+    },
+    {
+      "name": "The Annals of Thoracic Surgery",
+      "source_id": "S144860794",
+      "issn_l": "0003-4975",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Congenital Heart Disease",
+        "Valvular Heart Disease",
+        "Aortic Diseases",
+        "Cardiac Surgery",
+        "Lung Cancer"
+      ],
+      "coreness_score": 27086
+    },
+    {
+      "name": "Journal of Cleaner Production",
+      "source_id": "S58516903",
+      "issn_l": "0959-6526",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Social sciences and humanities",
+        "Physical sciences and engineering",
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Life Cycle Assessment",
+        "Circular Economy",
+        "Environmental Economics",
+        "Green Consumption",
+        "Sustainable Diets"
+      ],
+      "coreness_score": 27047
+    },
+    {
+      "name": "Nutrients",
+      "source_id": "S110785341",
+      "issn_l": "2072-6643",
+      "publisher": "Multidisciplinary Digital Publishing Institute",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Obesity",
+        "Gut Microbiome",
+        "Mediterranean Diet",
+        "Vitamin D",
+        "Sarcopenia"
+      ],
+      "coreness_score": 26817
+    },
+    {
+      "name": "IEEE Transactions on Applied Superconductivity",
+      "source_id": "S119074828",
+      "issn_l": "1051-8223",
+      "publisher": "IEEE Council on Superconductivity",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "High-Temperature Superconductivity",
+        "Superconducting Magnets",
+        "Modular Multilevel Converters",
+        "Superconducting Detectors",
+        "Superconductivity"
+      ],
+      "coreness_score": 26666
+    },
+    {
+      "name": "Lecture notes in electrical engineering",
+      "source_id": "S4210179954",
+      "issn_l": "1876-1100",
+      "publisher": "Springer Science+Business Media",
+      "fields": [
+        "Mathematics and computer science",
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Global Navigation Satellite Systems",
+        "Robotic Control",
+        "Deep Learning",
+        "Wireless Sensor Networks",
+        "Multilevel Converters"
+      ],
+      "coreness_score": 26524
+    },
+    {
+      "name": "Journal of the American College of Cardiology",
+      "source_id": "S60865174",
+      "issn_l": "0735-1097",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Coronary Stents",
+        "Valvular Heart Disease",
+        "Atrial Fibrillation",
+        "Myocardial Infarction",
+        "Cardiac Imaging"
+      ],
+      "coreness_score": 26514
+    },
+    {
+      "name": "Tetrahedron",
+      "source_id": "S205754296",
+      "issn_l": "0040-4020",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Asymmetric Catalysis",
+        "Cross-Coupling Catalysis",
+        "Chemical Glycobiology",
+        "Multicomponent Reactions",
+        "Peptide Synthesis"
+      ],
+      "coreness_score": 26285
+    },
+    {
+      "name": "Energy & Fuels",
+      "source_id": "S186935893",
+      "issn_l": "0887-0624",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Biomass Pyrolysis",
+        "Petroleum Chemistry",
+        "Pore-scale Imaging",
+        "Combustion Chemistry",
+        "Shale Gas Pore"
+      ],
+      "coreness_score": 26200
+    },
+    {
+      "name": "IEEE Transactions on Antennas and Propagation",
+      "source_id": "S85738991",
+      "issn_l": "0018-926X",
+      "publisher": "IEEE Antennas & Propagation Society",
+      "fields": [
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Antenna Design",
+        "Integral Equation Methods",
+        "Metasurfaces",
+        "Microwave Engineering",
+        "Metamaterials"
+      ],
+      "coreness_score": 25946
+    },
+    {
+      "name": "Numerical data and functional relationships in science and technology. Group III, Condensed matter",
+      "source_id": "S4210168331",
+      "issn_l": "1615-1925",
+      "publisher": "Springer Nature",
+      "fields": [
+        "Physical sciences and engineering",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Frustrated Lewis Pairs",
+        "Main Group Chemistry",
+        "Liquid Mixtures",
+        "Boron Neutron Capture Therapy",
+        "Heterocyclic Chemistry"
+      ],
+      "coreness_score": 25860
+    },
+    {
+      "name": "Optics Communications",
+      "source_id": "S186881120",
+      "issn_l": "0030-4018",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Optical Manipulation",
+        "Optical Fiber Communication",
+        "Fiber Optic Sensors",
+        "Plasmonics",
+        "Silicon Photonics"
+      ],
+      "coreness_score": 25830
+    },
+    {
+      "name": "Vaccine",
+      "source_id": "S27359860",
+      "issn_l": "0264-410X",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Influenza",
+        "Vaccine Hesitancy",
+        "Bacterial Meningitis",
+        "Pneumonia",
+        "HPV and Cervical Cancer"
+      ],
+      "coreness_score": 25685
+    },
+    {
+      "name": "The European Physical Journal C",
+      "source_id": "S94052278",
+      "issn_l": "1434-6044",
+      "publisher": "Springer Science+Business Media",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Particle Physics",
+        "Cosmological Parameters",
+        "Holographic Field Theories",
+        "Hadron Physics",
+        "Quark-Gluon Plasma"
+      ],
+      "coreness_score": 25619
+    },
+    {
+      "name": "Frontiers in Plant Science",
+      "source_id": "S2493613807",
+      "issn_l": "1664-462X",
+      "publisher": "Frontiers Media",
+      "fields": [
+        "Life and earth sciences",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Abiotic Stress",
+        "Plant Development",
+        "Plant Immunity",
+        "Flavonoid Biosynthesis",
+        "Nutrient Uptake"
+      ],
+      "coreness_score": 24972
+    },
+    {
+      "name": "Organometallics",
+      "source_id": "S4924609",
+      "issn_l": "0276-7333",
+      "publisher": "American Chemical Society",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Transition Metal Catalysis",
+        "Main Group Chemistry",
+        "N-Heterocyclic Carbenes",
+        "Frustrated Lewis Pairs",
+        "Homogeneous Catalysis"
+      ],
+      "coreness_score": 24964
+    },
+    {
+      "name": "Atmospheric Environment",
+      "source_id": "S4210198353",
+      "issn_l": "1352-2310",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Atmospheric Aerosols",
+        "Air Pollution",
+        "Aerosol Climate Hydrology",
+        "Urban Wind Environment",
+        "Indoor Air Quality"
+      ],
+      "coreness_score": 24938
+    },
+    {
+      "name": "Methods in molecular biology",
+      "source_id": "S4210172139",
+      "issn_l": "1064-3745",
+      "publisher": "Springer Science+Business Media",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Mass Spectrometry",
+        "Chromatin Regulation",
+        "Pluripotent Stem Cells",
+        "CRISPR-Cas",
+        "RNA Interference"
+      ],
+      "coreness_score": 24868
+    },
+    {
+      "name": "Polymer",
+      "source_id": "S186054908",
+      "issn_l": "0032-3861",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Polymer Crystallization",
+        "Living Polymerization",
+        "Nanocomposites",
+        "Hydrogel Biomedical Applications",
+        "Biodegradable Polymers"
+      ],
+      "coreness_score": 24548
+    },
+    {
+      "name": "International Journal of Heat and Mass Transfer",
+      "source_id": "S90999920",
+      "issn_l": "0017-9310",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Flow Boiling",
+        "Nanofluid Heat Transfer",
+        "Microchannel Heat Transfer",
+        "Solar Air Heating",
+        "Phase Change Materials"
+      ],
+      "coreness_score": 24395
+    },
+    {
+      "name": "Medical Physics",
+      "source_id": "S95522064",
+      "issn_l": "0094-2405",
+      "publisher": "Wiley",
+      "fields": [
+        "Biomedical and health sciences",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Radiotherapy Physics",
+        "Particle Therapy",
+        "Breast Cancer Screening",
+        "PET Imaging",
+        "Radiation Exposure"
+      ],
+      "coreness_score": 24346
+    },
+    {
+      "name": "NeuroImage",
+      "source_id": "S103225281",
+      "issn_l": "1053-8119",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Social sciences and humanities",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Brain Network Analysis",
+        "Cognitive Control",
+        "MRI Applications",
+        "Diffusion MRI",
+        "Brain Stimulation"
+      ],
+      "coreness_score": 24304
+    },
+    {
+      "name": "Physical Chemistry Chemical Physics",
+      "source_id": "S181332294",
+      "issn_l": "1463-9076",
+      "publisher": "Royal Society of Chemistry",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Density Functional Theory",
+        "Ionic Liquids",
+        "Two-Dimensional Materials",
+        "Photocatalysis",
+        "Quantum Coherence"
+      ],
+      "coreness_score": 24283
+    },
+    {
+      "name": "Physical Review C",
+      "source_id": "S4210168441",
+      "issn_l": "0556-2813",
+      "publisher": "American Institute of Physics",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Nuclear Structure",
+        "Quark-Gluon Plasma",
+        "Hadron Physics",
+        "Nuclear Masses"
+      ],
+      "coreness_score": 24115
+    },
+    {
+      "name": "Journal of Dairy Science",
+      "source_id": "S28349394",
+      "issn_l": "0022-0302",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Ruminant Nutrition",
+        "Reproductive Health",
+        "Bovine Mastitis",
+        "Genomic Selection",
+        "Probiotics"
+      ],
+      "coreness_score": 24021
+    },
+    {
+      "name": "Transplantation Proceedings",
+      "source_id": "S146061289",
+      "issn_l": "0041-1345",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Kidney Transplantation",
+        "Liver Transplantation",
+        "Organ Donation",
+        "Transplantation",
+        "Liver Disease"
+      ],
+      "coreness_score": 24017
+    },
+    {
+      "name": "IEEE Transactions on Power Electronics",
+      "source_id": "S29875816",
+      "issn_l": "0885-8993",
+      "publisher": "Institute of Electrical and Electronics Engineers",
+      "fields": [
+        "Mathematics and computer science",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Power Electronics",
+        "Multilevel Converters",
+        "Microgrid Control",
+        "Wireless Power Transfer"
+      ],
+      "coreness_score": 24006
+    },
+    {
+      "name": "Journal of Materials Science Materials in Electronics",
+      "source_id": "S189509794",
+      "issn_l": "0957-4522",
+      "publisher": "Springer Science+Business Media",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Lead-free Piezoceramics",
+        "Zinc Oxide",
+        "Upconversion Nanoparticles",
+        "Lead-free Solders",
+        "Ferrite Nanoparticles"
+      ],
+      "coreness_score": 23869
+    },
+    {
+      "name": "Biochemical and Biophysical Research Communications",
+      "source_id": "S151589183",
+      "issn_l": "0006-291X",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Ras Signaling",
+        "MicroRNA",
+        "Apoptosis",
+        "Autophagy",
+        "p53 Network"
+      ],
+      "coreness_score": 23859
+    },
+    {
+      "name": "Journal of Nuclear Materials",
+      "source_id": "S149516416",
+      "issn_l": "0022-3115",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Fusion Materials",
+        "Nuclear Fuel Materials",
+        "Plasma Physics",
+        "Nuclear Reactor Technology",
+        "Pyrochlore"
+      ],
+      "coreness_score": 23482
+    },
+    {
+      "name": "Antimicrobial Agents and Chemotherapy",
+      "source_id": "S47215897",
+      "issn_l": "0066-4804",
+      "publisher": "American Society for Microbiology",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Antibiotic Resistance",
+        "Fungal Infections",
+        "MRSA Infections",
+        "Tuberculosis",
+        "Malaria"
+      ],
+      "coreness_score": 23390
+    },
+    {
+      "name": "Molecules",
+      "source_id": "S108911230",
+      "issn_l": "1420-3049",
+      "publisher": "Multidisciplinary Digital Publishing Institute",
+      "fields": [
+        "Biomedical and health sciences",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Antioxidants",
+        "Antimicrobial Essential Oils",
+        "Heterocyclic Medicinal Chemistry",
+        "Triterpenoids",
+        "Plant Cell Walls"
+      ],
+      "coreness_score": 23334
+    },
+    {
+      "name": "Atmospheric chemistry and physics",
+      "source_id": "S162708223",
+      "issn_l": "1680-7316",
+      "publisher": "Copernicus Publications",
+      "fields": [
+        "Life and earth sciences",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Atmospheric Aerosols",
+        "Aerosol Climate Hydrology",
+        "Stratospheric Chemistry",
+        "Methane Emissions"
+      ],
+      "coreness_score": 23332
+    },
+    {
+      "name": "Thin Solid Films",
+      "source_id": "S84339699",
+      "issn_l": "0040-6090",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Zinc Oxide",
+        "Thin-Film Solar Cells",
+        "Plasmonics",
+        "Thin Film Mechanics",
+        "Diamond Nanotechnology"
+      ],
+      "coreness_score": 22952
+    },
+    {
+      "name": "Frontiers in Immunology",
+      "source_id": "S2595292759",
+      "issn_l": "1664-3224",
+      "publisher": "Frontiers Media",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Regulatory T Cells",
+        "Cancer Immunotherapy",
+        "Natural Killer Cells",
+        "COVID-19",
+        "Macrophage Activation"
+      ],
+      "coreness_score": 22902
+    },
+    {
+      "name": "Journal of Hydrology",
+      "source_id": "S55737203",
+      "issn_l": "0022-1694",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Life and earth sciences",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Hydrological Modeling",
+        "Groundwater Isotopes",
+        "Groundwater Flow",
+        "Forest Drought Response",
+        "Drought Monitoring"
+      ],
+      "coreness_score": 22832
+    },
+    {
+      "name": "Journal of Membrane Science",
+      "source_id": "S119469986",
+      "issn_l": "0376-7388",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Water Purification",
+        "Membrane Gas Separation",
+        "Fuel Cell Membranes",
+        "Capacitive Deionization",
+        "Battery Recycling"
+      ],
+      "coreness_score": 22750
+    },
+    {
+      "name": "Microwave and Optical Technology Letters",
+      "source_id": "S59479367",
+      "issn_l": "0895-2477",
+      "publisher": "Wiley",
+      "fields": [
+        "Mathematics and computer science",
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Antenna Design",
+        "Microwave Engineering",
+        "RF IC Design",
+        "Integral Equation Methods",
+        "Metasurfaces"
+      ],
+      "coreness_score": 22455
+    },
+    {
+      "name": "Physica C Superconductivity",
+      "source_id": "S139340696",
+      "issn_l": "0921-4534",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "High-Temperature Superconductivity",
+        "Superconductivity",
+        "Iron-Based Superconductivity"
+      ],
+      "coreness_score": 22283
+    },
+    {
+      "name": "Aquaculture",
+      "source_id": "S104261359",
+      "issn_l": "0044-8486",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Life and earth sciences",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Aquaculture Nutrition",
+        "Fish Immunology",
+        "Aquaculture Impact",
+        "Fish Reproduction",
+        "Invertebrate Immunity"
+      ],
+      "coreness_score": 22184
+    },
+    {
+      "name": "Proceedings of the International Astronomical Union",
+      "source_id": "S4210212087",
+      "issn_l": "1743-9213",
+      "publisher": "Cambridge University Press",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Stellar Astrophysics",
+        "Galaxy Formation",
+        "Star Formation",
+        "Solar Physics",
+        "Black Hole Astrophysics"
+      ],
+      "coreness_score": 22168
+    },
+    {
+      "name": "INTERNATIONAL JOURNAL OF SYSTEMATIC AND EVOLUTIONARY MICROBIOLOGY",
+      "source_id": "S102181007",
+      "issn_l": "1466-5026",
+      "publisher": "Microbiology Society",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "RNA-seq Analysis",
+        "Yeast Diversity",
+        "Legume Symbiosis"
+      ],
+      "coreness_score": 22017
+    },
+    {
+      "name": "Applied Thermal Engineering",
+      "source_id": "S129676613",
+      "issn_l": "1359-4311",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Waste Heat Recovery",
+        "Flow Boiling",
+        "Microchannel Heat Transfer",
+        "Phase Change Materials",
+        "Thermochemical Energy Storage"
+      ],
+      "coreness_score": 21975
+    },
+    {
+      "name": "International Journal of Biological Macromolecules",
+      "source_id": "S83853393",
+      "issn_l": "0141-8130",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering",
+        "Biomedical and health sciences",
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Plant Cell Walls",
+        "Chitin and Chitosan",
+        "Dietary Fiber",
+        "Hydrogel Biomedical Applications",
+        "Nanocellulose"
+      ],
+      "coreness_score": 21763
+    },
+    {
+      "name": "Urology",
+      "source_id": "S196979320",
+      "issn_l": "0090-4295",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Prostate Cancer",
+        "Lower Urinary Tract",
+        "Bladder Cancer",
+        "Kidney Stones",
+        "Renal Cell Carcinoma"
+      ],
+      "coreness_score": 21718
+    },
+    {
+      "name": "Gastrointestinal Endoscopy",
+      "source_id": "S28527816",
+      "issn_l": "0016-5107",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Biliary Disease",
+        "Colorectal Cancer",
+        "Gastrointestinal Bleeding",
+        "Esophageal Cancer",
+        "Pancreatic Cancer"
+      ],
+      "coreness_score": 21704
+    },
+    {
+      "name": "Chemistry - A European Journal",
+      "source_id": "S68911691",
+      "issn_l": "0947-6539",
+      "publisher": "Wiley",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Supramolecular Chemistry",
+        "Main Group Chemistry",
+        "Molecular Magnetism",
+        "Gold Catalysis",
+        "Aromaticity"
+      ],
+      "coreness_score": 21550
+    },
+    {
+      "name": "World Neurosurgery",
+      "source_id": "S59624048",
+      "issn_l": "1878-8750",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Cerebral Aneurysms",
+        "Lumbar Disc Degeneration",
+        "Gliomas",
+        "Meningiomas",
+        "Spine Surgery"
+      ],
+      "coreness_score": 21322
+    },
+    {
+      "name": "Journal of Allergy and Clinical Immunology",
+      "source_id": "S108525051",
+      "issn_l": "0091-6749",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Asthma",
+        "Food Allergy",
+        "Allergic Rhinitis",
+        "Atopic Dermatitis",
+        "Primary Immunodeficiencies"
+      ],
+      "coreness_score": 21208
+    },
+    {
+      "name": "Plastic & Reconstructive Surgery",
+      "source_id": "S100736837",
+      "issn_l": "0032-1052",
+      "publisher": "Lippincott Williams & Wilkins",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Microsurgical Reconstruction",
+        "Breast Reconstruction",
+        "Facial Fillers",
+        "Craniofacial Development",
+        "Body Contouring"
+      ],
+      "coreness_score": 21084
+    },
+    {
+      "name": "IEEE Transactions on Electron Devices",
+      "source_id": "S162355128",
+      "issn_l": "0018-9383",
+      "publisher": "Institute of Electrical and Electronics Engineers",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Nanoelectronics",
+        "III-Nitride Semiconductors",
+        "Atomic Layer Deposition",
+        "Vacuum Electronic Sources",
+        "Power Electronics"
+      ],
+      "coreness_score": 20901
+    },
+    {
+      "name": "Journal of Animal Science",
+      "source_id": "S72684844",
+      "issn_l": "0021-8812",
+      "publisher": "Oxford University Press",
+      "fields": [
+        "Life and earth sciences"
+      ],
+      "micro_topics": [
+        "Ruminant Nutrition",
+        "Animal Nutrition",
+        "Genomic Selection",
+        "Animal Welfare",
+        "Reproductive Health"
+      ],
+      "coreness_score": 20819
+    },
+    {
+      "name": "Applied Catalysis B: Environmental",
+      "source_id": "S134307298",
+      "issn_l": "0926-3373",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering"
+      ],
+      "micro_topics": [
+        "Photocatalytic Materials",
+        "Catalytic Nanomaterials",
+        "Photocatalysis",
+        "Electrocatalysis",
+        "Advanced Oxidation Processes"
+      ],
+      "coreness_score": 20764
+    },
+    {
+      "name": "Carbohydrate Polymers",
+      "source_id": "S64311837",
+      "issn_l": "0144-8617",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Physical sciences and engineering",
+        "Life and earth sciences",
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Nanocellulose",
+        "Chitin and Chitosan",
+        "Plant Cell Walls",
+        "Dietary Fiber",
+        "Hydrogel Biomedical Applications"
+      ],
+      "coreness_score": 20749
+    },
+    {
+      "name": "The Journal of Clinical Endocrinology & Metabolism",
+      "source_id": "S205775358",
+      "issn_l": "0021-972X",
+      "publisher": "Oxford University Press",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Insulin-like Growth Factors",
+        "Thyroid Disease",
+        "Thyroid Cancer",
+        "Pituitary Disorders",
+        "Polycystic Ovary Syndrome"
+      ],
+      "coreness_score": 20745
+    },
+    {
+      "name": "Journal of Hepatology",
+      "source_id": "S83651209",
+      "issn_l": "0168-8278",
+      "publisher": "Elsevier BV",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Hepatitis C",
+        "Hepatitis B",
+        "Liver Disease",
+        "Nonalcoholic Fatty Liver Disease",
+        "Hepatocellular Carcinoma"
+      ],
+      "coreness_score": 20677
+    },
+    {
+      "name": "Spine",
+      "source_id": "S4026894",
+      "issn_l": "0362-2436",
+      "publisher": "Lippincott Williams & Wilkins",
+      "fields": [
+        "Biomedical and health sciences"
+      ],
+      "micro_topics": [
+        "Lumbar Disc Degeneration",
+        "Spinal Deformity",
+        "Chronic Pain",
+        "Spine Surgery",
+        "Cervical Spine Surgery"
+      ],
+      "coreness_score": 20625
+    },
+    {
+      "name": "Physics of Fluids",
+      "source_id": "S22862804",
+      "issn_l": "1070-6631",
+      "publisher": "American Institute of Physics",
+      "fields": [
+        "Physical sciences and engineering",
+        "Mathematics and computer science"
+      ],
+      "micro_topics": [
+        "Turbulent Flows",
+        "Drop Impact Dynamics",
+        "Vortex-Induced Vibrations",
+        "Kinetic Theory",
+        "Turbulent Combustion"
+      ],
+      "coreness_score": 20519
+    }
+  ]
+}

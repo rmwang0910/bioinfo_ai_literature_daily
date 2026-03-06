@@ -49,6 +49,12 @@ except ImportError as e:
 
 from main import BioinfoAILiteratureDaily
 
+try:
+    from core.rag.field_classifier import RAGFieldClassifier
+    logger.info("✅ 成功导入 RAG 领域分类器模块")
+except ImportError as e:
+    logger.warning(f"无法导入 RAG 领域分类器模块: {e}")
+    RAGFieldClassifier = None
 
 class LiteratureAgent:
     """文献智能体"""
@@ -93,6 +99,15 @@ class LiteratureAgent:
                     logger.warning("未设置 LLM_API_KEY，将使用简单模式")
             except Exception as e:
                 logger.warning(f"无法初始化LLM: {e}，将使用简单模式")
+        
+        # 初始化 RAG 领域分类器
+        self.field_classifier = None
+        if RAGFieldClassifier:
+            try:
+                self.field_classifier = RAGFieldClassifier()
+                logger.info("RAG 领域分类器已初始化，支持基于知识库的领域增强")
+            except Exception as e:
+                logger.warning(f"无法初始化 RAG 领域分类器: {e}")
     
     def _load_prompt(self, prompt_name: str) -> str:
         """
@@ -436,7 +451,14 @@ class LiteratureAgent:
                 # 过滤掉无意义词
                 invalid_chinese = ['关于', '相关', '文献', '发送', '到', '找', '搜索', '年关于', '发送到', '的文献', '文献的']
                 if kw not in invalid_chinese:
-                    if self._is_valid_keyword(kw):
+                    if '或者' in kw or '或' in kw:
+                        split_parts = re.split(r'或者|或', kw)
+                        for part in split_parts:
+                            part = part.strip()
+                            part = re.sub(r'(的|相关|研究|文献|回顾性研究|回顾性)$', '', part).strip()
+                            if part and self._is_valid_keyword(part):
+                                keywords.append(part)
+                    elif self._is_valid_keyword(kw):
                         keywords.append(kw)
         
         # 清理和去重关键词
@@ -445,8 +467,6 @@ class LiteratureAgent:
             keywords = list(set(keywords))
             # 过滤无效关键词
             keywords = [kw for kw in keywords if self._is_valid_keyword(kw)]
-            # 移除包含"或者"、"或"的关键词（这些应该被拆分）
-            keywords = [kw for kw in keywords if '或者' not in kw and '或' not in kw]
             # 移除包含"的"、"相关"、"文献"等无意义后缀的关键词
             keywords = [kw for kw in keywords if not kw.endswith('的') and not kw.endswith('相关') and not kw.endswith('文献')]
             # 移除包含"发送"、"到"等无意义词的关键词
@@ -460,6 +480,76 @@ class LiteratureAgent:
         if email_match:
             parsed['to_email'] = email_match.group(1)
             logger.info(f"简单解析：提取到邮箱: {parsed['to_email']}")
+
+        filter_cfg: Dict[str, Any] = {}
+
+        min_if_patterns = [
+            r'影响因子\s*(?:>=|＞=|大于等于|不低于|不少于)\s*(\d+(?:\.\d+)?)',
+            r'影响因子\s*(?:>|＞|高于|大于)\s*(\d+(?:\.\d+)?)',
+            r'IF\s*(?:>=|>)\s*(\d+(?:\.\d+)?)'
+        ]
+        for p in min_if_patterns:
+            m = re.search(p, user_input, re.IGNORECASE)
+            if m:
+                filter_cfg['min_impact_factor'] = float(m.group(1))
+                break
+
+        max_if_patterns = [
+            r'影响因子\s*(?:<=|＜=|小于等于|不高于|不超过|最多)\s*(\d+(?:\.\d+)?)',
+            r'影响因子\s*(?:<|＜|低于|小于)\s*(\d+(?:\.\d+)?)',
+            r'IF\s*(?:<=|<)\s*(\d+(?:\.\d+)?)'
+        ]
+        for p in max_if_patterns:
+            m = re.search(p, user_input, re.IGNORECASE)
+            if m:
+                filter_cfg['max_impact_factor'] = float(m.group(1))
+                break
+
+        if not filter_cfg.get('min_impact_factor'):
+            m = re.search(r'影响因子\s*(\d+(?:\.\d+)?)\s*以上', user_input, re.IGNORECASE)
+            if m:
+                filter_cfg['min_impact_factor'] = float(m.group(1))
+        if not filter_cfg.get('max_impact_factor'):
+            m = re.search(r'影响因子\s*(\d+(?:\.\d+)?)\s*以下', user_input, re.IGNORECASE)
+            if m:
+                filter_cfg['max_impact_factor'] = float(m.group(1))
+
+        journal_patterns = [
+            r'(?:期刊|journal)[为是:：\s]+([^。；;]+)',
+            r'(?:限定|只看|仅看)([^。；;]+?)(?:期刊|journal)'
+        ]
+        for p in journal_patterns:
+            m = re.search(p, user_input, re.IGNORECASE)
+            if not m:
+                continue
+            journal_str = m.group(1).strip()
+            journal_str = re.split(r'(?:领域|方向|学科|field|domain|影响因子|IF|发送|邮箱)', journal_str, maxsplit=1)[0].strip()
+            journal_parts = re.split(r'[、,，;；]|和|或|以及|/|\|', journal_str)
+            journals = [j.strip(" \"'“”‘’") for j in journal_parts if j.strip(" \"'“”‘’")]
+            if journals:
+                filter_cfg['allowed_journals'] = journals
+                break
+
+        field_patterns = [
+            r'(?:领域|方向|学科|field|domain)[为是:：\s]+([^。；;]+)',
+            r'(?:限定|只看|仅看)([^。；;]+?)(?:领域|方向|学科|field|domain)'
+        ]
+        for p in field_patterns:
+            m = re.search(p, user_input, re.IGNORECASE)
+            if not m:
+                continue
+            field_str = m.group(1).strip()
+            field_str = re.split(r'(?:期刊|journal|影响因子|IF|发送|邮箱)', field_str, maxsplit=1)[0].strip()
+            field_parts = re.split(r'[、,，;；]|和|或|以及|/|\|', field_str)
+            fields = [f.strip(" \"'“”‘’") for f in field_parts if f.strip(" \"'“”‘’")]
+            if fields:
+                filter_cfg['allowed_fields'] = fields
+                break
+
+        if filter_cfg:
+            parsed['filter'] = parsed.get('filter', {})
+            parsed['filter'].update(filter_cfg)
+            logger.info(f"简单解析：提取到过滤条件: {filter_cfg}")
         
         return parsed
     
@@ -608,8 +698,10 @@ class LiteratureAgent:
 用户需求：{user_input}
 
 请提取以下信息（如果用户没有明确说明，使用默认值或从上下文推断）：
-1. 搜索关键词（多个关键词用列表形式，支持PubMed查询语法）
-2. 时间范围（非常重要，请仔细解析）：
+1. 主题关键词（topic_keywords）：核心研究主题
+2. 文章类型关键词（article_type_keywords）：例如回顾性研究、综述、meta分析
+3. 检索查询字符串（boolean_query）：英文布尔检索式，必须正确使用AND/OR/NOT与括号
+4. 时间范围（非常重要，请仔细解析）：
    - days_back: 最近N天（如果用户说"最近7天"、"最近一周"、"最近一个月"等）
    - min_date和max_date: 日期范围（格式：YYYY-MM-DD），支持以下表达方式：
      * 单个年份："2026年" → min_date: "2026-01-01", max_date: "2026-12-31"
@@ -623,13 +715,16 @@ class LiteratureAgent:
      * 模糊时间："2024年初" → 2024年1月1日到3月31日
      * 模糊时间："2024年底" → 2024年10月1日到12月31日
      * 至今范围："2023年至今"、"2023年到现在" → min_date: "2023-01-01", max_date: 当前日期
-3. 收件人邮箱（如果用户提供了）
-4. 关键词组合方式（keyword_operator: "AND"表示交集，需要同时包含所有关键词；"OR"表示并集，包含任一关键词即可。根据用户语义判断）
-5. 其他要求（如过滤条件、文献数量等）
+5. 收件人邮箱（如果用户提供了）
+6. 关键词组合方式（keyword_operator: "AND"表示交集，需要同时包含所有关键词；"OR"表示并集，包含任一关键词即可。根据用户语义判断）
+7. 过滤条件：影响因子范围、期刊名单、领域名单
+8. 其他要求（如文献数量等）
 
 请以JSON格式输出，格式如下：
 {{
-    "keywords": ["keyword1", "keyword2"],
+    "topic_keywords": ["keyword1", "keyword2"],
+    "article_type_keywords": ["review", "retrospective analysis"] 或 null,
+    "boolean_query": "(term1 OR term2) AND term3",
     "keyword_operator": "AND",
     "days_back": null,
     "min_date": "2026-01-01",
@@ -639,7 +734,11 @@ class LiteratureAgent:
     "filter": {{
         "min_abstract_length": 100,
         "exclude_keywords": [],
-        "include_keywords": []
+        "include_keywords": [],
+        "allowed_journals": [],
+        "allowed_fields": [],
+        "min_impact_factor": null,
+        "max_impact_factor": null
     }}
 }}
 
@@ -718,6 +817,9 @@ class LiteratureAgent:
                         elif key == 'logical_keywords_description' and value:
                             # 保存关键词逻辑的自然语言描述，供严格验证阶段使用
                             merged['logical_keywords_description'] = str(value).strip()
+                        elif key == 'boolean_query' and value:
+                            # 保存LLM构建的布尔查询字符串
+                            merged['boolean_query'] = str(value).strip()
                         elif key == 'keyword_operator' and value:
                             merged['keyword_operator'] = value
                         elif key == 'to_email' and value:
@@ -725,7 +827,10 @@ class LiteratureAgent:
                         elif key == 'max_papers' and value:
                             merged['max_papers'] = value
                         elif key == 'filter' and value:
-                            merged['filter'] = value
+                            merged_filter = merged.get('filter', {}) if isinstance(merged.get('filter'), dict) else {}
+                            if isinstance(value, dict):
+                                merged_filter.update(value)
+                            merged['filter'] = merged_filter
                 
                 # 对关键词做一次语义去重，避免 'single cell' / 'single-cell' 这种重复概念
                 if 'topic_keywords' in merged and isinstance(merged['topic_keywords'], list):
@@ -737,6 +842,43 @@ class LiteratureAgent:
                     merged['keywords'] = self._deduplicate_semantic_keywords(
                         [str(k) for k in merged['keywords']]
                     )
+                
+                # RAG 知识增强：基于用户需求自动推断相关领域
+                if self.field_classifier:
+                    try:
+                        # 组合查询文本：用户输入 + 提取的主题关键词
+                        topic_kws = merged.get('topic_keywords', []) or merged.get('keywords', [])
+                        query_text = f"{user_input} {' '.join(topic_kws)}"
+                        
+                        # 获取建议领域（Micro/Meso/Macro）
+                        suggestions = self.field_classifier.classify(query_text, top_k=3, threshold=0.45)
+                        
+                        if suggestions:
+                            current_filter = merged.get('filter', {})
+                            current_fields = set(current_filter.get('allowed_fields', []))
+                            
+                            new_fields = []
+                            for item in suggestions:
+                                field_name = item['field']['name']
+                                if field_name not in current_fields:
+                                    current_fields.add(field_name)
+                                    new_fields.append(f"{field_name} ({item['field']['level']})")
+                                    
+                                    # 自动扩展子领域（例如：选中 Machine Learning 会自动选中 Deep Learning）
+                                    # 这是利用 Micro/Meso/Macro 层级结构的具体体现
+                                    descendants = self.field_classifier.get_descendants(field_name)
+                                    for desc in descendants:
+                                        if desc['name'] not in current_fields:
+                                            current_fields.add(desc['name'])
+                                            new_fields.append(f"  ↳ {desc['name']} ({desc['level']})")
+                            
+                            if new_fields:
+                                current_filter['allowed_fields'] = list(current_fields)
+                                merged['filter'] = current_filter
+                                logger.info(f"RAG 知识增强：根据语义推断，自动扩展领域筛选: {', '.join(new_fields)}")
+                    except Exception as e:
+                        logger.warning(f"RAG 领域推断失败: {e}")
+
                 logger.info(f"合并后的解析结果: {merged}")
                 return merged
             else:
@@ -1008,6 +1150,11 @@ class LiteratureAgent:
             self.base_agent.config['search']['logical_keywords_description'] = str(logical_desc).strip()
             logger.info(f"✅ 记录关键词逻辑描述（用于严格验证阶段）：{logical_desc}")
         
+        # 获取LLM构建的布尔查询字符串
+        boolean_query = parsed_request.get('boolean_query')
+        if boolean_query:
+            logger.info(f"✅ LLM构建了布尔查询字符串: {boolean_query}")
+        
         # 处理主题关键词（用于第一层检索）
         if topic_keywords:
             keywords = topic_keywords
@@ -1039,6 +1186,13 @@ class LiteratureAgent:
                     self.base_agent.config['search']['keywords'] = [query]
                     logger.info(f"✅ 检测到高级检索式，直接使用用户提供的查询: {query}")
                     # 语义关键词仍然保存原始 cleaned_keywords，供严格验证使用
+                    self.base_agent.config['search']['semantic_keywords'] = cleaned_keywords
+                    logger.info(f"✅ 保留语义关键词（用于验证）: {cleaned_keywords}")
+                elif boolean_query:
+                    # 使用LLM构建的布尔查询字符串
+                    self.base_agent.config['search']['keywords'] = [boolean_query]
+                    logger.info(f"✅ 使用LLM构建的布尔查询字符串: {boolean_query}")
+                    # 语义关键词保存原始 cleaned_keywords，供严格验证使用
                     self.base_agent.config['search']['semantic_keywords'] = cleaned_keywords
                     logger.info(f"✅ 保留语义关键词（用于验证）: {cleaned_keywords}")
                 else:
@@ -1178,6 +1332,14 @@ class LiteratureAgent:
                 self.base_agent.config['filter']['exclude_keywords'] = filter_config['exclude_keywords']
             if 'include_keywords' in filter_config:
                 self.base_agent.config['filter']['include_keywords'] = filter_config['include_keywords']
+            if 'allowed_journals' in filter_config:
+                self.base_agent.config['filter']['allowed_journals'] = filter_config['allowed_journals']
+            if 'allowed_fields' in filter_config:
+                self.base_agent.config['filter']['allowed_fields'] = filter_config['allowed_fields']
+            if 'min_impact_factor' in filter_config:
+                self.base_agent.config['filter']['min_impact_factor'] = filter_config['min_impact_factor']
+            if 'max_impact_factor' in filter_config:
+                self.base_agent.config['filter']['max_impact_factor'] = filter_config['max_impact_factor']
     
     def run_with_request(self, user_input: str = None, override_config: Optional[Dict[str, Any]] = None):
         """
@@ -1353,6 +1515,12 @@ class LiteratureAgent:
             包含所有必需信息的字典，如果用户取消则返回None
         """
         required_info = parsed_request.copy() if parsed_request else {}
+        if not required_info.get('keywords'):
+            topic_keywords = required_info.get('topic_keywords')
+            if isinstance(topic_keywords, list) and topic_keywords:
+                required_info['keywords'] = [str(k).strip() for k in topic_keywords if str(k).strip()]
+            elif required_info.get('boolean_query'):
+                required_info['keywords'] = [str(required_info['boolean_query']).strip()]
         
         # 1. 验证关键词（必需）
         if not required_info.get('keywords'):
@@ -1990,6 +2158,30 @@ def main():
         help='配置文件路径（默认: config.yaml）'
     )
     
+    parser.add_argument(
+        '--min-impact-factor',
+        type=float,
+        help='最小影响因子（覆盖config.yaml中的filter.min_impact_factor）'
+    )
+    
+    parser.add_argument(
+        '--max-impact-factor',
+        type=float,
+        help='最大影响因子（覆盖config.yaml中的filter.max_impact_factor）'
+    )
+    
+    parser.add_argument(
+        '--journals',
+        nargs='+',
+        help='限定期刊列表（覆盖config.yaml中的filter.allowed_journals）'
+    )
+    
+    parser.add_argument(
+        '--fields',
+        nargs='+',
+        help='限定领域列表（覆盖config.yaml中的filter.allowed_fields）'
+    )
+    
     args = parser.parse_args()
     
     # 创建智能体（根据模式）
@@ -2031,6 +2223,23 @@ def main():
             override_config['report']['max_papers'] = args.max_papers
         if args.translate_abstract is not None:
             override_config['report']['translate_abstract'] = args.translate_abstract
+
+    if any([
+        args.min_impact_factor is not None,
+        args.max_impact_factor is not None,
+        args.journals,
+        args.fields
+    ]):
+        if 'filter' not in override_config:
+            override_config['filter'] = {}
+        if args.min_impact_factor is not None:
+            override_config['filter']['min_impact_factor'] = args.min_impact_factor
+        if args.max_impact_factor is not None:
+            override_config['filter']['max_impact_factor'] = args.max_impact_factor
+        if args.journals:
+            override_config['filter']['allowed_journals'] = args.journals
+        if args.fields:
+            override_config['filter']['allowed_fields'] = args.fields
     
     # 处理用户输入
     if args.mode == "scheduled":

@@ -3,13 +3,19 @@ OpenAI Provider实现 (简化版)
 """
 import json
 import logging
+import os
+import time
 from typing import Any, Dict, Optional
 
 try:
-    from openai import OpenAI
+    from openai import OpenAI, APIConnectionError, APITimeoutError, RateLimitError, APIStatusError
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
+    APIConnectionError = Exception
+    APITimeoutError = Exception
+    RateLimitError = Exception
+    APIStatusError = Exception
 
 from .base import LLMProvider, LLMResponse
 from core.config import LLMConfig
@@ -41,6 +47,14 @@ class OpenAIProvider(LLMProvider):
             base_url=config.base_url,
             timeout=config.timeout
         )
+        self.max_retries = max(1, int(os.getenv("LLM_MAX_RETRIES", "3")))
+        self.retry_backoff = max(0.0, float(os.getenv("LLM_RETRY_BACKOFF", "1.5")))
+        retry_status_codes_raw = os.getenv("LLM_RETRY_STATUS_CODES", "408,409,429,500,502,503,504")
+        self.retry_status_codes = {
+            int(code.strip())
+            for code in retry_status_codes_raw.split(",")
+            if code.strip().isdigit()
+        }
         
         logger.info(f"OpenAI Provider initialized: {config.base_url}")
     
@@ -52,22 +66,56 @@ class OpenAIProvider(LLMProvider):
         **kwargs
     ) -> str:
         """生成文本"""
-        try:
-            response = self.client.chat.completions.create(
-                model=self.config.model,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=max_tokens or self.config.max_tokens,
-                temperature=temperature or self.config.temperature,
-                **kwargs
-            )
-            
-            return response.choices[0].message.content
-            
-        except Exception as e:
-            logger.error(f"LLM生成失败: {e}")
-            raise
+        last_exception = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.config.model,
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=max_tokens or self.config.max_tokens,
+                    temperature=temperature or self.config.temperature,
+                    **kwargs
+                )
+                return response.choices[0].message.content or ""
+            except Exception as e:
+                last_exception = e
+                can_retry = self._can_retry(e) and attempt < self.max_retries
+                if can_retry:
+                    wait_seconds = 0.0 if self.retry_backoff <= 0 else self.retry_backoff ** (attempt - 1)
+                    logger.warning(
+                        f"LLM请求失败（第{attempt}/{self.max_retries}次）: {e}; "
+                        f"{wait_seconds:.1f}s 后重试"
+                    )
+                    if wait_seconds > 0:
+                        time.sleep(wait_seconds)
+                    continue
+                logger.error(f"LLM生成失败: {e}")
+                raise
+        if last_exception:
+            raise last_exception
+        raise RuntimeError("LLM生成失败：未知错误")
+
+    def _can_retry(self, error: Exception) -> bool:
+        if isinstance(error, (APIConnectionError, APITimeoutError, RateLimitError)):
+            return True
+        if isinstance(error, APIStatusError):
+            status_code = getattr(error, "status_code", None)
+            return status_code in self.retry_status_codes
+        status_code = getattr(error, "status_code", None)
+        if isinstance(status_code, int) and status_code in self.retry_status_codes:
+            return True
+        message = str(error).lower()
+        transient_signals = [
+            "connection error",
+            "timed out",
+            "timeout",
+            "temporarily unavailable",
+            "try again",
+            "rate limit"
+        ]
+        return any(signal in message for signal in transient_signals)
     
     def generate_structured(
         self,

@@ -1,0 +1,113 @@
+{
+  "fields": [
+    {
+      "name": "Artificial Intelligence",
+      "level": "Macro",
+      "description": "Simulation of human intelligence processes by machines, especially computer systems.",
+      "keywords": ["AI", "machine intelligence"]
+    },
+    {
+      "name": "Machine Learning",
+      "level": "Meso",
+      "parent": "Artificial Intelligence",
+      "description": "Study of computer algorithms that improve automatically through experience.",
+      "keywords": ["ML", "learning algorithm", "pattern recognition"]
+    },
+    {
+      "name": "Deep Learning",
+      "level": "Micro",
+      "parent": "Machine Learning",
+      "description": "Part of a broader family of machine learning methods based on artificial neural networks with representation learning.",
+      "keywords": ["neural network", "CNN", "RNN", "transformer", "GPT", "LLM"]
+    },
+    {
+      "name": "Natural Language Processing",
+      "level": "Meso",
+      "parent": "Artificial Intelligence",
+      "description": "Interaction between computers and human language.",
+      "keywords": ["NLP", "text mining", "language model"]
+    },
+    {
+      "name": "Computer Vision",
+      "level": "Meso",
+      "parent": "Artificial Intelligence",
+      "description": "How computers can gain high-level understanding from digital images or videos.",
+      "keywords": ["image processing", "vision"]
+    },
+    {
+      "name": "Biology",
+      "level": "Macro",
+      "description": "Natural science that studies life and living organisms.",
+      "keywords": ["biological", "life science"]
+    },
+    {
+      "name": "Genetics",
+      "level": "Meso",
+      "parent": "Biology",
+      "description": "Study of genes, genetic variation, and heredity in organisms.",
+      "keywords": ["gene", "genome", "DNA", "RNA"]
+    },
+    {
+      "name": "Genomics",
+      "level": "Micro",
+      "parent": "Genetics",
+      "description": "Interdisciplinary field of biology focusing on the structure, function, evolution, mapping, and editing of genomes.",
+      "keywords": ["sequencing", "NGS", "whole genome"]
+    },
+    {
+      "name": "Bioinformatics",
+      "level": "Meso",
+      "parent": "Biology",
+      "description": "Interdisciplinary field that develops methods and software tools for understanding biological data.",
+      "keywords": ["computational biology", "systems biology"]
+    },
+    {
+      "name": "Single Cell Analysis",
+      "level": "Micro",
+      "parent": "Genomics",
+      "description": "Study of genomics, transcriptomics, proteomics and metabolomics at the single cell level.",
+      "keywords": ["scRNA-seq", "single-cell", "scATAC"]
+    },
+    {
+      "name": "Medicine",
+      "level": "Macro",
+      "description": "Science and practice of caring for a patient, managing the diagnosis, prognosis, prevention, treatment, palliation of their injury or disease.",
+      "keywords": ["medical", "clinical", "health"]
+    },
+    {
+      "name": "Oncology",
+      "level": "Meso",
+      "parent": "Medicine",
+      "description": "Branch of medicine that deals with the prevention, diagnosis, and treatment of cancer.",
+      "keywords": ["cancer", "tumor", "malignancy"]
+    },
+    {
+      "name": "Pediatrics",
+      "level": "Meso",
+      "parent": "Medicine",
+      "description": "Branch of medicine that involves the medical care of infants, children, and adolescents.",
+      "keywords": ["child", "children", "infant", "newborn", "neonate", "pediatric"]
+    },
+    {
+      "name": "Neonatology",
+      "level": "Micro",
+      "parent": "Pediatrics",
+      "description": "Subspecialty of pediatrics that consists of the medical care of newborn infants, especially the ill or premature newborn.",
+      "keywords": ["NICU", "preterm", "premature", "birth"]
+    },
+    {
+      "name": "Immunology",
+      "level": "Meso",
+      "parent": "Biology",
+      "description": "Study of immune systems in all organisms.",
+      "keywords": ["immune", "antibody", "t-cell", "b-cell"]
+    },
+    {
+      "name": "Neuroscience",
+      "level": "Meso",
+      "parent": "Biology",
+      "description": "Scientific study of the nervous system.",
+      "keywords": ["brain", "neuron", "neural"]
+    }
+  ]
+}

@@ -114,7 +114,11 @@ class BioinfoAILiteratureDaily:
             'filter': {
                 'min_abstract_length': 100,  # 最小摘要长度
                 'exclude_keywords': [],  # 排除关键词列表
-                'include_keywords': []  # 必须包含的关键词（如果设置）
+                'include_keywords': [],  # 必须包含的关键词（如果设置）
+                'allowed_journals': [],
+                'allowed_fields': [],
+                'min_impact_factor': None,
+                'max_impact_factor': None
             },
             'report': {
                 'max_papers': 50,  # 最多发送50篇文献
@@ -435,6 +439,10 @@ class BioinfoAILiteratureDaily:
         min_abstract_length = raw_min_len if isinstance(raw_min_len, (int, float)) else 0
         exclude_keywords = [kw.lower() for kw in filter_config.get('exclude_keywords', [])]
         include_keywords = [kw.lower() for kw in filter_config.get('include_keywords', [])]
+        allowed_journals = [str(j).strip().lower() for j in filter_config.get('allowed_journals', []) if str(j).strip()]
+        allowed_fields = [str(f).strip().lower() for f in filter_config.get('allowed_fields', []) if str(f).strip()]
+        min_impact_factor = filter_config.get('min_impact_factor')
+        max_impact_factor = filter_config.get('max_impact_factor')
         
         # 获取用于严格验证的关键词（优先使用语义关键词，其次使用检索关键词）
         search_section = self.config.get('search', {})
@@ -453,6 +461,18 @@ class BioinfoAILiteratureDaily:
         filtered_reasons = {}
         
         for paper in papers:
+            metadata_ok, metadata_reason = self._passes_metadata_filters(
+                paper,
+                allowed_journals=allowed_journals,
+                allowed_fields=allowed_fields,
+                min_impact_factor=min_impact_factor,
+                max_impact_factor=max_impact_factor
+            )
+            if not metadata_ok:
+                filtered_count += 1
+                filtered_reasons[metadata_reason] = filtered_reasons.get(metadata_reason, 0) + 1
+                continue
+
             # 检查摘要长度
             if min_abstract_length > 0:
                 if not paper.abstract or len(paper.abstract) < min_abstract_length:
@@ -484,6 +504,46 @@ class BioinfoAILiteratureDaily:
             logger.info(f"过滤掉 {filtered_count} 篇论文（原因: {reasons_str}）")
         
         return filtered, keyword_validation_info
+
+    def _passes_metadata_filters(
+        self,
+        paper: PaperMetadata,
+        allowed_journals: List[str],
+        allowed_fields: List[str],
+        min_impact_factor: Optional[float],
+        max_impact_factor: Optional[float]
+    ) -> tuple[bool, str]:
+        if allowed_journals:
+            journal = (paper.journal or paper.venue or "").strip().lower()
+            if not journal:
+                return False, '缺少期刊信息'
+            if not any(j in journal or journal in j for j in allowed_journals):
+                return False, '不在指定期刊范围'
+
+        if allowed_fields:
+            field_candidates = [str(f).strip().lower() for f in (paper.fields or []) if str(f).strip()]
+            if not field_candidates:
+                text = f"{paper.title or ''} {paper.abstract or ''}".lower()
+                has_field_match = any(f in text for f in allowed_fields)
+            else:
+                has_field_match = any(
+                    (allow in field_val or field_val in allow)
+                    for allow in allowed_fields
+                    for field_val in field_candidates
+                )
+            if not has_field_match:
+                return False, '不在指定领域范围'
+
+        if min_impact_factor is not None or max_impact_factor is not None:
+            impact_factor = self._get_journal_impact_factor(paper.journal)
+            if impact_factor is None:
+                return False, '缺少影响因子信息'
+            if min_impact_factor is not None and impact_factor < float(min_impact_factor):
+                return False, '影响因子低于下限'
+            if max_impact_factor is not None and impact_factor > float(max_impact_factor):
+                return False, '影响因子高于上限'
+
+        return True, ''
     
     def _strict_validate_keywords(self, papers: List[PaperMetadata], keywords: List[str], filter_config: Dict, validation_strictness: str = 'normal') -> tuple[List[PaperMetadata], Dict]:
         """
@@ -535,6 +595,10 @@ class BioinfoAILiteratureDaily:
         # 统一处理摘要长度阈值，防止 None 与 int 比较导致错误
         raw_min_len = filter_config.get('min_abstract_length', 100)
         min_abstract_length = raw_min_len if isinstance(raw_min_len, (int, float)) else 0
+        allowed_journals = [str(j).strip().lower() for j in filter_config.get('allowed_journals', []) if str(j).strip()]
+        allowed_fields = [str(f).strip().lower() for f in filter_config.get('allowed_fields', []) if str(f).strip()]
+        min_impact_factor = filter_config.get('min_impact_factor')
+        max_impact_factor = filter_config.get('max_impact_factor')
         
         total_papers = len(papers)
         if total_papers > 0:
@@ -544,6 +608,21 @@ class BioinfoAILiteratureDaily:
             )
         
         for i, paper in enumerate(papers, 1):
+            metadata_ok, metadata_reason = self._passes_metadata_filters(
+                paper,
+                allowed_journals=allowed_journals,
+                allowed_fields=allowed_fields,
+                min_impact_factor=min_impact_factor,
+                max_impact_factor=max_impact_factor
+            )
+            if not metadata_ok:
+                validation_info[paper.title or f"论文{i}"] = {
+                    'all_match': False,
+                    'reason': metadata_reason,
+                    'keyword_evidence': {}
+                }
+                continue
+
             # 基础过滤：摘要长度
             if min_abstract_length > 0:
                 if not paper.abstract or len(paper.abstract) < min_abstract_length:
@@ -687,8 +766,22 @@ class BioinfoAILiteratureDaily:
         # 统一处理摘要长度阈值，防止 None 与 int 比较导致错误
         raw_min_len = filter_config.get('min_abstract_length', 100)
         min_abstract_length = raw_min_len if isinstance(raw_min_len, (int, float)) else 0
+        allowed_journals = [str(j).strip().lower() for j in filter_config.get('allowed_journals', []) if str(j).strip()]
+        allowed_fields = [str(f).strip().lower() for f in filter_config.get('allowed_fields', []) if str(f).strip()]
+        min_impact_factor = filter_config.get('min_impact_factor')
+        max_impact_factor = filter_config.get('max_impact_factor')
         
         for paper in papers:
+            metadata_ok, _ = self._passes_metadata_filters(
+                paper,
+                allowed_journals=allowed_journals,
+                allowed_fields=allowed_fields,
+                min_impact_factor=min_impact_factor,
+                max_impact_factor=max_impact_factor
+            )
+            if not metadata_ok:
+                continue
+
             if min_abstract_length > 0:
                 if not paper.abstract or len(paper.abstract) < min_abstract_length:
                     continue
@@ -1407,15 +1500,24 @@ class BioinfoAILiteratureDaily:
             
             html += f"""
                 <div class="paper">
-                    <div class="title">{i}. {title}</div>
+                    <div class="title">
+                        <a href="{paper.url}" class="link" target="_blank">{title}</a>
+                        {f'<span style="background-color: #ff9800; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; margin-left: 8px; vertical-align: middle;">OPEN ACCESS</span>' if getattr(paper, 'is_open_access', False) else ''}
+                    </div>
                     <div class="meta">
                         <strong>作者:</strong> {authors_str}<br>
                         <strong>期刊:</strong> {journal_display}<br>
                         <strong>发表日期:</strong> {pub_date_str}
+                        {f'<br><strong>被引:</strong> {paper.citation_count}' if getattr(paper, 'citation_count', 0) > 0 else ''}
+                        {f'<br><strong>机构:</strong> {", ".join(paper.institutions[:2])}...' if getattr(paper, 'institutions', None) else ''}
                         {f'<br><strong>DOI:</strong> {paper.doi}' if paper.doi else ''}
                     </div>
                     {abstract_html}
-                    {f'<div style="margin-top: 10px;"><a href="{paper.url}" class="link">查看原文</a></div>' if paper.url else ''}
+                    <div style="margin-top: 10px;">
+                        <a href="{paper.url}" class="link" target="_blank">查看原文</a>
+                        {f' | <a href="{paper.pdf_url}" class="link" target="_blank">PDF下载</a>' if paper.pdf_url else ''}
+                        {f' | <a href="{paper.open_access_url}" class="link" target="_blank">OA链接</a>' if getattr(paper, 'open_access_url', None) and paper.open_access_url != paper.pdf_url else ''}
+                    </div>
                 </div>
             """
         
@@ -1534,11 +1636,22 @@ class BioinfoAILiteratureDaily:
             if impact_factor:
                 journal_display += f" (IF: {impact_factor:.1f})"
             
+            # Open Access 标记
+            oa_tag = "[OA] " if getattr(paper, 'is_open_access', False) else ""
+            
+            # 引用数
+            citation_info = f" | 被引: {paper.citation_count}" if getattr(paper, 'citation_count', 0) > 0 else ""
+            
+            # 机构信息
+            inst_info = ""
+            if getattr(paper, 'institutions', None):
+                inst_info = f"\n   机构: {', '.join(paper.institutions[:2])}"
+            
             text += f"""
-{i}. {paper.title or '无标题'}
+{i}. {oa_tag}{paper.title or '无标题'}
    作者: {authors_str}
    期刊: {journal_display}
-   发表日期: {pub_date_str}
+   发表日期: {pub_date_str}{citation_info}{inst_info}
    {f'DOI: {paper.doi}' if paper.doi else ''}
    {f'链接: {paper.url}' if paper.url else ''}
    {abstract_text}

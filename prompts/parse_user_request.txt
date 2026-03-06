@@ -5,16 +5,17 @@
 请提取以下信息（如果用户没有明确说明，使用默认值或从上下文推断）：
 1. **主题关键词**（topic_keywords）：用于第一层检索的核心生物学/医学概念关键词
    - 例如："三碱基重复"、"疾病"、"单细胞"、"AI"等
-   - 这些是研究主题或技术概念，用于在数据库中检索相关文献
 2. **文章类型关键词**（article_type_keywords）：用于第二层过滤的文章类型或研究方法关键词
    - 例如："回顾性分析"、"综述"、"检测方法"、"meta分析"、"系统综述"等
-   - 这些是文章类型或研究设计，用于在检索结果中筛选特定类型的文献
-   - 如果用户没有明确提到文章类型，此字段设为null或空列表
-3. **关键词逻辑描述**（logical_keywords_description）：用自然语言简要说明用户期望的 AND / OR 关系
-   - 例如：
-     - "儿童相关概念（child, children, pediatric）视为同一组OR关系；新生儿相关概念（neonate, neonatal, newborn）视为另一组OR关系；两组之间采用AND。"
-     - "抑郁症 和 代谢物 必须同时出现（AND）；代谢物相关词如metabolite, metabolites视为同一组OR。"
-   - 这一字段将传递给后续的严格验证阶段，用于指导LLM按组别进行 AND/OR 判断
+3. **检索查询字符串**（boolean_query）：**非常重要**。请构建一个适合 PubMed/ArXiv 的**英文**布尔检索字符串。
+   - 必须将中文关键词翻译为英文。
+   - 必须正确使用 AND, OR, NOT 逻辑运算符和括号。
+   - 必须包含主题关键词和文章类型关键词（如果存在）。
+   - 示例1（简单）："single cell AND cancer"
+   - 示例2（复杂）："(child OR children OR pediatric OR neonate OR newborn) AND (electrolyte disturbance OR electrolyte disorder) AND (gene mutation OR genetic variant) AND (retrospective study OR retrospective analysis)"
+   - 注意：这是直接用于数据库检索的字符串，请确保语法正确，尽量涵盖同义词以提高召回率。
+4. **关键词逻辑描述**（logical_keywords_description）：用自然语言简要说明用户期望的 AND / OR 关系
+   - 例如："儿童相关概念（child, children, pediatric）视为同一组OR关系；新生儿相关概念（neonate, neonatal, newborn）视为另一组OR关系；两组之间采用AND。"
 4. 时间范围（非常重要，请仔细解析）：
    - days_back: 最近N天（如果用户说"最近7天"、"最近一周"、"最近一个月"等）
    - min_date和max_date: 日期范围（格式：YYYY-MM-DD），支持以下表达方式：
@@ -37,7 +38,8 @@
 {{
     "topic_keywords": ["keyword1", "keyword2"],
     "article_type_keywords": ["review", "retrospective analysis"] 或 null,
-    "logical_keywords_description": "简洁描述各关键词之间的AND/OR关系，例如：'儿童相关概念（child, children, pediatric）OR，新生儿相关概念（neonate, neonatal, newborn）OR，两组之间AND。'",
+    "boolean_query": "(term1 OR term2) AND term3",
+    "logical_keywords_description": "简洁描述各关键词之间的AND/OR关系",
     "keyword_operator": "AND",
     "days_back": null,
     "min_date": "2026-01-01",
@@ -47,13 +49,21 @@
     "filter": {{
         "min_abstract_length": 100,
         "exclude_keywords": [],
-        "include_keywords": []
+        "include_keywords": [],
+        "allowed_journals": [],
+        "allowed_fields": [],
+        "min_impact_factor": null,
+        "max_impact_factor": null
     }}
 }}
 
 **重要说明**：
+- `boolean_query`：这是最重要的字段。请尽力构建一个高质量的英文布尔查询字符串。如果用户输入是中文，必须翻译成英文。正确使用括号和逻辑运算符。
 - `topic_keywords`：用于第一层数据库检索的主题关键词（如"三碱基重复"、"疾病"）
 - `article_type_keywords`：用于第二层LLM过滤的文章类型关键词（如"综述"、"回顾性分析"、"检测方法"）
+- `filter.allowed_journals`：用户指定期刊名称列表，例如 ["Nature", "Cell"]
+- `filter.allowed_fields`：用户指定领域列表，例如 ["Pediatrics", "Neonatology", "Electrolyte metabolism"]
+- `filter.min_impact_factor` / `filter.max_impact_factor`：影响因子筛选范围
 - 如果用户没有明确提到文章类型要求，`article_type_keywords` 设为 null 或 []
 - 为了向后兼容，如果无法区分，可以将所有关键词放在 `topic_keywords` 中，`article_type_keywords` 设为 null
 

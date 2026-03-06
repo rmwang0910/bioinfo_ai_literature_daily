@@ -62,7 +62,11 @@ class PaperMetadata:
     # Links & Resources
     url: Optional[str] = None
     pdf_url: Optional[str] = None
-
+    
+    # Open Access info
+    is_open_access: bool = False
+    open_access_url: Optional[str] = None
+    
     # Citations & Influence
     citation_count: int = 0
     reference_count: int = 0
@@ -71,6 +75,9 @@ class PaperMetadata:
     # Fields & Keywords
     fields: List[str] = None  # Research fields/domains
     keywords: List[str] = None
+    
+    # Institutions
+    institutions: List[str] = None
 
     # Full text (if downloaded)
     full_text: Optional[str] = None
@@ -86,6 +93,8 @@ class PaperMetadata:
             self.fields = []
         if self.keywords is None:
             self.keywords = []
+        if self.institutions is None:
+            self.institutions = []
 
     @property
     def primary_identifier(self) -> str:

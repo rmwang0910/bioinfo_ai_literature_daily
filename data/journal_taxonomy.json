@@ -1,0 +1,144 @@
+{
+  "journals": [
+    {
+      "name": "Nature Methods",
+      "abbreviations": ["Nat Methods", "Nat. Methods"],
+      "fields": ["Methods", "Bioinformatics", "Genomics"],
+      "impact_factor_range": "20-30",
+      "description": "Publishes novel methods and significant improvements to tried-and-tested basic research techniques in the life sciences."
+    },
+    {
+      "name": "Nature Biotechnology",
+      "abbreviations": ["Nat Biotechnol", "Nat. Biotechnol."],
+      "fields": ["Biotechnology", "Genomics", "Bioinformatics"],
+      "impact_factor_range": "45-60",
+      "description": "Publishes new concepts in technology/methodology of relevance to the biological, biomedical, agricultural and environmental sciences."
+    },
+    {
+      "name": "Bioinformatics",
+      "abbreviations": ["Bioinformatics"],
+      "fields": ["Bioinformatics", "Computational Biology"],
+      "impact_factor_range": "5-10",
+      "description": "The leading journal in the field, publishing the highest quality scientific papers and review articles of interest to academic and industrial researchers."
+    },
+    {
+      "name": "PLOS Computational Biology",
+      "abbreviations": ["PLOS Comput Biol", "PLoS Comput. Biol."],
+      "fields": ["Computational Biology", "Bioinformatics", "Systems Biology"],
+      "impact_factor_range": "4-5",
+      "description": "Publishes works of significance that further our understanding of living systems at all scales through the application of computational methods."
+    },
+    {
+      "name": "Briefings in Bioinformatics",
+      "abbreviations": ["Brief Bioinform"],
+      "fields": ["Bioinformatics", "Reviews"],
+      "impact_factor_range": "8-12",
+      "description": "Publishes reviews for the users of databases and analytical tools of contemporary genetics, molecular biology and systems biology."
+    },
+    {
+      "name": "Nucleic Acids Research",
+      "abbreviations": ["Nucleic Acids Res", "NAR"],
+      "fields": ["Genomics", "Bioinformatics", "Databases"],
+      "impact_factor_range": "10-20",
+      "description": "Publishes the results of leading edge research into physical, chemical, biochemical and biological aspects of nucleic acids and proteins involved in nucleic acid metabolism."
+    },
+    {
+      "name": "Genome Biology",
+      "abbreviations": ["Genome Biol"],
+      "fields": ["Genomics", "Bioinformatics"],
+      "impact_factor_range": "10-15",
+      "description": "Publishes research articles, new methods and software tools, and reviews in all areas of biology and biomedicine studied from a genomic and post-genomic perspective."
+    },
+    {
+      "name": "BMC Bioinformatics",
+      "abbreviations": ["BMC Bioinformatics"],
+      "fields": ["Bioinformatics"],
+      "impact_factor_range": "3-5",
+      "description": "Publishes original research articles in all aspects of the development, testing and novel application of computational and statistical methods for the modeling and analysis of all kinds of biological data."
+    },
+    {
+      "name": "Nature Machine Intelligence",
+      "abbreviations": ["Nat Mach Intell"],
+      "fields": ["Artificial Intelligence", "Machine Learning"],
+      "impact_factor_range": ">20",
+      "description": "Publishes high-quality original research and reviews in a wide range of topics in machine learning, robotics and AI."
+    },
+    {
+      "name": "IEEE Transactions on Pattern Analysis and Machine Intelligence",
+      "abbreviations": ["IEEE TPAMI", "TPAMI"],
+      "fields": ["Artificial Intelligence", "Computer Vision", "Machine Learning"],
+      "impact_factor_range": ">20",
+      "description": "Publishes articles on all traditional areas of computer vision and image understanding, all traditional areas of pattern analysis and recognition, and selected areas of machine intelligence."
+    },
+    {
+      "name": "Journal of Machine Learning Research",
+      "abbreviations": ["JMLR"],
+      "fields": ["Machine Learning", "Artificial Intelligence"],
+      "impact_factor_range": "5-10",
+      "description": "A forum for the publication of high-quality scholarly articles in all areas of machine learning."
+    },
+    {
+      "name": "Medical Image Analysis",
+      "abbreviations": ["Med Image Anal"],
+      "fields": ["Medical Imaging", "Artificial Intelligence", "Computer Vision"],
+      "impact_factor_range": "10-15",
+      "description": "Provides a forum for the dissemination of new research results in the field of medical image analysis, with special emphasis on efforts related to the applications of computer vision, virtual reality and robotics to biomedical imaging problems."
+    },
+    {
+      "name": "The Lancet Digital Health",
+      "abbreviations": ["Lancet Digit Health"],
+      "fields": ["Digital Health", "Medicine", "Artificial Intelligence"],
+      "impact_factor_range": ">20",
+      "description": "Publishes important, innovative, and practice-changing research on any topic connected with digital technology in clinical medicine, public health, and global health."
+    },
+    {
+      "name": "Journal of the American Medical Informatics Association",
+      "abbreviations": ["JAMIA"],
+      "fields": ["Medical Informatics", "Medicine"],
+      "impact_factor_range": "4-6",
+      "description": "Peer-reviewed journal for biomedical and health informatics."
+    },
+    {
+      "name": "Cell",
+      "abbreviations": ["Cell"],
+      "fields": ["Biology", "Life Sciences"],
+      "impact_factor_range": ">60",
+      "description": "Publishes findings of unusual significance in any area of experimental biology."
+    },
+    {
+      "name": "Nature",
+      "abbreviations": ["Nature"],
+      "fields": ["Multidisciplinary", "Science"],
+      "impact_factor_range": ">60",
+      "description": "A weekly international journal publishing the finest peer-reviewed research in all fields of science and technology."
+    },
+    {
+      "name": "Science",
+      "abbreviations": ["Science"],
+      "fields": ["Multidisciplinary", "Science"],
+      "impact_factor_range": ">50",
+      "description": "Publishes the best research across the sciences, with news and analysis of current science policy and scientist's careers."
+    },
+    {
+      "name": "New England Journal of Medicine",
+      "abbreviations": ["NEJM"],
+      "fields": ["Medicine", "Clinical Medicine"],
+      "impact_factor_range": ">100",
+      "description": "Publishes new medical research findings, review articles, and editorial opinion on a wide variety of topics of importance to biomedical science and clinical practice."
+    },
+    {
+      "name": "The Lancet",
+      "abbreviations": ["Lancet"],
+      "fields": ["Medicine", "Clinical Medicine"],
+      "impact_factor_range": ">100",
+      "description": "An independent, international weekly general medical journal."
+    },
+    {
+      "name": "GigaScience",
+      "abbreviations": ["GigaScience"],
+      "fields": ["Bioinformatics", "Genomics", "Big Data"],
+      "impact_factor_range": "5-10",
+      "description": "Focuses on 'big data' research from the life and biomedical sciences."
+    }
+  ]
+}
