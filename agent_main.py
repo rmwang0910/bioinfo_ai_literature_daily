@@ -66,8 +66,8 @@ class LiteratureAgent:
         Args:
             config_path: 配置文件路径（可选）
             mode: 运行模式
-                - "scheduled": 定时触发模式，完全使用config.yaml配置
-                - "interactive": 交互式模式，完全依赖用户输入，不使用config.yaml默认值
+                - "scheduled": 定时触发模式，使用config.yaml配置
+                - "interactive": 交互式模式，使用config.yaml并以用户输入为准
         """
         # 设置提示词文件夹路径
         self.prompts_dir = Path(__file__).parent / "prompts"
@@ -1354,12 +1354,12 @@ class LiteratureAgent:
         logger.info("=" * 80)
         
         # 应用命令行参数覆盖的配置
+        self._override_config = override_config
         if override_config:
             self._apply_config_overrides(override_config)
         
         if self.mode == "scheduled":
-            # 定时触发模式：直接使用config.yaml配置
-            logger.info("模式: 定时触发（使用config.yaml配置）")
+            logger.info("模式: 定时触发（使用config.scheduled.yaml配置）")
             logger.info("")
             return self._run_scheduled_mode()
         else:
@@ -1389,7 +1389,7 @@ class LiteratureAgent:
                         logger.info(f"✅ 配置覆盖: {section}.{key} = {value}")
     
     def _run_scheduled_mode(self):
-        """定时触发模式：直接使用config.yaml配置"""
+        """定时触发模式：直接使用配置文件"""
         # 直接使用配置文件中的设置
         logger.info("步骤1: 使用配置文件中的设置...")
         logger.info(f"搜索关键词: {self.base_agent.config['search'].get('keywords', [])}")
@@ -1430,12 +1430,30 @@ class LiteratureAgent:
             logger.error("邮件发送失败")
     
     def _run_interactive_mode(self, user_input: str):
-        """交互式模式：完全依赖用户输入，不使用config.yaml默认值"""
+        """交互式模式：完全依赖用户输入"""
         # 1. 解析用户需求
         logger.info("步骤1: 解析用户需求...")
         parsed_request = self.parse_user_request(user_input)
+        if self._override_config:
+            override_search = self._override_config.get('search', {})
+            override_email = self._override_config.get('email', {}).get('to_email')
+            override_days = override_search.get('days_back')
+            override_min_date = override_search.get('min_date')
+            override_max_date = override_search.get('max_date')
+            override_keywords = override_search.get('keywords')
+
+            if override_keywords:
+                parsed_request['keywords'] = override_keywords
+            if override_days is not None:
+                parsed_request['days_back'] = override_days
+            if override_min_date:
+                parsed_request['min_date'] = override_min_date
+            if override_max_date:
+                parsed_request['max_date'] = override_max_date
+            if override_email:
+                parsed_request['to_email'] = override_email
         
-        # 2. 验证必需信息（交互式模式下，不使用config.yaml的默认值）
+        # 2. 验证必需信息（交互式模式下，不使用配置文件默认值）
         logger.info("步骤2: 验证必需信息...")
         required_info = self._validate_and_prompt_required_info(parsed_request)
         
@@ -1443,10 +1461,12 @@ class LiteratureAgent:
             logger.error("缺少必需信息，任务终止")
             return
         
-        # 3. 更新配置（使用用户输入的信息，不使用config.yaml默认值）
+        # 3. 更新配置（使用用户输入的信息，不使用配置文件默认值）
         logger.info("步骤3: 更新配置...")
         logger.info(f"解析结果详情: {required_info}")
         self.update_config_from_request(required_info, user_input)
+        if self._override_config:
+            self._apply_config_overrides(self._override_config)
 
         # 使用最终用于检索的英文关键词，向用户透明化逻辑关系（AND）
         search_cfg = self.base_agent.config.get('search', {})
@@ -2068,7 +2088,7 @@ def main():
         '--mode',
         choices=['scheduled', 'interactive'],
         default='interactive',
-        help='运行模式: scheduled（定时触发，使用config.yaml）或 interactive（交互式，完全依赖用户输入）'
+        help='运行模式: scheduled（定时触发）或 interactive（交互式）'
     )
     
     # 可选参数：命令行直接提供关键词/时间/邮箱（主要用于interactive模式）
@@ -2092,65 +2112,65 @@ def main():
     parser.add_argument(
         '--max-papers',
         type=int,
-        help='最多发送的文献数量（覆盖config.yaml中的report.max_papers）'
+        help='最多发送的文献数量（覆盖配置文件中的report.max_papers）'
     )
     
     parser.add_argument(
         '--translate-abstract',
         type=lambda x: x.lower() in ['true', '1', 'yes', 'on'],
-        help='是否将英文摘要翻译成中文（true/false，覆盖config.yaml中的report.translate_abstract）'
+        help='是否将英文摘要翻译成中文（true/false，覆盖配置文件中的report.translate_abstract）'
     )
     
     parser.add_argument(
         '--max-results-per-keyword',
         type=int,
-        help='每个关键词最多返回的论文数（覆盖config.yaml中的search.max_results_per_keyword，默认20）'
+        help='每个关键词最多返回的论文数（覆盖配置文件中的search.max_results_per_keyword，默认20）'
     )
     
     parser.add_argument(
         '--validation-strictness',
         choices=['normal', 'strict', 'very_strict'],
-        help='验证严格度级别（覆盖config.yaml中的search.validation_strictness）'
+        help='验证严格度级别（覆盖配置文件中的search.validation_strictness）'
     )
     
     parser.add_argument(
         '--strict-validation',
         type=lambda x: x.lower() in ['true', '1', 'yes', 'on'],
-        help='是否启用严格关键词验证（true/false，覆盖config.yaml中的search.strict_keyword_validation）'
+        help='是否启用严格关键词验证（true/false，覆盖配置文件中的search.strict_keyword_validation）'
     )
     
     parser.add_argument(
         '--use-unified-search',
         type=lambda x: x.lower() in ['true', '1', 'yes', 'on'],
-        help='是否使用统一检索（PubMed + arXiv + bioRxiv，true/false，覆盖config.yaml中的search.use_unified_search）'
+        help='是否使用统一检索（PubMed + arXiv + bioRxiv，true/false，覆盖配置文件中的search.use_unified_search）'
     )
     
     parser.add_argument(
         '--skip-sent-dedup',
         type=lambda x: x.lower() in ['true', '1', 'yes', 'on'],
-        help='是否跳过已发送文献去重（true/false，覆盖config.yaml中的search.skip_sent_dedup）'
+        help='是否跳过已发送文献去重（true/false，覆盖配置文件中的search.skip_sent_dedup）'
     )
     
     parser.add_argument(
         '--min-date',
-        help='最小日期（格式：YYYY-MM-DD，覆盖config.yaml中的search.min_date）'
+        help='最小日期（格式：YYYY-MM-DD，覆盖配置文件中的search.min_date）'
     )
     
     parser.add_argument(
         '--max-date',
-        help='最大日期（格式：YYYY-MM-DD，覆盖config.yaml中的search.max_date）'
+        help='最大日期（格式：YYYY-MM-DD，覆盖配置文件中的search.max_date）'
     )
     
     parser.add_argument(
         '--max-core-keywords-for-and',
         type=int,
-        help='默认仅对前N个核心关键词使用AND组合（覆盖config.yaml中的search.max_core_keywords_for_and，默认2）'
+        help='默认仅对前N个核心关键词使用AND组合（覆盖配置文件中的search.max_core_keywords_for_and，默认2）'
     )
     
     parser.add_argument(
         '--enforce-all-keywords-and',
         type=lambda x: x.lower() in ['true', '1', 'yes', 'on'],
-        help='强制所有关键词使用AND组合（true/false，覆盖config.yaml中的search.enforce_all_keywords_and）'
+        help='强制所有关键词使用AND组合（true/false，覆盖配置文件中的search.enforce_all_keywords_and）'
     )
     
     parser.add_argument(
@@ -2161,31 +2181,31 @@ def main():
     parser.add_argument(
         '--min-impact-factor',
         type=float,
-        help='最小影响因子（覆盖config.yaml中的filter.min_impact_factor）'
+        help='最小影响因子（覆盖配置文件中的filter.min_impact_factor）'
     )
     
     parser.add_argument(
         '--max-impact-factor',
         type=float,
-        help='最大影响因子（覆盖config.yaml中的filter.max_impact_factor）'
+        help='最大影响因子（覆盖配置文件中的filter.max_impact_factor）'
     )
     
     parser.add_argument(
         '--journals',
         nargs='+',
-        help='限定期刊列表（覆盖config.yaml中的filter.allowed_journals）'
+        help='限定期刊列表（覆盖配置文件中的filter.allowed_journals）'
     )
     
     parser.add_argument(
         '--fields',
         nargs='+',
-        help='限定领域列表（覆盖config.yaml中的filter.allowed_fields）'
+        help='限定领域列表（覆盖配置文件中的filter.allowed_fields）'
     )
     
     args = parser.parse_args()
     
-    # 创建智能体（根据模式）
-    agent = LiteratureAgent(config_path=args.config, mode=args.mode)
+    config_path = args.config or "config.yaml"
+    agent = LiteratureAgent(config_path=config_path, mode=args.mode)
     
     # 构建配置覆盖字典（从命令行参数）
     override_config = {}
@@ -2194,7 +2214,7 @@ def main():
     if any([args.max_results_per_keyword, args.validation_strictness, args.strict_validation is not None,
             args.use_unified_search is not None, args.skip_sent_dedup is not None,
             args.min_date, args.max_date, args.max_core_keywords_for_and,
-            args.enforce_all_keywords_and is not None]):
+            args.enforce_all_keywords_and is not None, args.keywords, args.days is not None]):
         override_config['search'] = {}
         if args.max_results_per_keyword is not None:
             override_config['search']['max_results_per_keyword'] = args.max_results_per_keyword
@@ -2210,6 +2230,10 @@ def main():
             override_config['search']['min_date'] = args.min_date
         if args.max_date:
             override_config['search']['max_date'] = args.max_date
+        if args.keywords:
+            override_config['search']['keywords'] = args.keywords
+        if args.days is not None:
+            override_config['search']['days_back'] = args.days
         if args.max_core_keywords_for_and is not None:
             override_config['search']['max_core_keywords_for_and'] = args.max_core_keywords_for_and
         if args.enforce_all_keywords_and is not None:
@@ -2223,6 +2247,11 @@ def main():
             override_config['report']['max_papers'] = args.max_papers
         if args.translate_abstract is not None:
             override_config['report']['translate_abstract'] = args.translate_abstract
+
+    if args.email:
+        if 'email' not in override_config:
+            override_config['email'] = {}
+        override_config['email']['to_email'] = args.email
 
     if any([
         args.min_impact_factor is not None,

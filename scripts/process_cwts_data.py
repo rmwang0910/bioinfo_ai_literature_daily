@@ -55,6 +55,10 @@ def build_source_map(data_dir: Path) -> list:
     meso_main_field_df = meso_main_field_df[meso_main_field_df["is_primary_main_field"] == True].copy()
     meso_main_field_df["main_field"] = meso_main_field_df["main_field_id"].map(main_field_map)
     meso_field_map = dict(zip(meso_main_field_df["meso_cluster_id"], meso_main_field_df["main_field"]))
+    micro_main_field_df = load_tsv(data_dir, "micro_cluster_main_field.tsv")
+    micro_main_field_df = micro_main_field_df[micro_main_field_df["is_primary_main_field"] == True].copy()
+    micro_main_field_df["main_field"] = micro_main_field_df["main_field_id"].map(main_field_map)
+    micro_field_map = dict(zip(micro_main_field_df["micro_cluster_id"], micro_main_field_df["main_field"]))
     micro_df = load_tsv(data_dir, "micro_cluster.tsv")
     micro_label_map = dict(zip(micro_df["micro_cluster_id"], micro_df["short_label"]))
 
@@ -95,6 +99,12 @@ def build_source_map(data_dir: Path) -> list:
             field = meso_field_map.get(item["meso_cluster_id"])
             if field and field not in fields:
                 fields.append(field)
+        if not fields:
+            top_micro_for_fields = sorted(entry["micro_clusters"], key=lambda x: x["n_works"], reverse=True)[:5]
+            for item in top_micro_for_fields:
+                field = micro_field_map.get(item["micro_cluster_id"])
+                if field and field not in fields:
+                    fields.append(field)
         entry["fields"] = fields
         top_micro = sorted(entry["micro_clusters"], key=lambda x: x["n_works"], reverse=True)[:5]
         micro_topics = []

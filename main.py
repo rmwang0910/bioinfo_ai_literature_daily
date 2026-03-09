@@ -38,6 +38,15 @@ except ImportError as e:
     logger.error("请确保已安装所有依赖（biopython, arxiv 等）")
     sys.exit(1)
 
+try:
+    from core.rag.cwts_source_filter import CWTSSourceFilter
+except ImportError:
+    CWTSSourceFilter = None
+try:
+    from core.rag.scimago_metrics import ScimagoMetrics
+except ImportError:
+    ScimagoMetrics = None
+
 
 class BioinfoAILiteratureDaily:
     """文献每日推送智能体"""
@@ -68,6 +77,21 @@ class BioinfoAILiteratureDaily:
         
         # 关键词验证信息（用于生成验证表）
         self._keyword_validation_info = {}
+        self.cwts_source_filter = None
+        if CWTSSourceFilter:
+            try:
+                self.cwts_source_filter = CWTSSourceFilter()
+            except Exception as e:
+                logger.warning(f"初始化 CWTS 来源知识库失败: {e}")
+        self.scimago_metrics = None
+        if ScimagoMetrics:
+            metrics_cfg = self.config.get("journal_metrics", {}) or {}
+            scimago_path = metrics_cfg.get("scimago_csv_path")
+            if scimago_path:
+                try:
+                    self.scimago_metrics = ScimagoMetrics(scimago_path)
+                except Exception as e:
+                    logger.warning(f"初始化 Scimago 指标失败: {e}")
     
     def _load_config(self, config_path: Optional[str] = None) -> Dict[str, Any]:
         """加载配置文件"""
@@ -514,14 +538,30 @@ class BioinfoAILiteratureDaily:
         max_impact_factor: Optional[float]
     ) -> tuple[bool, str]:
         if allowed_journals:
-            journal = (paper.journal or paper.venue or "").strip().lower()
+            journal_name = (paper.journal or paper.venue or "").strip()
+            if not journal_name and self.cwts_source_filter:
+                journal_name = self.cwts_source_filter.get_source_name_for_paper(paper) or ""
+            journal = journal_name.lower()
             if not journal:
                 return False, '缺少期刊信息'
             if not any(j in journal or journal in j for j in allowed_journals):
                 return False, '不在指定期刊范围'
 
         if allowed_fields:
-            field_candidates = [str(f).strip().lower() for f in (paper.fields or []) if str(f).strip()]
+            base_fields = [str(f).strip() for f in (paper.fields or []) if str(f).strip()]
+            rag_fields = self.cwts_source_filter.get_fields_for_paper(paper) if self.cwts_source_filter else []
+            rag_topics = self.cwts_source_filter.get_micro_topics_for_paper(paper) if self.cwts_source_filter else []
+            merged_fields = []
+            seen_fields = set()
+            for item in (base_fields + rag_fields + rag_topics):
+                val = str(item).strip()
+                key = val.lower()
+                if val and key not in seen_fields:
+                    merged_fields.append(val)
+                    seen_fields.add(key)
+            if not base_fields and rag_fields:
+                paper.fields = rag_fields
+            field_candidates = [f.lower() for f in merged_fields]
             if not field_candidates:
                 text = f"{paper.title or ''} {paper.abstract or ''}".lower()
                 has_field_match = any(f in text for f in allowed_fields)
@@ -1182,7 +1222,7 @@ class BioinfoAILiteratureDaily:
         else:
             return self._format_text_email(papers, summary, paper_summaries)
     
-    def _get_journal_impact_factor(self, journal_name: Optional[str]) -> Optional[float]:
+    def _get_journal_impact_factor_info(self, journal_name: Optional[str]) -> tuple[Optional[float], Optional[str]]:
         """
         获取期刊影响因子
         
@@ -1190,13 +1230,18 @@ class BioinfoAILiteratureDaily:
             journal_name: 期刊名称
             
         Returns:
-            影响因子（如果找到），否则返回None
+            (影响因子, 来源标签)
         """
         if not journal_name:
-            return None
-        
-        # 常见期刊影响因子映射（2023-2024年数据，可根据需要更新）
-        # 数据来源：Journal Citation Reports (JCR)
+            return None, None
+
+        metrics_cfg = self.config.get("journal_metrics", {}) or {}
+        scimago_metric = metrics_cfg.get("scimago_metric", "cites_per_doc_2y")
+        if self.scimago_metrics:
+            value, label = self.scimago_metrics.get_impact_factor(journal_name, metric=scimago_metric)
+            if value is not None:
+                return value, f"Scimago {label}" if label else "Scimago"
+
         impact_factors = {
             # Nature 系列
             "Nature": 64.8,
@@ -1248,20 +1293,24 @@ class BioinfoAILiteratureDaily:
         
         # 尝试精确匹配
         if journal_name in impact_factors:
-            return impact_factors[journal_name]
+            return impact_factors[journal_name], "JCR"
         
         # 尝试不区分大小写匹配
         journal_lower = journal_name.lower()
         for journal, if_value in impact_factors.items():
             if journal.lower() == journal_lower:
-                return if_value
+                return if_value, "JCR"
         
         # 尝试部分匹配（处理期刊名称变体）
         for journal, if_value in impact_factors.items():
             if journal.lower() in journal_lower or journal_lower in journal.lower():
-                return if_value
+                return if_value, "JCR"
         
-        return None
+        return None, None
+
+    def _get_journal_impact_factor(self, journal_name: Optional[str]) -> Optional[float]:
+        impact_factor, _ = self._get_journal_impact_factor_info(journal_name)
+        return impact_factor
     
     def _format_publication_date(self, paper: PaperMetadata) -> str:
         """
@@ -1493,10 +1542,13 @@ class BioinfoAILiteratureDaily:
             pub_date_str = self._format_publication_date(paper)
             
             # 获取影响因子
-            impact_factor = self._get_journal_impact_factor(paper.journal)
+            impact_factor, impact_source = self._get_journal_impact_factor_info(paper.journal)
             journal_display = paper.journal or '未知'
             if impact_factor:
-                journal_display += f" (IF: {impact_factor:.1f})"
+                if impact_source:
+                    journal_display += f" (IF: {impact_factor:.1f}, {impact_source})"
+                else:
+                    journal_display += f" (IF: {impact_factor:.1f})"
             
             html += f"""
                 <div class="paper">
@@ -1631,10 +1683,13 @@ class BioinfoAILiteratureDaily:
             pub_date_str = self._format_publication_date(paper)
             
             # 获取影响因子
-            impact_factor = self._get_journal_impact_factor(paper.journal)
+            impact_factor, impact_source = self._get_journal_impact_factor_info(paper.journal)
             journal_display = paper.journal or '未知'
             if impact_factor:
-                journal_display += f" (IF: {impact_factor:.1f})"
+                if impact_source:
+                    journal_display += f" (IF: {impact_factor:.1f}, {impact_source})"
+                else:
+                    journal_display += f" (IF: {impact_factor:.1f})"
             
             # Open Access 标记
             oa_tag = "[OA] " if getattr(paper, 'is_open_access', False) else ""
@@ -1735,11 +1790,11 @@ class BioinfoAILiteratureDaily:
             
             # 验证配置
             if not all([smtp_server, smtp_port, smtp_username, smtp_password]):
-                logger.error("邮件配置不完整，请检查config.yaml中的email配置")
+                logger.error("邮件配置不完整，请检查配置文件中的email配置")
                 return False
             
             if smtp_password == "请填写你的QQ邮箱授权码" or not smtp_password:
-                logger.error("未配置SMTP密码（授权码），请检查config.yaml")
+                logger.error("未配置SMTP密码（授权码），请检查配置文件")
                 return False
             
             logger.info(f"连接SMTP服务器: {smtp_server}:{smtp_port}")

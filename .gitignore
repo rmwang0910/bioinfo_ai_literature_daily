@@ -39,6 +39,10 @@ cache/
 logs/
 outputs/
 *.log
+data/classification_openalex_2024aug/
+data/cwts_clusters.json
+data/cwts_source_map.json
+data/cwts_journal_knowledge.json
 
 # 配置文件（包含敏感信息）
 config.yaml

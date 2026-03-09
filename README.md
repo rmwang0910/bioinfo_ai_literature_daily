@@ -8,7 +8,7 @@
 ## ✨ 核心特性
 
 - 🧠 **LLM驱动的智能决策**：自然语言需求解析，自动关键词扩展和验证
-- 🔍 **智能文献检索**：支持PubMed、arXiv、bioRxiv等多源数据库
+- 🔍 **智能文献检索**：支持PubMed、arXiv、bioRxiv等多源数据库，并通过OpenAlex补全文献元数据
 - 📊 **自动文献总结**：使用LLM生成文献总结和中文摘要
 - 📧 **自动邮件推送**：支持HTML格式，美观易读
 - 🎯 **严格关键词验证**：三级匹配标准（严格匹配/部分匹配/不匹配）
@@ -53,7 +53,12 @@ export LLM_BASE_URL='https://dashscope.aliyuncs.com/compatible-mode/v1'  # 可�
 export LLM_MODEL='qwen-plus'  # 可选
 ```
 
-3. **配置邮箱**：
+3. **准备配置文件**：
+```bash
+cp config.yaml.example config.yaml
+```
+
+4. **配置邮箱**：
 编辑 `config.yaml`，配置SMTP设置：
 ```yaml
 email:
@@ -90,6 +95,13 @@ python agent_main.py --mode interactive "找单细胞和AI的文献" \
   --use-unified-search true \
   --email example@qq.com
 
+# 示例：领域 + 影响因子筛选（肠道微生物组与抗生素耐药性）
+python agent_main.py --mode interactive "找关于肠道微生物组与抗生素耐药性的文献" \
+  --fields Microbiology \
+  --min-impact-factor 10 \
+  --max-results-per-keyword 100 \
+  --max-papers 50
+
 # 定时触发模式（使用config.yaml配置）
 python agent_main.py --mode scheduled
 ```
@@ -115,10 +127,13 @@ python agent_main.py --mode scheduled
 - `--max-date YYYY-MM-DD`: 最大日期
 - `--max-core-keywords-for-and N`: 默认仅对前N个核心关键词使用AND组合（默认2）
 - `--enforce-all-keywords-and {true|false}`: 强制所有关键词使用AND组合
+- `--fields FIELD1 FIELD2 ...`: 限定领域列表
+- `--min-impact-factor N`: 影响因子下限
+- `--max-impact-factor N`: 影响因子上限
 
 **报告相关**：
 - `--max-papers N`: 最多发送的文献数量（默认50）
-- `--translate-abstract {true|false}`: 是否将英文摘要翻译成中文（覆盖config.yaml中的report.translate_abstract）
+- `--translate-abstract {true|false}`: 是否将英文摘要翻译成中文（覆盖配置文件中的report.translate_abstract）
 
 **基础参数**：
 - `--keywords KEYWORD1 KEYWORD2 ...`: 搜索关键词列表
@@ -136,16 +151,31 @@ python main.py
 python scheduler.py
 ```
 
+### 外部 API 连通性自检
+
+```bash
+# 测试所有外部 API（LLM / PubMed / arXiv / bioRxiv / SMTP）
+python test_apis.py
+
+# 仅测试 SMTP
+python test_apis.py --smtp-only
+```
+
 ## 📖 详细使用说明
 
 ### 两种运行模式
 
 #### 1. 定时触发模式（Scheduled Mode）
 
-完全使用 `config.yaml` 配置，适合定时任务：
+使用统一配置文件，适合定时任务：
 
 ```bash
 python agent_main.py --mode scheduled
+```
+
+默认配置文件：
+```
+config.yaml
 ```
 
 **配置来源**：
@@ -155,7 +185,7 @@ python agent_main.py --mode scheduled
 
 #### 2. 交互式模式（Interactive Mode）
 
-完全依赖用户输入，不使用 `config.yaml` 默认值：
+面向临时需求的交互/命令行模式：
 
 ```bash
 # 命令行输入
@@ -165,9 +195,14 @@ python agent_main.py --mode interactive "找2026年关于CRISPR的文献，发�
 python agent_main.py --mode interactive
 ```
 
+默认配置文件：
+```
+config.yaml
+```
+
 ### 配置文件说明
 
-编辑 `config.yaml` 进行配置：
+示例配置如下：
 
 ```yaml
 # 搜索配置
@@ -194,6 +229,13 @@ email:
 # 过滤配置
 filter:
   min_abstract_length: 100  # 最小摘要长度
+  allowed_fields: []  # 领域筛选（支持 CWTS fields / micro_topics）
+  allowed_journals: []  # 期刊筛选（支持 CWTS 期刊名回填）
+
+# 期刊指标（可选，支持 Scimago CSV）
+journal_metrics:
+  scimago_csv_path: "data/scimagojr.csv"
+  scimago_metric: "cites_per_doc_2y"
 
 # 报告配置
 report:
@@ -205,7 +247,7 @@ report:
 **报告特性**：
 - 文献按时间从近到远自动排序
 - 发表日期精确到年月显示
-- 自动显示期刊影响因子（支持常见期刊）
+- 自动显示期刊影响因子（支持内置常见期刊与 Scimago CSV）
 - 支持HTML和纯文本两种格式
 
 ### 严格关键词验证
@@ -231,14 +273,51 @@ report:
 - 仅有年份时显示年份（如"2024年"）
 
 **期刊影响因子**：
-- 自动识别常见期刊并显示影响因子（IF值）
-- 支持Nature系列、Science系列、Cell系列、生物信息学期刊等
-- 显示格式：`期刊名 (IF: 46.9)`
+- 自动识别常见期刊并显示影响因子
+- 可选使用 Scimago 数据（Cites/Doc(2y) 或 SJR）作为指标
+- 显示格式：`期刊名 (IF: 7.8, Scimago Cites/Doc(2y))`
+
+**Scimago 数据准备**
+- 从 Scimago Journal & Country Rank 导出期刊 CSV
+- 保存为 `data/scimagojr 2024.csv`
+- 在配置中设置：
+  ```yaml
+  journal_metrics:
+    scimago_csv_path: "data/scimagojr 2024.csv"
+    scimago_metric: "cites_per_doc_2y"
+  ```
 
 **排序规则**：
 - 自动按时间从近到远排序
 - 优先使用精确发布日期，其次使用年份
 - 确保最新文献优先显示
+
+## 📚 CWTS 领域筛选（RAG 增强）
+
+本项目已支持使用 CWTS 学科体系进行领域增强筛选：当论文自身缺少领域信息时，会用 CWTS 的期刊-领域映射进行回填，并参与过滤。
+
+**涉及文件**
+- `data/cwts_source_map.json`：期刊/来源与 fields、micro_topics 的映射（由脚本生成）
+- `data/cwts_journal_knowledge.json`：期刊知识库（可选，用于RAG检索或外部使用）
+
+**数据生成**
+1. 准备 CWTS 原始数据（不包含在仓库中）：
+   - `data/classification_openalex_2024aug/` 目录
+2. 生成 CWTS 映射文件：
+```bash
+python3 scripts/process_cwts_data.py
+```
+3. 如需期刊名解析（慢，联网）：
+```bash
+python3 scripts/process_cwts_data.py --resolve-sources --email your@email.com
+```
+
+**使用方式**
+- 在 `config.yaml` 的 `filter.allowed_fields` 中填写领域名称
+- 或在自然语言指令中写：`只看领域 XXX`
+
+**说明**
+仓库不包含 `classification_openalex_2024aug` 与生成的 CWTS JSON 文件，以避免体积过大。请按上述步骤自行生成。
 
 ## 🎯 使用示例
 
@@ -332,17 +411,17 @@ pip install -r requirements.txt --ignore-installed sentence-transformers
 
 ```
 bioinfo_ai_literature_daily/
-├── agent_main.py          # 智能体模式入口
-├── main.py                # 基础模式入口
-├── scheduler.py           # 定时任务调度
-├── config.yaml            # 配置文件
-├── config.yaml.example    # 配置文件模板
-├── requirements.txt       # Python依赖
-├── prompts/               # LLM提示词模板
+├── agent_main.py                  # 智能体模式入口
+├── main.py                        # 基础模式入口
+├── scheduler.py                   # 定时任务调度
+├── config.yaml                    # 配置文件
+├── config.yaml.example            # 配置文件模板
+├── requirements.txt               # Python依赖
+├── prompts/                       # LLM提示词模板
 │   ├── expand_keywords.txt
 │   ├── validate_keywords.txt
 │   └── ...
-└── README.md              # 本文档
+└── README.md                      # 本文档
 ```
 
 ## 📄 许可证

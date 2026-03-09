@@ -2,7 +2,7 @@
 import logging
 import requests
 from typing import List, Optional, Dict, Any
-from .base_client import PaperMetadata, Author, PaperSource
+from .base_client import PaperMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +84,8 @@ class OpenAlexClient:
 
     def _update_paper_with_work(self, paper: PaperMetadata, work: Dict):
         """Update PaperMetadata fields with OpenAlex work data."""
+        if not isinstance(paper.raw_data, dict):
+            paper.raw_data = {}
         
         # 1. Citations
         if 'cited_by_count' in work:
@@ -117,7 +119,21 @@ class OpenAlexClient:
             
         # 5. Publication Date (precision fix if needed)
         # 6. Journal Name (canonical name)
+        source = {}
         if not paper.journal and work.get('primary_location'):
             source = work['primary_location'].get('source', {})
             if source and source.get('display_name'):
                 paper.journal = source['display_name']
+        elif work.get('primary_location'):
+            source = work['primary_location'].get('source', {})
+
+        source_id = None
+        if source and source.get('id'):
+            source_id = str(source['id']).rstrip('/').split('/')[-1]
+
+        paper.raw_data['openalex'] = {
+            'work_id': work.get('id'),
+            'source_id': source_id,
+            'source_name': source.get('display_name') if source else None,
+            'source_type': source.get('type') if source else None
+        }

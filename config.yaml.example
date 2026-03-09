@@ -1,74 +1,22 @@
-# 生信+AI文献每日推送智能体配置文件示例
+# 生信+AI文献每日推送智能体配置文件示例（最小必需项）
 # 复制此文件为 config.yaml 并填写实际配置
 
-# 搜索配置
+# 搜索配置（最小必需）
 search:
   # 搜索关键词列表（支持PubMed查询语法）
   keywords:
-    - "bioinformatics AND artificial intelligence"
-    - "computational biology AND machine learning"
-    - "genomics AND deep learning"
     - "single cell AND AI"
-    - "sequencing AND neural network"
-    - "proteomics AND artificial intelligence"
-    - "transcriptomics AND machine learning"
-    - "systems biology AND AI"
-  
-  # 每个关键词最多返回的论文数
-  max_results_per_keyword: 20
-  
-  # 是否使用 BioLitKG 的统一检索（PubMed + arXiv 等多源）
-  # true：在当前代码仓库中存在 BioLitKG/literature 时，同时从 PubMed 和 arXiv 等源检索
-  # false：仅使用 PubMedClient
-  use_unified_search: false
-  
-  # 搜索最近N天的文献（如果设置了min_date，则忽略此选项）
+  # 搜索最近N天的文献
   days_back: 7
-  
-  # 最小日期（格式：YYYY-MM-DD），如果设置，将覆盖days_back
-  # min_date: "2024-01-01"
 
-# 邮件配置
+# 邮件配置（最小必需）
 email:
-  # SMTP服务器地址
   smtp_server: "smtp.example.com"
-  
-  # SMTP端口（通常587用于TLS，465用于SSL）
   smtp_port: 587
-  
-  # SMTP用户名（通常是邮箱地址）
   smtp_username: "your-email@example.com"
-  
-  # SMTP密码（建议使用应用专用密码）
   smtp_password: "your-password"
-  
-  # 发件人邮箱
   from_email: "your-email@example.com"
-  
-  # 收件人邮箱
   to_email: "recipient@example.com"
-  
-  # 是否使用TLS加密
   use_tls: true
 
-# 过滤配置
-filter:
-  # 最小摘要长度（字符数）
-  min_abstract_length: 100
-  
-  # 排除关键词列表（如果论文标题或摘要包含这些关键词，将被排除）
-  exclude_keywords: []
-  
-  # 必须包含的关键词列表（如果设置，论文必须包含至少一个关键词）
-  include_keywords: []
-
-# 报告配置
-report:
-  # 最多发送的论文数量
-  max_papers: 50
-  
-  # 邮件格式：html 或 text
-  format: "html"
-  
-  # 是否将英文摘要翻译成中文（使用LLM翻译）
-  translate_abstract: false
+# 可选：如需过滤或报告控制，可按需添加 filter/report
