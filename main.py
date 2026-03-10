@@ -17,6 +17,8 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 import smtplib
 
 # 配置logging：默认只在控制台输出重要日志（WARNING及以上）
@@ -77,6 +79,7 @@ class BioinfoAILiteratureDaily:
         
         # 关键词验证信息（用于生成验证表）
         self._keyword_validation_info = {}
+        self.last_ris_path = None
         self.cwts_source_filter = None
         if CWTSSourceFilter:
             try:
@@ -440,6 +443,9 @@ class BioinfoAILiteratureDaily:
         
         new_papers.sort(key=get_sort_date, reverse=True)  # reverse=True 表示近到远
         
+        self.last_ris_path = self._export_ris(new_papers)
+        if self.last_ris_path:
+            logger.warning(f"已生成 EndNote 导入文件: {self.last_ris_path}")
         return new_papers
     
     def _filter_papers(self, papers: List[PaperMetadata], strict_keyword_validation: bool = False, validation_strictness: str = 'normal') -> tuple[List[PaperMetadata], Dict]:
@@ -1334,6 +1340,188 @@ class BioinfoAILiteratureDaily:
             return f"{paper.year}年"
         else:
             return "未知"
+
+    def _sanitize_filename(self, text: str) -> str:
+        cleaned = re.sub(r"[^\w\u4e00-\u9fa5]+", "_", text or "")
+        cleaned = re.sub(r"_+", "_", cleaned).strip("_")
+        return cleaned or "literature"
+
+    def _format_ris_date(self, paper: PaperMetadata) -> str:
+        if paper.publication_date:
+            dt = paper.publication_date
+            if dt.tzinfo is not None:
+                dt = dt.replace(tzinfo=None)
+            return dt.strftime("%Y/%m/%d")
+        if paper.year:
+            return f"{paper.year}//"
+        return ""
+
+    def _format_ris_authors(self, paper: PaperMetadata) -> List[str]:
+        names = []
+        for author in (paper.authors or []):
+            if hasattr(author, "name"):
+                name = author.name
+            else:
+                name = str(author)
+            name = (name or "").strip()
+            if name:
+                names.append(name)
+        return names
+
+    def _get_pubmed_field(self, paper: PaperMetadata, key: str) -> Optional[str]:
+        if not paper.raw_data or not isinstance(paper.raw_data, dict):
+            return None
+        value = paper.raw_data.get(key)
+        if isinstance(value, list):
+            if not value:
+                return None
+            return " ".join(str(v).strip() for v in value if str(v).strip())
+        if value is None:
+            return None
+        value = str(value).strip()
+        return value or None
+
+    def _get_openalex_field(self, paper: PaperMetadata, key: str) -> Optional[str]:
+        if not paper.raw_data or not isinstance(paper.raw_data, dict):
+            return None
+        openalex = paper.raw_data.get("openalex")
+        if not isinstance(openalex, dict):
+            return None
+        value = openalex.get(key)
+        if value is None:
+            return None
+        value = str(value).strip()
+        return value or None
+
+    def _split_pages(self, pages: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+        if not pages:
+            return None, None
+        text = str(pages).strip()
+        if "-" in text:
+            parts = [p.strip() for p in text.split("-", 1)]
+            if len(parts) == 2:
+                return parts[0] or None, parts[1] or None
+        return text, None
+
+    def _get_ris_db_label(self, paper: PaperMetadata) -> Optional[str]:
+        if not getattr(paper, "source", None):
+            return None
+        if paper.source == PaperSource.PUBMED:
+            return "PubMed"
+        if paper.source == PaperSource.ARXIV:
+            return "arXiv"
+        if paper.source == PaperSource.BIORXIV:
+            return "bioRxiv"
+        if paper.source == PaperSource.SEMANTIC_SCHOLAR:
+            return "Semantic Scholar"
+        return None
+
+    def _get_ris_type(self, paper: PaperMetadata) -> tuple[str, str]:
+        if paper.source in {PaperSource.ARXIV, PaperSource.BIORXIV}:
+            return "ELEC", "Preprint"
+        return "JOUR", "Journal Article"
+
+    def _export_ris(self, papers: List[PaperMetadata]) -> Optional[str]:
+        if not papers:
+            return None
+        theme = self._format_theme_display()
+        safe_theme = self._sanitize_filename(theme)
+        date_tag = datetime.now().strftime("%Y%m%d")
+        filename = f"{date_tag}_{safe_theme}.ris"
+        path = self.output_dir / filename
+        lines = []
+        for paper in papers:
+            ris_ty, ris_m3 = self._get_ris_type(paper)
+            lines.append(f"TY  - {ris_ty}")
+            title = (paper.title or "").strip()
+            if title:
+                lines.append(f"T1  - {title}")
+            for author in self._format_ris_authors(paper):
+                lines.append(f"A1  - {author}")
+            journal_full = None
+            journal_abbrev = None
+            if getattr(paper, "source", None) == PaperSource.PUBMED:
+                journal_full = self._get_pubmed_field(paper, "JT")
+                journal_abbrev = self._get_pubmed_field(paper, "TA")
+            journal_full = journal_full or (paper.journal or paper.venue or "").strip() or None
+            journal_abbrev = journal_abbrev or (paper.journal or "").strip() or None
+            if journal_full:
+                lines.append(f"JF  - {journal_full}")
+            if journal_abbrev:
+                lines.append(f"JO  - {journal_abbrev}")
+            ris_date = self._format_ris_date(paper)
+            if ris_date:
+                lines.append(f"Y1  - {ris_date}")
+            elif paper.year:
+                lines.append(f"Y1  - {paper.year}//")
+            if paper.pubmed_id:
+                lines.append(f"ID  - PMID:{paper.pubmed_id}")
+            elif paper.arxiv_id:
+                lines.append(f"ID  - arXiv:{paper.arxiv_id}")
+            db_label = self._get_ris_db_label(paper)
+            if db_label:
+                lines.append(f"DB  - {db_label}")
+            volume = None
+            issue = None
+            pages = None
+            issn = None
+            if getattr(paper, "source", None) == PaperSource.PUBMED:
+                volume = self._get_pubmed_field(paper, "VI")
+                issue = self._get_pubmed_field(paper, "IP")
+                pages = self._get_pubmed_field(paper, "PG")
+                issn = self._get_pubmed_field(paper, "IS")
+            if not volume:
+                volume = self._get_openalex_field(paper, "volume")
+            if not issue:
+                issue = self._get_openalex_field(paper, "issue")
+            if not pages:
+                first_page = self._get_openalex_field(paper, "first_page")
+                last_page = self._get_openalex_field(paper, "last_page")
+                if first_page and last_page:
+                    pages = f"{first_page}-{last_page}"
+                elif first_page:
+                    pages = first_page
+            if not issn:
+                issn = self._get_openalex_field(paper, "issn")
+            if volume:
+                lines.append(f"VL  - {volume}")
+            if issue:
+                lines.append(f"IS  - {issue}")
+            sp, ep = self._split_pages(pages)
+            if sp:
+                lines.append(f"SP  - {sp}")
+            if ep:
+                lines.append(f"EP  - {ep}")
+            if issn:
+                lines.append(f"SN  - {issn}")
+            if paper.doi:
+                lines.append(f"DO  - {paper.doi}")
+            if ris_m3:
+                lines.append(f"M3  - {ris_m3}")
+            url = paper.url
+            if not url and paper.pubmed_id:
+                url = f"https://pubmed.ncbi.nlm.nih.gov/{paper.pubmed_id}/"
+            if url:
+                lines.append(f"UR  - {url}")
+            abstract = (paper.abstract or "").strip()
+            if abstract:
+                lines.append(f"N2  - {abstract}")
+            keywords = paper.keywords or []
+            for kw in keywords:
+                kw = str(kw).strip()
+                if kw:
+                    lines.append(f"KW  - {kw}")
+            if paper.source in {PaperSource.ARXIV, PaperSource.BIORXIV}:
+                lines.append("N1  - Preprint")
+            lines.append("ER  - ")
+            lines.append("")
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines))
+            return str(path)
+        except Exception as e:
+            logger.warning(f"写入 RIS 失败: {e}")
+            return None
     
     def _format_theme_display(self) -> str:
         """
@@ -1445,6 +1633,14 @@ class BioinfoAILiteratureDaily:
         """
         # 构建检索说明块
         html += self._build_search_description_html()
+
+        if self.last_ris_path:
+            ris_name = Path(self.last_ris_path).name
+            html += f"""
+                <div class="source-stats">
+                    <strong>EndNote 导入文件:</strong> {ris_name}（已作为附件发送）
+                </div>
+            """
         
         # 生成并添加来源统计
         if len(papers) > 0:
@@ -1599,6 +1795,10 @@ class BioinfoAILiteratureDaily:
 """
         # 添加检索说明
         text += self._build_search_description_text()
+
+        if self.last_ris_path:
+            ris_name = Path(self.last_ris_path).name
+            text += f"\nEndNote 导入文件: {ris_name}（已作为附件发送）\n"
         
         # 生成并添加来源统计
         if len(papers) > 0:
@@ -1780,6 +1980,20 @@ class BioinfoAILiteratureDaily:
         else:
             msg.attach(MIMEText(content, 'plain', 'utf-8'))
         
+        # 添加 RIS 附件（EndNote 导入）
+        if self.last_ris_path:
+            try:
+                with open(self.last_ris_path, "rb") as f:
+                    part = MIMEBase("application", "octet-stream")
+                    part.set_payload(f.read())
+                encoders.encode_base64(part)
+                filename = Path(self.last_ris_path).name
+                part.add_header("Content-Disposition", "attachment", filename=("utf-8", "", filename))
+                part.add_header("Content-Type", "application/octet-stream", name=("utf-8", "", filename))
+                msg.attach(part)
+            except Exception as e:
+                logger.warning(f"添加 RIS 附件失败: {e}")
+
         # 发送邮件
         try:
             smtp_server = email_config.get('smtp_server')

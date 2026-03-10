@@ -287,6 +287,15 @@ report:
     scimago_metric: "cites_per_doc_2y"
   ```
 
+**EndNote 导入（RIS 文件）**
+- 每次检索完成都会在 `outputs/` 生成一个 RIS 文件
+- 文件名格式：`YYYYMMDD_主题.ris`
+- 直接在 EndNote 中导入该 RIS 文件即可
+- RIS 字段更贴近 PubMed 风格（含 TY/T1/A1/JF/JO/Y1/ID/DB/DO/N2/KW/VL/IS/SP/EP/SN）
+- PubMed 字段来自 Medline 原始记录，OpenAlex 会补全卷期页码与 ISSN（若可用）
+- 默认来源取决于 `use_unified_search`：false 为仅 PubMed，true 为 PubMed+arXiv+bioRxiv
+- 交互模式可用 `--use-unified-search true/false` 覆盖
+
 **排序规则**：
 - 自动按时间从近到远排序
 - 优先使用精确发布日期，其次使用年份

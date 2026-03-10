@@ -131,9 +131,21 @@ class OpenAlexClient:
         if source and source.get('id'):
             source_id = str(source['id']).rstrip('/').split('/')[-1]
 
+        biblio = work.get('biblio', {}) if isinstance(work.get('biblio', {}), dict) else {}
+        issn_list = source.get('issn') if isinstance(source, dict) else None
+        issn = source.get('issn_l') if isinstance(source, dict) else None
+        if not issn and isinstance(issn_list, list) and issn_list:
+            issn = issn_list[0]
+
         paper.raw_data['openalex'] = {
             'work_id': work.get('id'),
             'source_id': source_id,
             'source_name': source.get('display_name') if source else None,
-            'source_type': source.get('type') if source else None
+            'source_type': source.get('type') if source else None,
+            'volume': biblio.get('volume'),
+            'issue': biblio.get('issue'),
+            'first_page': biblio.get('first_page'),
+            'last_page': biblio.get('last_page'),
+            'issn': issn,
+            'issn_list': issn_list
         }
