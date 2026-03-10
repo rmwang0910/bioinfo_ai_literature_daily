@@ -2010,6 +2010,20 @@ class BioinfoAILiteratureDaily:
             msg.attach(MIMEText(content, 'html', 'utf-8'))
         else:
             msg.attach(MIMEText(content, 'plain', 'utf-8'))
+
+        html_path = None
+        if format_type == 'html':
+            try:
+                theme = self._format_theme_display()
+                safe_theme = self._sanitize_filename(theme)
+                date_tag = datetime.now().strftime('%Y%m%d')
+                html_filename = f"{date_tag}_{safe_theme}.html"
+                html_path = self.output_dir / html_filename
+                with open(html_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                logger.warning(f"已保存 HTML 邮件内容: {html_path}")
+            except Exception as e:
+                logger.warning(f"保存 HTML 邮件内容失败: {e}")
         
         # 添加 RIS 附件（EndNote 导入）
         if self.last_ris_path:
@@ -2024,6 +2038,19 @@ class BioinfoAILiteratureDaily:
                 msg.attach(part)
             except Exception as e:
                 logger.warning(f"添加 RIS 附件失败: {e}")
+
+        if html_path:
+            try:
+                with open(html_path, "rb") as f:
+                    part = MIMEBase("text", "html")
+                    part.set_payload(f.read())
+                encoders.encode_base64(part)
+                filename = Path(html_path).name
+                part.add_header("Content-Disposition", "attachment", filename=("utf-8", "", filename))
+                part.add_header("Content-Type", "text/html", name=("utf-8", "", filename))
+                msg.attach(part)
+            except Exception as e:
+                logger.warning(f"添加 HTML 附件失败: {e}")
 
         # 发送邮件
         try:
