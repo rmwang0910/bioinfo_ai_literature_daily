@@ -1403,6 +1403,25 @@ class BioinfoAILiteratureDaily:
                 return parts[0] or None, parts[1] or None
         return text, None
 
+    def _select_issn(self, value: Optional[str]) -> Optional[str]:
+        if not value:
+            return None
+        text = str(value)
+        matches = []
+        for match in re.finditer(r"(\d{4}-\d{3}[\dX])\s*(?:\(([^)]+)\))?", text, re.IGNORECASE):
+            issn = match.group(1)
+            label = (match.group(2) or "").lower()
+            matches.append((issn, label))
+        if not matches:
+            return None
+        for issn, label in matches:
+            if "electronic" in label:
+                return issn
+        for issn, label in matches:
+            if "print" in label:
+                return issn
+        return matches[0][0]
+
     def _get_ris_db_label(self, paper: PaperMetadata) -> Optional[str]:
         if not getattr(paper, "source", None):
             return None
@@ -1420,6 +1439,12 @@ class BioinfoAILiteratureDaily:
         if paper.source in {PaperSource.ARXIV, PaperSource.BIORXIV}:
             return "ELEC", "Preprint"
         return "JOUR", "Journal Article"
+
+    def _get_preprint_journal_name(self, paper: PaperMetadata) -> str:
+        journal = (paper.journal or "").strip()
+        if journal.lower().startswith("medrxiv"):
+            return "medRxiv"
+        return "bioRxiv"
 
     def _export_ris(self, papers: List[PaperMetadata]) -> Optional[str]:
         if not papers:
@@ -1443,8 +1468,12 @@ class BioinfoAILiteratureDaily:
             if getattr(paper, "source", None) == PaperSource.PUBMED:
                 journal_full = self._get_pubmed_field(paper, "JT")
                 journal_abbrev = self._get_pubmed_field(paper, "TA")
-            journal_full = journal_full or (paper.journal or paper.venue or "").strip() or None
-            journal_abbrev = journal_abbrev or (paper.journal or "").strip() or None
+            if paper.source in {PaperSource.ARXIV, PaperSource.BIORXIV}:
+                journal_full = self._get_preprint_journal_name(paper)
+                journal_abbrev = journal_full
+            else:
+                journal_full = journal_full or (paper.journal or paper.venue or "").strip() or None
+                journal_abbrev = journal_abbrev or (paper.journal or "").strip() or None
             if journal_full:
                 lines.append(f"JF  - {journal_full}")
             if journal_abbrev:
@@ -1470,19 +1499,20 @@ class BioinfoAILiteratureDaily:
                 issue = self._get_pubmed_field(paper, "IP")
                 pages = self._get_pubmed_field(paper, "PG")
                 issn = self._get_pubmed_field(paper, "IS")
-            if not volume:
-                volume = self._get_openalex_field(paper, "volume")
-            if not issue:
-                issue = self._get_openalex_field(paper, "issue")
-            if not pages:
-                first_page = self._get_openalex_field(paper, "first_page")
-                last_page = self._get_openalex_field(paper, "last_page")
-                if first_page and last_page:
-                    pages = f"{first_page}-{last_page}"
-                elif first_page:
-                    pages = first_page
-            if not issn:
-                issn = self._get_openalex_field(paper, "issn")
+            if paper.source not in {PaperSource.ARXIV, PaperSource.BIORXIV}:
+                if not volume:
+                    volume = self._get_openalex_field(paper, "volume")
+                if not issue:
+                    issue = self._get_openalex_field(paper, "issue")
+                if not pages:
+                    first_page = self._get_openalex_field(paper, "first_page")
+                    last_page = self._get_openalex_field(paper, "last_page")
+                    if first_page and last_page:
+                        pages = f"{first_page}-{last_page}"
+                    elif first_page:
+                        pages = first_page
+                if not issn:
+                    issn = self._get_openalex_field(paper, "issn")
             if volume:
                 lines.append(f"VL  - {volume}")
             if issue:
@@ -1492,8 +1522,9 @@ class BioinfoAILiteratureDaily:
                 lines.append(f"SP  - {sp}")
             if ep:
                 lines.append(f"EP  - {ep}")
-            if issn:
-                lines.append(f"SN  - {issn}")
+            issn_value = self._select_issn(issn)
+            if issn_value:
+                lines.append(f"SN  - {issn_value}")
             if paper.doi:
                 lines.append(f"DO  - {paper.doi}")
             if ris_m3:

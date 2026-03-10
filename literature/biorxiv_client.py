@@ -505,6 +505,9 @@ class BioRxivClient(BaseLiteratureClient):
             
             # Extract journal/source
             source = item.get('source', 'bioRxiv')
+            source_lower = (source or '').lower()
+            if source_lower not in ['biorxiv', 'medrxiv']:
+                source = 'bioRxiv'
             journal = source if source else 'bioRxiv'
             
             return PaperMetadata(
