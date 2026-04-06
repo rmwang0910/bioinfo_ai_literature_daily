@@ -2058,6 +2058,408 @@ class LiteratureAgent:
         
         return table
 
+    # ------------------------------------------------------------------
+    # 单篇文献快速解析
+    # ------------------------------------------------------------------
+
+    def analyze_paper(self, query: str, to_email: str) -> Dict[str, Any]:
+        """
+        获取单篇文献 → LLM 结构化解析 → 发送邮件
+
+        Args:
+            query: PMID（6-8位纯数字）、DOI（10.xxx/...）或标题文本
+            to_email: 收件人邮箱
+
+        Returns:
+            {"status": "success"|"error", "message": str, "title": str}
+        """
+        from literature.paper_fetcher import SinglePaperFetcher
+        from literature.pdf_downloader import PDFDownloader
+        from literature.bgpt_client import BGPTClient
+
+        # Step 1: 获取文献元数据
+        logger.info(f"[单篇解析] 获取文献: {query}")
+        paper = SinglePaperFetcher().fetch(query)
+        if not paper:
+            return {"status": "error", "message": f"未找到文献: {query}", "title": ""}
+
+        logger.info(f"[单篇解析] 找到文献: {paper.title[:60]}")
+
+        # Step 2a: 优先尝试 BGPT（直接返回结构化全文数据，无需下载 PDF + LLM 解析）
+        analysis = None
+        pdf_bytes = None
+        source_desc = None
+
+        bgpt_api_key = self.base_agent.config.get('bgpt', {}).get('api_key') or None
+        bgpt = BGPTClient(api_key=bgpt_api_key)
+        bgpt_data = None
+        if paper.doi:
+            bgpt_data = bgpt.fetch_by_doi(paper.doi)
+        if not bgpt_data and paper.title:
+            bgpt_data = bgpt.fetch_by_title(paper.title)
+
+        # 先尝试获取全文/PDF（无论 BGPT 是否命中都需要）
+        content, pdf_source, pdf_bytes = PDFDownloader().get_fulltext(paper)
+        if pdf_bytes:
+            logger.warning(f"[单篇解析] PDF 附件已下载 ({len(pdf_bytes)//1024} KB) 来源: {pdf_source}")
+        else:
+            logger.warning(f"[单篇解析] 无可用 PDF 附件（来源: {pdf_source}）")
+
+        # 检查 BGPT 数据是否有效（不能全是空或横杠）
+        bgpt_valid = bgpt_data and self._is_analysis_valid(bgpt_data)
+
+        if bgpt_valid:
+            source_desc = "BGPT全文解析"
+            logger.warning(f"[单篇解析] BGPT 命中且内容有效，使用结构化数据")
+            # BGPT 返回英文，调 LLM 翻译成中文
+            analysis = self._translate_bgpt_analysis(bgpt_data)
+        else:
+            # BGPT 未命中或内容无效，回退到 LLM 解析
+            if bgpt_data:
+                logger.warning(f"[单篇解析] BGPT 命中但内容无效，降级到 LLM 解析")
+            else:
+                logger.warning(f"[单篇解析] BGPT 未命中，使用 LLM 解析")
+
+            if not content:
+                return {"status": "error", "message": "文献内容为空", "title": paper.title}
+            source_desc = pdf_source
+            logger.warning(f"[单篇解析] 内容来源: {source_desc}，字符数: {len(content)}")
+            analysis = self._analyze_paper_with_llm(paper, content, source_desc)
+
+        # Step 3: 发送邮件（含 PDF 附件，如有）
+        ok = self._send_single_paper_email(paper, analysis, source_desc, to_email, pdf_bytes)
+        if ok:
+            return {"status": "success", "message": f"解析结果已发送至 {to_email}", "title": paper.title}
+        else:
+            return {"status": "error", "message": "邮件发送失败，请检查 SMTP 配置", "title": paper.title}
+
+    def _analyze_paper_with_llm(self, paper, content: str, source_desc: str) -> Dict[str, Any]:
+        """调用 LLM 生成结构化解析结果"""
+        import json
+
+        prompt_file = self.prompts_dir / "analyze_single_paper.txt"
+        template = (
+            prompt_file.read_text(encoding='utf-8')
+            if prompt_file.exists()
+            else self._default_analyze_prompt()
+        )
+
+        authors = paper.authors or []
+        authors_str = ", ".join(a.name for a in authors[:5])
+        if len(authors) > 5:
+            authors_str += " et al."
+
+        prompt = template.format(
+            title=paper.title or "N/A",
+            authors=authors_str or "N/A",
+            journal=paper.journal or "N/A",
+            date=str(paper.year or paper.publication_date or "N/A"),
+            doi=paper.doi or "N/A",
+            source_type=source_desc,
+            content=content
+        )
+
+        if not self.use_llm or not self.llm_client:
+            return {
+                "研究背景": "LLM 未配置，无法解析",
+                "研究目的": "", "方法": "",
+                "主要发现": [paper.abstract[:200] if paper.abstract else ""],
+                "结论与意义": "", "局限性": "",
+                "解析级别": source_desc
+            }
+
+        try:
+            raw = self.llm_client.generate(prompt, max_tokens=2000, temperature=0.1)
+            # 提取 JSON（LLM 可能包裹在 ```json ... ``` 中）
+            json_str = raw.strip()
+            if "```" in json_str:
+                import re as _re
+                m = _re.search(r'```(?:json)?\s*([\s\S]+?)```', json_str)
+                if m:
+                    json_str = m.group(1).strip()
+            result = json.loads(json_str)
+            result.setdefault("解析级别", source_desc)
+            return result
+        except Exception as e:
+            logger.warning(f"LLM 解析结果非 JSON: {e}")
+            return {
+                "研究背景": "解析失败，请查看原文",
+                "研究目的": "", "方法": "",
+                "主要发现": [],
+                "结论与意义": "", "局限性": "",
+                "解析级别": source_desc
+            }
+
+    def _send_single_paper_email(self, paper, analysis: Dict, source_desc: str, to_email: str,
+                                   pdf_bytes: Optional[bytes] = None) -> bool:
+        """构建单篇解析 HTML 邮件并发送，如有 PDF 字节则作为附件"""
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from email.mime.base import MIMEBase
+        from email import encoders as _encoders
+        from datetime import datetime as _dt
+
+        email_cfg = self.base_agent.config.get('email', {})
+        smtp_server = email_cfg.get('smtp_server')
+        smtp_port = email_cfg.get('smtp_port', 587)
+        smtp_username = email_cfg.get('smtp_username')
+        smtp_password = email_cfg.get('smtp_password')
+
+        if not all([smtp_server, smtp_username, smtp_password]):
+            logger.error("SMTP 配置不完整")
+            return False
+
+        authors = paper.authors or []
+        authors_str = ", ".join(a.name for a in authors[:5])
+        if len(authors) > 5:
+            authors_str += " et al."
+
+        doi_link = (
+            f'<a href="https://doi.org/{paper.doi}">{paper.doi}</a>'
+            if paper.doi else "N/A"
+        )
+        pubmed_link = (
+            f'<a href="https://pubmed.ncbi.nlm.nih.gov/{paper.pubmed_id}/">[PubMed]</a>'
+            if paper.pubmed_id else ""
+        )
+        parse_level = analysis.get("解析级别", source_desc)
+        level_color = "#27ae60" if "全文" in parse_level else "#e67e22"
+
+        # 新格式字段
+        overview = analysis.get("全文概述", "")
+        terms = analysis.get("术语解释", [])
+        experiments = analysis.get("论文实验", "")
+        figures = analysis.get("关键图表解读", [])
+        conclusions = analysis.get("核心结论", [])
+        limitations = analysis.get("局限性与展望", "")
+
+        # 兼容旧格式（BGPT翻译结果）
+        if not overview:
+            overview = analysis.get("研究背景", "")
+        if not conclusions:
+            conclusions = analysis.get("主要发现", [])
+        if not limitations:
+            limitations = analysis.get("局限性", "")
+        if not experiments:
+            experiments = analysis.get("方法", "")
+
+        # 构建术语解释 HTML
+        terms_html = ""
+        if terms and isinstance(terms, list):
+            for t in terms:
+                if isinstance(t, dict):
+                    term_name = t.get("术语", "")
+                    term_def = t.get("解释", "")
+                    terms_html += f'<li><strong>{term_name}</strong>：{term_def}</li>'
+                else:
+                    terms_html += f'<li>{t}</li>'
+
+        # 构建图表解读 HTML
+        figures_html = ""
+        if figures and isinstance(figures, list):
+            for fig in figures:
+                if isinstance(fig, dict):
+                    fig_num = fig.get("图表", "")
+                    fig_title = fig.get("标题", "")
+                    fig_desc = fig.get("解读", "")
+                    figures_html += f'''<div style="margin-bottom:12px;padding:10px;background:#f8f9fa;border-radius:6px;">
+                      <div style="font-weight:bold;color:#2980b9;">{fig_num}：{fig_title}</div>
+                      <div style="margin-top:6px;">{fig_desc}</div>
+                    </div>'''
+                else:
+                    figures_html += f'<div style="margin-bottom:8px;">{fig}</div>'
+
+        # 构建核心结论 HTML
+        conclusions_html = ""
+        if isinstance(conclusions, list):
+            conclusions_html = "".join(f"<li>{c}</li>" for c in conclusions)
+        else:
+            conclusions_html = f"<li>{conclusions}</li>"
+
+        def section(title, content, icon=""):
+            if not content or content == "—":
+                return ""
+            return f'''<div style="margin-bottom:20px;">
+              <h3 style="color:#2c3e50;font-size:1em;margin:0 0 10px 0;border-left:4px solid #3498db;padding-left:10px;">
+                {icon} {title}
+              </h3>
+              <div style="padding-left:14px;line-height:1.8;">{content}</div>
+            </div>'''
+
+        html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+        line-height:1.6;color:#333;max-width:800px;margin:0 auto;padding:24px;}}
+  .hdr{{border-bottom:3px solid #2980b9;padding-bottom:14px;margin-bottom:24px;}}
+  .hdr h1{{font-size:1.1em;color:#2980b9;margin:0 0 6px 0;}}
+  .title{{font-size:1.3em;font-weight:bold;color:#1a252f;margin:6px 0;}}
+  .meta{{color:#7f8c8d;font-size:0.9em;margin:3px 0;}}
+  .badge{{display:inline-block;padding:2px 10px;border-radius:12px;font-size:0.8em;
+          font-weight:bold;color:#fff;background:{level_color};margin-left:6px;}}
+  ul{{margin:0;padding-left:18px;}} ul li{{margin:6px 0;line-height:1.7;}}
+  .content{{background:#fff;}}
+  .footer{{text-align:center;color:#bdc3c7;font-size:0.8em;
+           margin-top:28px;padding-top:14px;border-top:1px solid #ecf0f1;}}
+</style></head><body>
+<div class="hdr">
+  <h1>论文深度解读</h1>
+  <div class="title">{paper.title or 'N/A'}</div>
+  <div class="meta">{authors_str or 'N/A'}</div>
+  <div class="meta">{paper.journal or 'N/A'} | {paper.year or paper.publication_date or 'N/A'}</div>
+  <div class="meta">DOI: {doi_link} {pubmed_link}
+    <span class="badge">{parse_level}</span>
+  </div>
+</div>
+<div class="content">
+  {section('全文概述', overview, '')}
+  {section('术语解释', f'<ul>{terms_html}</ul>' if terms_html else '', '')}
+  {section('论文实验', experiments, '')}
+  {section('关键图表解读', figures_html, '') if figures_html else ''}
+  {section('核心结论', f'<ul>{conclusions_html}</ul>', '')}
+  {section('局限性与展望', limitations, '')}
+</div>
+<p style="color:#95a5a6;font-size:0.85em;margin-top:16px;">
+  全文来源：{source_desc} | 生成时间：{_dt.now().strftime('%Y-%m-%d %H:%M')}
+</p>
+<div class="footer">由 Bioinfo Literature Daily 自动生成</div>
+</body></html>"""
+
+        title_short = (paper.title or "未知标题")[:40]
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"论文深度解读：{title_short}"
+        msg["From"] = email_cfg.get('from_email', smtp_username)
+        msg["To"] = to_email
+        msg.attach(MIMEText(html, "html", "utf-8"))
+
+        # 附加 PDF 文件（仅当成功下载时）
+        if pdf_bytes:
+            safe_title = re.sub(r'[^\w\s-]', '', paper.title or 'paper')[:40].strip().replace(' ', '_')
+            pdf_filename = f"{safe_title}.pdf"
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(pdf_bytes)
+            _encoders.encode_base64(part)
+            part.add_header("Content-Disposition", "attachment",
+                            filename=("utf-8", "", pdf_filename))
+            msg.attach(part)
+            logger.info(f"附加 PDF 附件: {pdf_filename} ({len(pdf_bytes)//1024} KB)")
+
+        try:
+            server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+            if email_cfg.get('use_tls', True):
+                server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.send_message(msg)
+            server.quit()
+            logger.info(f"单篇解析邮件已发送至 {to_email}")
+            return True
+        except Exception as e:
+            logger.error(f"邮件发送失败: {e}")
+            return False
+
+    def _is_analysis_valid(self, analysis: Dict) -> bool:
+        """检查解析结果是否有效（不能全是空或横杠）"""
+        # 新格式字段 + 旧格式字段
+        key_fields = ["全文概述", "论文实验", "核心结论",
+                      "研究背景", "研究目的", "方法", "结论与意义"]
+        valid_count = 0
+        for field in key_fields:
+            value = analysis.get(field, "")
+            # 列表类型检查非空
+            if isinstance(value, list) and len(value) > 0:
+                valid_count += 1
+            # 字符串类型：非空、非横杠、长度 > 10
+            elif value and value != "—" and len(str(value)) > 10:
+                valid_count += 1
+        # 至少 2 个关键字段有效才算通过
+        return valid_count >= 2
+
+    def _translate_bgpt_analysis(self, bgpt_data: Dict) -> Dict:
+        """将 BGPT 英文解析结果翻译成中文"""
+        import json
+
+        if not self.use_llm or not self.llm_client:
+            logger.warning("LLM 未配置，无法翻译 BGPT 结果，保持英文")
+            return bgpt_data
+
+        # 构建翻译 prompt
+        content_to_translate = {
+            "研究背景": bgpt_data.get("研究背景", ""),
+            "研究目的": bgpt_data.get("研究目的", ""),
+            "方法": bgpt_data.get("方法", ""),
+            "主要发现": bgpt_data.get("主要发现", []),
+            "结论与意义": bgpt_data.get("结论与意义", ""),
+            "局限性": bgpt_data.get("局限性", ""),
+        }
+
+        prompt = f"""请将以下论文解析内容翻译成中文，保持原有结构，直接输出 JSON，不要有其他文字：
+
+{json.dumps(content_to_translate, ensure_ascii=False, indent=2)}
+
+要求：
+1. 专业术语保留英文缩写并加中文解释，如 "GPCR (G蛋白偶联受体)"
+2. 保持学术语言风格
+3. 主要发现保持列表格式
+4. 严格输出 JSON"""
+
+        try:
+            raw = self.llm_client.generate(prompt, max_tokens=2000, temperature=0.1)
+            json_str = raw.strip()
+            if "```" in json_str:
+                import re as _re
+                m = _re.search(r'```(?:json)?\s*([\s\S]+?)```', json_str)
+                if m:
+                    json_str = m.group(1).strip()
+            translated = json.loads(json_str)
+            translated["解析级别"] = "BGPT全文解析"
+            logger.info("[单篇解析] BGPT 结果已翻译成中文")
+            return translated
+        except Exception as e:
+            logger.warning(f"翻译失败，保持英文: {e}")
+            return bgpt_data
+
+    def _default_analyze_prompt(self) -> str:
+        return """你是生物信息学领域专家。请根据以下论文内容进行结构化解析，严格输出 JSON，不要包含其他文字。
+
+【论文信息】
+标题：{title}  作者：{authors}  期刊：{journal}  时间：{date}  DOI：{doi}
+内容来源：{source_type}
+
+【论文内容】
+{content}
+
+请输出如下 JSON：
+{{"研究背景":"...","研究目的":"...","方法":"...","主要发现":["发现1","发现2","发现3"],"结论与意义":"...","局限性":"...","解析级别":"全文解析"}}"""
+
+
+def _detect_single_paper_intent(text: str):
+    """
+    检测输入是否为单篇解析意图。
+    返回 (paper_id, email) 或 (None, None)。
+    """
+    intent_pattern = r'(解析|分析|速读|解读|帮我看看|帮我读)'
+    if not re.search(intent_pattern, text, re.IGNORECASE):
+        return None, None
+
+    email_match = re.search(r'[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}', text)
+    email = email_match.group(0) if email_match else None
+
+    pmid_match = re.search(r'\b(\d{6,8})\b', text)
+    doi_match = re.search(r'(10\.\d{4,}/\S+)', text)
+
+    if pmid_match:
+        return pmid_match.group(1), email
+    elif doi_match:
+        return doi_match.group(1), email
+
+    # 剩余文本当标题
+    cleaned = re.sub(intent_pattern, '', text, flags=re.IGNORECASE)
+    cleaned = re.sub(r'[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}', '', cleaned)
+    cleaned = re.sub(r'[，,。发送到发至发给：:]', ' ', cleaned).strip()
+    if len(cleaned) >= 8:
+        return cleaned, email
+    return None, None
+
 
 def main():
     """主函数"""
@@ -2201,7 +2603,12 @@ def main():
         nargs='+',
         help='限定领域列表（覆盖配置文件中的filter.allowed_fields）'
     )
-    
+
+    parser.add_argument(
+        '--paper',
+        help='单篇文献快速解析：输入 PMID（纯数字）、DOI（10.xxx/...）或标题，配合 --email 使用'
+    )
+
     args = parser.parse_args()
     
     config_path = args.config or "config.yaml"
@@ -2306,9 +2713,36 @@ def main():
             if not user_input or user_input.lower() in ['quit', 'exit', 'q']:
                 print("退出")
                 return
+
+            # 检测单篇解析意图
+            paper_id, detected_email = _detect_single_paper_intent(user_input)
+            if paper_id:
+                to_email = detected_email or (agent.base_agent.config.get('email', {}) or {}).get('to_email', '')
+                if to_email:
+                    print(f"\n检测到单篇解析意图，正在处理: {paper_id[:60]}")
+                    result = agent.analyze_paper(paper_id, to_email)
+                    if result.get('status') == 'success':
+                        print(f"✓ {result.get('message')}")
+                    else:
+                        print(f"✗ 解析失败: {result.get('message')}")
+                    return
         else:
             user_input = None
     
+    # --paper 模式：单篇文献快速解析，跳过批量检索流程
+    if args.paper:
+        to_email = args.email or (agent.base_agent.config.get('email', {}) or {}).get('to_email', '')
+        if not to_email:
+            print("错误: 请通过 --email 指定收件人邮箱")
+            return
+        print(f"\n正在解析文献: {args.paper}")
+        result = agent.analyze_paper(args.paper, to_email)
+        if result.get('status') == 'success':
+            print(f"✓ {result.get('message')}")
+        else:
+            print(f"✗ 解析失败: {result.get('message')}")
+        return
+
     # 运行智能体（传入配置覆盖）
     try:
         agent.run_with_request(user_input, override_config=override_config if override_config else None)

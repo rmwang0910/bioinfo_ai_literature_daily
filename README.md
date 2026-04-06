@@ -9,8 +9,9 @@
 
 - 🧠 **LLM驱动的智能决策**：自然语言需求解析，自动关键词扩展和验证
 - 🔍 **智能文献检索**：支持PubMed、arXiv、bioRxiv等多源数据库，并通过OpenAlex补全文献元数据
+- 📄 **单篇论文深度解读**：支持PMID/DOI/标题输入，自动获取全文并生成结构化解读报告
 - 📊 **自动文献总结**：使用LLM生成文献总结和中文摘要
-- 📧 **自动邮件推送**：支持HTML格式，美观易读
+- 📧 **自动邮件推送**：支持HTML格式，美观易读，可附带PDF原文
 - 🎯 **严格关键词验证**：三级匹配标准（严格匹配/部分匹配/不匹配）
 - 🔄 **智能去重**：自动记录已发送文献，避免重复推送
 - ⏰ **定时任务**：支持每日自动推送
@@ -43,7 +44,9 @@ pip install -r requirements.txt
 **可选依赖**（消除警告）：
 - `arxiv>=2.0.0` - arXiv搜索
 - `httpx>=0.25.0` - HTTP客户端
-- `PyMuPDF>=1.23.0` - PDF处理
+- `PyMuPDF>=1.23.0` - PDF文本提取
+- `pdfplumber>=0.10.0` - PDF文本提取（双栏排版更佳）
+- `mcp>=1.0.0` - BGPT结构化论文数据查询
 - `sentence-transformers>=2.2.0` - 语义搜索
 
 2. **配置 LLM**（智能功能必需）：
@@ -112,6 +115,45 @@ python agent_main.py --mode scheduled
 3. 搜索文献并进行严格验证
 4. 生成文献总结和中文摘要
 5. 发送格式化的邮件报告
+
+### 单篇论文深度解读
+
+支持对单篇论文进行深度解读，自动获取全文并生成结构化报告：
+
+```bash
+# 使用 PMID
+python agent_main.py --paper 38096903
+
+# 使用 DOI
+python agent_main.py --paper "10.1038/s41586-023-06924-6"
+
+# 使用论文标题（支持预印本，自动搜索 PubMed/bioRxiv/arXiv/OpenAlex）
+python agent_main.py --paper "BiOmics: A Foundational Agent for Grounded and Autonomous Multi-omics Interpretation"
+
+# 指定收件邮箱
+python agent_main.py --paper "BiOmics: A Foundational Agent for Grounded and Autonomous Multi-omics Interpretation" --email recipient@example.com
+
+# 交互式模式（自动识别单篇解析意图）
+python agent_main.py
+# 输入：帮我解析这篇文献 BiOmics: A Foundational Agent
+```
+
+**解读报告内容**：
+- **全文概述**：300-500字综合概述，包括研究背景、方法创新、关键结果
+- **术语解释**：3-5个核心术语的通俗解释
+- **论文实验**：详细实验设计、数据集、评估指标、量化结果
+- **关键图表解读**：2-3个重要图表的详细解读
+- **核心结论**：具体发现与量化数据
+- **局限性与展望**：研究局限和未来方向
+
+**全文获取优先级**：
+1. PMC 全文 XML（NCBI官方API，成功率最高）
+2. Unpaywall OA PDF（按DOI查询开放获取版本）
+3. bioRxiv 直链 PDF（预印本）
+4. OpenAlex OA URL
+5. 降级为摘要解析
+
+**PDF附件**：成功下载PDF时，邮件会自动附带原文PDF文件。
 
 #### 命令行参数说明（交互式模式）
 
@@ -420,7 +462,7 @@ pip install -r requirements.txt --ignore-installed sentence-transformers
 
 ```
 bioinfo_ai_literature_daily/
-├── agent_main.py                  # 智能体模式入口
+├── agent_main.py                  # 智能体模式入口（含单篇解析）
 ├── main.py                        # 基础模式入口
 ├── scheduler.py                   # 定时任务调度
 ├── config.yaml                    # 配置文件
@@ -429,6 +471,12 @@ bioinfo_ai_literature_daily/
 ├── prompts/                       # LLM提示词模板
 │   ├── expand_keywords.txt
 │   ├── validate_keywords.txt
+│   ├── analyze_single_paper.txt   # 单篇论文深度解读提示词
+│   └── ...
+├── literature/                    # 文献检索模块
+│   ├── paper_fetcher.py           # 单篇论文获取（PMID/DOI/标题）
+│   ├── pdf_downloader.py          # PDF下载与全文提取
+│   ├── bgpt_client.py             # BGPT结构化数据客户端
 │   └── ...
 └── README.md                      # 本文档
 ```
