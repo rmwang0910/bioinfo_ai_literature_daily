@@ -2062,6 +2062,66 @@ class LiteratureAgent:
     # 单篇文献快速解析
     # ------------------------------------------------------------------
 
+    def analyze_local_pdf(self, pdf_path: str, to_email: str, title: str = None) -> Dict[str, Any]:
+        """
+        解析本地 PDF 文件 → LLM 结构化解析 → 发送邮件
+
+        Args:
+            pdf_path: 本地 PDF 文件路径
+            to_email: 收件人邮箱
+            title: 可选的论文标题（若不提供则从 PDF 文件名推断）
+
+        Returns:
+            {"status": "success"|"error", "message": str, "title": str}
+        """
+        from literature.pdf_downloader import PDFDownloader
+        from literature.base_client import PaperMetadata, PaperSource, Author
+
+        pdf_file = Path(pdf_path)
+        if not pdf_file.exists():
+            return {"status": "error", "message": f"PDF 文件不存在: {pdf_path}", "title": ""}
+
+        if not pdf_file.suffix.lower() == '.pdf':
+            return {"status": "error", "message": f"不是 PDF 文件: {pdf_path}", "title": ""}
+
+        # 推断标题（使用文件名或用户提供的标题）
+        inferred_title = title or pdf_file.stem.replace('_', ' ').replace('-', ' ')
+        logger.info(f"[本地PDF解析] 文件: {pdf_file.name}, 标题: {inferred_title}")
+
+        # 提取 PDF 文本
+        downloader = PDFDownloader()
+        content = downloader._extract_text_from_pdf(str(pdf_file))
+
+        if not content or len(content) < 100:
+            return {"status": "error", "message": "PDF 内容提取失败或内容过少", "title": inferred_title}
+
+        logger.info(f"[本地PDF解析] 提取文本 {len(content)} 字符")
+
+        # 读取 PDF 字节（用于邮件附件）
+        pdf_bytes = pdf_file.read_bytes()
+
+        # 构造一个简化的 PaperMetadata 对象
+        paper = PaperMetadata(
+            id=f"local:{pdf_file.name}",
+            source=PaperSource.MANUAL,
+            title=inferred_title,
+            abstract="",
+            authors=[],
+            journal="本地文件",
+            year=None
+        )
+
+        # 调用 LLM 解析
+        source_desc = "本地PDF全文"
+        analysis = self._analyze_paper_with_llm(paper, content, source_desc)
+
+        # 发送邮件
+        ok = self._send_single_paper_email(paper, analysis, source_desc, to_email, pdf_bytes)
+        if ok:
+            return {"status": "success", "message": f"解析结果已发送至 {to_email}", "title": inferred_title}
+        else:
+            return {"status": "error", "message": "邮件发送失败，请检查 SMTP 配置", "title": inferred_title}
+
     def analyze_paper(self, query: str, to_email: str) -> Dict[str, Any]:
         """
         获取单篇文献 → LLM 结构化解析 → 发送邮件
@@ -2470,12 +2530,16 @@ def main():
 使用示例:
   # 交互式模式
   python agent_main.py
-  
+
   # 命令行模式
   python agent_main.py "帮我找最近7天关于单细胞和AI的文献，发送到example@qq.com"
-  
+
   # 指定关键词
   python agent_main.py --keywords "single cell AND AI" --days 7 --email example@qq.com
+
+  # 本地 PDF 文件解析
+  python agent_main.py --pdf /path/to/paper.pdf --email example@qq.com
+  python agent_main.py --pdf /path/to/paper.pdf --title "论文标题" --email example@qq.com
         """
     )
     
@@ -2609,6 +2673,16 @@ def main():
         help='单篇文献快速解析：输入 PMID（纯数字）、DOI（10.xxx/...）或标题，配合 --email 使用'
     )
 
+    parser.add_argument(
+        '--pdf',
+        help='本地 PDF 文件解析：输入 PDF 文件路径，配合 --email 使用'
+    )
+
+    parser.add_argument(
+        '--title',
+        help='指定 PDF 文件的论文标题（可选，配合 --pdf 使用）'
+    )
+
     args = parser.parse_args()
     
     config_path = args.config or "config.yaml"
@@ -2729,6 +2803,20 @@ def main():
         else:
             user_input = None
     
+    # --pdf 模式：本地 PDF 文件解析
+    if args.pdf:
+        to_email = args.email or (agent.base_agent.config.get('email', {}) or {}).get('to_email', '')
+        if not to_email:
+            print("错误: 请通过 --email 指定收件人邮箱")
+            return
+        print(f"\n正在解析本地 PDF: {args.pdf}")
+        result = agent.analyze_local_pdf(args.pdf, to_email, title=args.title)
+        if result.get('status') == 'success':
+            print(f"✓ {result.get('message')}")
+        else:
+            print(f"✗ 解析失败: {result.get('message')}")
+        return
+
     # --paper 模式：单篇文献快速解析，跳过批量检索流程
     if args.paper:
         to_email = args.email or (agent.base_agent.config.get('email', {}) or {}).get('to_email', '')

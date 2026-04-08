@@ -155,6 +155,28 @@ python agent_main.py
 
 **PDF附件**：成功下载PDF时，邮件会自动附带原文PDF文件。
 
+### 本地 PDF 文件解析
+
+支持直接解析本地 PDF 文件，无需联网查询文献数据库：
+
+```bash
+# 基本用法
+python agent_main.py --pdf /path/to/paper.pdf --email recipient@example.com
+
+# 指定论文标题（可选，否则从文件名推断）
+python agent_main.py --pdf /path/to/paper.pdf --title "论文标题" --email recipient@example.com
+```
+
+**适用场景**：
+- 已下载的 PDF 论文快速解读
+- 无法通过 PMID/DOI 获取的文献
+- 内部文档或预印本解析
+
+**功能说明**：
+- 自动提取 PDF 文本内容（支持双栏排版）
+- 使用 LLM 生成结构化解读报告
+- 邮件自动附带原始 PDF 文件
+
 #### 命令行参数说明（交互式模式）
 
 以下参数可以在交互式模式下覆盖 `config.yaml` 的配置，实现不依赖本地配置文件：
@@ -182,6 +204,10 @@ python agent_main.py
 - `--days N`: 搜索最近N天的文献
 - `--email EMAIL`: 收件人邮箱地址
 - `--config PATH`: 配置文件路径（默认: config.yaml）
+
+**本地 PDF 解析**：
+- `--pdf PATH`: 本地 PDF 文件路径
+- `--title TITLE`: 指定论文标题（可选，配合 --pdf 使用）
 
 ### 使用基础模式
 
