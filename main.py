@@ -663,11 +663,12 @@ class BioinfoAILiteratureDaily:
         
         total_papers = len(papers)
         if total_papers > 0:
-            # 使用WARNING级别提示进入严格验证阶段，并给出总论文数，避免用户误以为程序卡死
             logger.warning(
-                f"进入严格验证阶段，共 {total_papers} 篇候选论文，将使用LLM逐篇检查关键词匹配情况，请耐心等待..."
+                f"进入严格验证阶段，共 {total_papers} 篇候选论文，将使用LLM并行检查关键词匹配情况..."
             )
-        
+
+        # --- 第一轮：元数据/摘要预过滤（无 LLM，极快） ---
+        llm_candidates = []  # (index, paper) 通过预过滤的论文
         for i, paper in enumerate(papers, 1):
             metadata_ok, metadata_reason = self._passes_metadata_filters(
                 paper,
@@ -678,132 +679,132 @@ class BioinfoAILiteratureDaily:
             )
             if not metadata_ok:
                 validation_info[paper.title or f"论文{i}"] = {
-                    'all_match': False,
-                    'reason': metadata_reason,
-                    'keyword_evidence': {}
+                    'all_match': False, 'reason': metadata_reason, 'keyword_evidence': {}
                 }
                 continue
+            if min_abstract_length > 0 and (not paper.abstract or len(paper.abstract) < min_abstract_length):
+                validation_info[paper.title or f"论文{i}"] = {
+                    'all_match': False, 'reason': '摘要太短', 'keyword_evidence': {}
+                }
+                continue
+            llm_candidates.append((i, paper))
 
-            # 基础过滤：摘要长度
-            if min_abstract_length > 0:
-                if not paper.abstract or len(paper.abstract) < min_abstract_length:
-                    validation_info[paper.title or f"论文{i}"] = {
-                        'all_match': False,
-                        'reason': '摘要太短',
-                        'keyword_evidence': {}
-                    }
-                    continue
-            
-            # 使用LLM验证关键词（采用更严格的验证策略）
-            try:
-                abstract = paper.abstract[:1500] if paper.abstract else "无摘要"  # 增加摘要长度限制，获取更多上下文
-                # 格式化文章类型关键词（如果存在）
-                article_types_str = ", ".join(article_type_keywords) if article_type_keywords else "null"
-                # 关键词逻辑描述（如果有），用于指导LLM在严格验证阶段正确处理 AND / OR 关系
-                logical_desc = search_cfg.get('logical_keywords_description') or ""
-                prompt = prompt_template.format(
-                    title=paper.title or '无标题',
-                    abstract=abstract,
-                    keywords=", ".join(keywords),
-                    article_type_keywords=article_types_str,
-                    logical_keywords_description=logical_desc
-                )
-                
-                # 使用更低的temperature和更多的token，确保判断更严格
-                # 定期打印进度日志，让用户看到严格验证的推进情况
-                if i == 1 or i % 10 == 0 or i == total_papers:
-                    title_preview = paper.title[:50] if paper.title else "无标题"
-                    logger.warning(f"严格验证进度: 第 {i}/{total_papers} 篇论文（当前: {title_preview}）")
-                
-                response = llm_client.generate(prompt, max_tokens=400, temperature=0.0)  # 温度设为0，更确定性
-                
-                # 解析JSON响应
-                import json
-                import re
-                json_match = re.search(r'\{.*\}', response, re.DOTALL)
-                if json_match:
-                    result = json.loads(json_match.group(0))
-                    all_match = result.get('all_keywords_match', False)
-                    keyword_evidence = result.get('keyword_evidence', {})
-                    reason = result.get('reason', '')
-                    match_level = result.get('match_level', 'none')
-                    matched_keywords = result.get('matched_keywords', [])
-                    
-                    # 检查文章类型匹配（第二层过滤）
-                    article_type_match = True  # 默认匹配（如果没有文章类型要求）
-                    matched_article_types = []
-                    if article_type_keywords:
-                        article_type_match = result.get('article_type_match', False)
-                        matched_article_types = result.get('matched_article_types', [])
-                        
-                        # 如果主题关键词匹配但文章类型不匹配，降级为部分匹配
-                        if all_match and not article_type_match:
-                            logger.info(f"⚠️  主题关键词匹配但文章类型不匹配: {paper.title[:50] if paper.title else '无标题'}")
-                            all_match = False
-                            match_level = 'partial'
-                            reason = f"主题关键词匹配，但文章类型不匹配（期望：{', '.join(article_type_keywords)}，实际：{', '.join(matched_article_types) if matched_article_types else '无匹配'}）"
-                    
-                    # 根据严格度级别进行额外检查
-                    if validation_strictness in ['strict', 'very_strict']:
-                        # 检查是否所有关键词都有实质性证据
-                        evidence_count = len([ev for ev in keyword_evidence.values() 
-                                             if ev and '未' not in ev and '仅' not in ev 
-                                             and '背景' not in ev and '提及' not in ev 
-                                             and '展望' not in ev and '讨论' not in ev])
-                        
-                        if evidence_count < len(keywords):
-                            # 如果证据不足，降级为部分匹配
-                            logger.warning(f"⚠️  证据不足，降级为部分匹配: {paper.title[:50] if paper.title else '无标题'}")
-                            all_match = False
-                            match_level = 'partial'
-                            reason = f"证据不足：仅{evidence_count}/{len(keywords)}个关键词有实质性使用证据"
-                        
-                        # 非常严格模式：要求matched_keywords必须包含所有关键词
-                        if validation_strictness == 'very_strict':
-                            if len(matched_keywords) < len(keywords):
-                                logger.warning(f"⚠️  非常严格模式：匹配关键词不足，拒绝: {paper.title[:50] if paper.title else '无标题'}")
-                                all_match = False
-                                match_level = 'partial'
-                                reason = f"非常严格模式：仅{len(matched_keywords)}/{len(keywords)}个关键词被判定为实质性使用"
-                    
-                    # 额外检查：如果match_level是"none"，即使all_match为true也拒绝
-                    if match_level == 'none' and all_match:
-                        logger.warning(f"⚠️  LLM判定为不匹配但all_match为true，拒绝: {paper.title[:50] if paper.title else '无标题'}")
-                        all_match = False
-                        match_level = 'partial'
-                    
-                    validation_info[paper.title or f"论文{i}"] = {
-                        'all_match': all_match,
-                        'keyword_evidence': keyword_evidence,
-                        'reason': reason,
-                        'match_level': match_level,
-                        'matched_keywords': matched_keywords,
-                        'article_type_match': article_type_match,
-                        'matched_article_types': matched_article_types
-                    }
-                    
-                    # 严格匹配需要同时满足：主题关键词匹配 + 文章类型匹配（如果提供了文章类型要求）
-                    is_strict_match = all_match and match_level == 'strict'
-                    if article_type_keywords:
-                        is_strict_match = is_strict_match and article_type_match
-                    
-                    if is_strict_match:
-                        strict_matched.append(paper)
-                        logger.info(f"✅ 严格匹配: {paper.title[:50] if paper.title else '无标题'}")
-                    else:
-                        partial_matched.append(paper)
-                        logger.info(f"⚠️  部分匹配: {paper.title[:50] if paper.title else '无标题'} - {reason}")
-                else:
-                    # 如果无法解析，使用基础过滤
-                    logger.warning(f"无法解析LLM验证结果，使用基础过滤: {paper.title[:50] if paper.title else '无标题'}")
+        if not llm_candidates:
+            return strict_matched, {
+                'strict_matched': 0, 'partial_matched': 0,
+                'validation_details': validation_info, 'partial_papers': []
+            }
+
+        logger.warning(f"预过滤后 {len(llm_candidates)} 篇需要 LLM 验证（并行 max_workers=5）")
+
+        # --- 第二轮：LLM 并行验证 ---
+        import json as _json
+        import re as _re
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        article_types_str = ", ".join(article_type_keywords) if article_type_keywords else "null"
+        logical_desc = search_cfg.get('logical_keywords_description') or ""
+
+        def _validate_one(idx_paper):
+            """单篇 LLM 验证（在子线程中执行）。返回 (index, paper, result_dict)。"""
+            idx, paper = idx_paper
+            abstract = paper.abstract[:1500] if paper.abstract else "无摘要"
+            prompt = prompt_template.format(
+                title=paper.title or '无标题',
+                abstract=abstract,
+                keywords=", ".join(keywords),
+                article_type_keywords=article_types_str,
+                logical_keywords_description=logical_desc
+            )
+            response = llm_client.generate(prompt, max_tokens=400, temperature=0.0)
+            json_match = _re.search(r'\{.*\}', response, _re.DOTALL)
+            if json_match:
+                return idx, paper, _json.loads(json_match.group(0))
+            return idx, paper, None
+
+        completed_count = 0
+        max_workers = min(5, len(llm_candidates))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(_validate_one, item): item
+                for item in llm_candidates
+            }
+            for future in as_completed(futures):
+                i, paper = futures[future]
+                completed_count += 1
+                if completed_count == 1 or completed_count % 10 == 0 or completed_count == len(llm_candidates):
+                    tp = paper.title[:50] if paper.title else "N/A"
+                    logger.warning("严格验证进度: %d/%d (当前: %s)", completed_count, len(llm_candidates), tp)
+
+                try:
+                    _, _, result = future.result()
+                except Exception as e:
+                    logger.warning(f"验证论文关键词失败: {e}, 论文: {paper.title[:50] if paper.title else 'N/A'}")
                     if self._basic_keyword_check(paper, keywords):
                         strict_matched.append(paper)
                     else:
                         partial_matched.append(paper)
-            except Exception as e:
-                logger.warning(f"验证论文关键词失败: {e}, 论文: {paper.title[:50] if paper.title else '无标题'}")
-                # 出错时使用基础过滤
-                if self._basic_keyword_check(paper, keywords):
+                    continue
+
+                if result is None:
+                    logger.warning(f"无法解析LLM验证结果，使用基础过滤: {paper.title[:50] if paper.title else 'N/A'}")
+                    if self._basic_keyword_check(paper, keywords):
+                        strict_matched.append(paper)
+                    else:
+                        partial_matched.append(paper)
+                    continue
+
+                all_match = result.get('all_keywords_match', False)
+                keyword_evidence = result.get('keyword_evidence', {})
+                reason = result.get('reason', '')
+                match_level = result.get('match_level', 'none')
+                matched_keywords = result.get('matched_keywords', [])
+
+                # 文章类型匹配（第二层过滤）
+                article_type_match = True
+                matched_article_types = []
+                if article_type_keywords:
+                    article_type_match = result.get('article_type_match', False)
+                    matched_article_types = result.get('matched_article_types', [])
+                    if all_match and not article_type_match:
+                        all_match = False
+                        match_level = 'partial'
+                        reason = f"主题匹配但文章类型不匹配（期望: {', '.join(article_type_keywords)}）"
+
+                # 严格度额外检查
+                if validation_strictness in ['strict', 'very_strict']:
+                    evidence_count = len([ev for ev in keyword_evidence.values()
+                                         if ev and '未' not in ev and '仅' not in ev
+                                         and '背景' not in ev and '提及' not in ev
+                                         and '展望' not in ev and '讨论' not in ev])
+                    if evidence_count < len(keywords):
+                        all_match = False
+                        match_level = 'partial'
+                        reason = f"证据不足：{evidence_count}/{len(keywords)}个有实质性证据"
+                    if validation_strictness == 'very_strict' and len(matched_keywords) < len(keywords):
+                        all_match = False
+                        match_level = 'partial'
+                        reason = f"非常严格：{len(matched_keywords)}/{len(keywords)}个关键词实质性使用"
+
+                if match_level == 'none' and all_match:
+                    all_match = False
+                    match_level = 'partial'
+
+                validation_info[paper.title or f"论文{i}"] = {
+                    'all_match': all_match,
+                    'keyword_evidence': keyword_evidence,
+                    'reason': reason,
+                    'match_level': match_level,
+                    'matched_keywords': matched_keywords,
+                    'article_type_match': article_type_match,
+                    'matched_article_types': matched_article_types
+                }
+
+                is_strict_match = all_match and match_level == 'strict'
+                if article_type_keywords:
+                    is_strict_match = is_strict_match and article_type_match
+
+                if is_strict_match:
                     strict_matched.append(paper)
                 else:
                     partial_matched.append(paper)
@@ -1977,35 +1978,41 @@ class BioinfoAILiteratureDaily:
         """
         # 如果启用了摘要翻译，翻译所有摘要
         if self.config.get('report', {}).get('translate_abstract', False):
-            logger.info("开始翻译摘要...")
+            logger.info("开始翻译摘要(并行处理)...")
             if not paper_summaries:
                 paper_summaries = {}
-            
-            for i, paper in enumerate(papers):
-                if paper.abstract:
-                    paper_id = paper.doi or paper.title or str(i)
-                    # 检查是否已有中文总结
-                    has_existing_summary = (
-                        (paper.doi and paper.doi in paper_summaries) or
-                        (paper.title and paper.title in paper_summaries) or
-                        (paper_id in paper_summaries) or
-                        (str(i) in paper_summaries)
-                    )
-                    
-                    # 即使有中文总结，如果启用了翻译摘要，也要翻译摘要
-                    # 使用特殊的键来存储翻译的摘要，避免覆盖中文总结
-                    translated = self._translate_abstract(paper.abstract)
-                    if translated:
-                        # 使用特殊的键存储翻译的摘要（添加 _translated 后缀）
-                        if paper.doi:
-                            paper_summaries[f"{paper.doi}_translated"] = translated
-                        if paper.title:
-                            paper_summaries[f"{paper.title}_translated"] = translated
-                        paper_summaries[f"{paper_id}_translated"] = translated
-                        paper_summaries[f"{str(i)}_translated"] = translated
-                        logger.info(f"✅ 已翻译论文 {i+1}/{len(papers)}: {paper.title[:50] if paper.title else '无标题'}...")
-            
-            logger.info(f"摘要翻译完成，共翻译 {sum(1 for v in paper_summaries.values() if v)} 篇论文的摘要")
+
+            from concurrent.futures import ThreadPoolExecutor, as_completed as _as_completed
+
+            # 收集需要翻译的论文
+            to_translate = [(i, p) for i, p in enumerate(papers) if p.abstract]
+
+            def _translate_one(idx_paper):
+                idx, paper = idx_paper
+                translated = self._translate_abstract(paper.abstract)
+                return idx, paper, translated
+
+            max_workers = min(5, len(to_translate)) if to_translate else 1
+            translated_count = 0
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futs = {executor.submit(_translate_one, item): item for item in to_translate}
+                for fut in _as_completed(futs):
+                    try:
+                        i, paper, translated = fut.result()
+                        if translated:
+                            paper_id = paper.doi or paper.title or str(i)
+                            if paper.doi:
+                                paper_summaries[f"{paper.doi}_translated"] = translated
+                            if paper.title:
+                                paper_summaries[f"{paper.title}_translated"] = translated
+                            paper_summaries[f"{paper_id}_translated"] = translated
+                            paper_summaries[f"{str(i)}_translated"] = translated
+                            translated_count += 1
+                    except Exception as e:
+                        idx, paper = futs[fut]
+                        logger.warning(f"翻译失败: {paper.title[:50] if paper.title else 'N/A'}: {e}")
+
+            logger.info(f"摘要翻译完成，共翻译 {translated_count} 篇")
         if not papers:
             logger.info("没有新文献，跳过邮件发送")
             return True

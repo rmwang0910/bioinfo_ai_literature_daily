@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BioLit Daily</title>
   <link rel="stylesheet" href="/static/styles.css">
+  <script>
+    // 在 CSS 加载后立即应用主题，避免闪烁
+    (function(){var t=localStorage.getItem("biolit-theme");if(t==="dark")document.documentElement.setAttribute("data-theme","dark");})();
+  </script>
 </head>
 <body>
   <header class="topbar">

@@ -15,6 +15,8 @@ const state = {
   activeTab: "papers",
   selectedPapers: new Set(),  // set of indices
   savedPapers: [],            // from server
+  searchStartTime: null,      // for timing
+  timings: {}                 // step timing info
 };
 
 // ---------------------------------------------------------------------------
@@ -330,6 +332,8 @@ async function runSearch() {
   state.paperSummaries = {};
   state.overallSummary = null;
   state.selectedPapers.clear();
+  state.searchStartTime = Date.now();
+  state.timings = {};
 
   el("searchBtn").disabled = true;
   el("searchBtn").innerHTML = '<span class="spinner"></span>搜索中...';
@@ -347,10 +351,42 @@ async function runSearch() {
       const t = String(ev.type || "");
 
       if (t === "status") {
-        addProgress(ev.message || ev.step);
-        if (ev.progress) {
-          const pct = (ev.progress.current / ev.progress.total) * 100;
-          setProgressBar(pct, false);
+        const step = ev.step || "";
+        const msg = ev.message || ev.step;
+        const progress = ev.progress || null;
+
+        // 根据阶段显示不同进度
+        if (step === "searching") {
+          // 搜索阶段：0-40%
+          setProgressBar(progress ? (progress.current / progress.total) * 40 : 20, false);
+        } else if (step === "summarizing") {
+          // 综述阶段：40-50%
+          setProgressBar(45, false);
+        } else if (step === "paper_summaries") {
+          // 单篇总结阶段：50-100%
+          if (progress && progress.total > 0) {
+            const pct = 50 + (progress.current / progress.total) * 50;
+            setProgressBar(pct, false);
+          } else {
+            setProgressBar(75, false);
+          }
+        } else if (step === "paper_summaries_done") {
+          setProgressBar(90, false);
+          addProgress(msg, "ok");
+        } else if (step === "translating") {
+          if (progress && progress.total > 0) {
+            const pct = 90 + (progress.current / progress.total) * 10;
+            setProgressBar(pct, false);
+          }
+          addProgress(msg);
+        } else {
+          // 未知阶段：不定状态
+          setProgressBar(0, true);
+        }
+
+        // 普通 status 消息才添加（paper_summaries_done 已在上处理）
+        if (step !== "paper_summaries_done") {
+          addProgress(msg);
         }
       }
 
@@ -373,9 +409,50 @@ async function runSearch() {
         updatePaperSummary(ev.paper_index, ev.summary);
       }
 
+      if (t === "paper_abstract_translated") {
+        const idx = ev.paper_index;
+        const absEl = document.getElementById(`abstract-${idx}`);
+        if (absEl && ev.translated) {
+          // 在英文摘要下方追加中文翻译
+          let transEl = document.getElementById(`abstract-translated-${idx}`);
+          if (!transEl) {
+            transEl = document.createElement("div");
+            transEl.id = `abstract-translated-${idx}`;
+            transEl.className = "paper-card__abstract";
+            transEl.style.cssText = "margin-top:6px;padding-top:6px;border-top:1px dashed var(--border);color:var(--text);";
+            absEl.parentNode.insertBefore(transEl, absEl.nextSibling);
+          }
+          transEl.innerHTML = `<strong style="color:var(--text-muted);font-size:11px;">中文翻译:</strong> ${escapeHtml(ev.translated)}`;
+        }
+      }
+
       if (t === "done") {
-        addProgress(`搜索完成，共 ${ev.total_papers || 0} 篇文献`, "ok");
+        const totalElapsed = ((Date.now() - state.searchStartTime) / 1000).toFixed(1);
+        addProgress(`搜索完成，共 ${ev.total_papers || 0} 篇文献，总耗时：${totalElapsed} 秒`, "ok");
+
+        // 显示各阶段耗时统计
+        if (state.timings && Object.keys(state.timings).length > 0) {
+          let timingSummary = "耗时统计：";
+          const parts = [];
+          for (const [step, info] of Object.entries(state.timings)) {
+            if (info.elapsed_sec) {
+              parts.push(`${step}: ${info.elapsed_sec.toFixed(1)}s`);
+            }
+          }
+          if (parts.length > 0) {
+            addProgress(timingSummary + " | " + parts.join(" | "), "ok");
+          }
+        }
+
         setProgressBar(100, false);
+      }
+
+      // Handle timing events
+      if (ev.timing) {
+        const t = ev.timing;
+        if (t.step) {
+          state.timings[t.step] = t;
+        }
       }
 
       if (t === "error") {
@@ -413,10 +490,18 @@ function renderPapers() {
     const checked = state.selectedPapers.has(i) ? "checked" : "";
     const selectedCls = state.selectedPapers.has(i) ? " paper-card--selected" : "";
     const title = escapeHtml(p.title || "Untitled");
-    const authors = (p.authors || []).slice(0, 3).map(a => escapeHtml(typeof a === "string" ? a : a.name || "")).join(", ");
-    const hasMore = (p.authors || []).length > 3;
+    const authorsList = (p.authors || []).slice(0, 5);
+    const authors = authorsList.map(a => escapeHtml(typeof a === "string" ? a : a.name || "")).join(", ");
+    const hasMore = (p.authors || []).length > 5;
+    // 机构信息（从前两位作者的 affiliation 中提取）
+    const institutions = authorsList
+      .map(a => (typeof a === "object" && a.affiliation) ? a.affiliation : "")
+      .filter(v => v)
+      .slice(0, 2);
     const journal = escapeHtml(p.journal || p.venue || "");
-    const year = p.year || (p.publication_date ? formatDate(p.publication_date).slice(0, 4) : "");
+    // 优先使用完整日期，fallback 到年份
+    const pubDate = p.publication_date ? formatDate(p.publication_date) : "";
+    const year = pubDate || (p.year ? String(p.year) : "");
     const source = String(p.source || "unknown").toLowerCase();
     const badgeCls = sourceBadgeClass(source);
     const abstract = escapeHtml(truncate(p.abstract, 300));
@@ -425,6 +510,8 @@ function renderPapers() {
     const pmid = p.pubmed_id || "";
     const paperKey = p.doi || p.title || String(i);
     const summary = state.paperSummaries[paperKey] || "";
+    const isOA = p.is_open_access;
+    const pdfUrl = p.pdf_url || p.open_access_url || "";
 
     // Build link
     let link = "#";
@@ -438,22 +525,26 @@ function renderPapers() {
           <input type="checkbox" class="paper-card__checkbox" data-select-index="${i}" ${checked}>
           <div class="paper-card__title">
             <a href="${link}" target="_blank" rel="noopener">${title}</a>
+            ${isOA ? `<span style="display:inline-block;background:#27ae60;color:#fff;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:6px;vertical-align:middle;">OA</span>` : ""}
           </div>
         </div>
         <div class="paper-card__meta">
           <span class="source-badge ${badgeCls}">${escapeHtml(source)}</span>
           ${journal ? `<span class="paper-card__meta-item">${journal}</span>` : ""}
+          ${p.impact_factor != null ? `<span class="paper-card__meta-item" style="color:#e67e22;font-weight:600;">IF: ${p.impact_factor}</span>` : ""}
           ${year ? `<span class="paper-card__meta-item">${year}</span>` : ""}
           ${citations ? `<span class="paper-card__meta-item">Cited: ${citations}</span>` : ""}
           ${doi ? `<span class="paper-card__meta-item" style="font-family:var(--mono);font-size:11px;">${doi}</span>` : ""}
         </div>
         <div class="paper-card__meta" style="color:var(--text-muted);">
           ${authors}${hasMore ? " et al." : ""}
+          ${institutions.length ? `<span style="margin-left:8px;font-size:11px;color:var(--text-muted);">${escapeHtml(institutions.join("; "))}</span>` : ""}
         </div>
         ${abstract ? `<div class="paper-card__abstract" id="abstract-${i}">${abstract}</div>` : ""}
         ${summary ? `<div class="paper-card__summary" id="summary-${i}">${escapeHtml(summary)}</div>` : `<div class="paper-card__summary" id="summary-${i}" style="display:none;"></div>`}
         <div class="paper-card__actions">
           <button class="btn btn--small btn--ghost" data-action="analyze" data-query="${doi || pmid || escapeHtml(truncate(p.title, 100))}">深度分析</button>
+          ${pdfUrl ? `<button class="btn btn--small btn--ghost" onclick="window.open('${escapeHtml(pdfUrl)}','_blank')">PDF</button>` : ""}
           ${doi ? `<button class="btn btn--small btn--ghost" onclick="window.open('https://doi.org/${encodeURIComponent(p.doi)}','_blank')">DOI</button>` : ""}
           ${pmid ? `<button class="btn btn--small btn--ghost" onclick="window.open('https://pubmed.ncbi.nlm.nih.gov/${pmid}/','_blank')">PubMed</button>` : ""}
         </div>
@@ -619,7 +710,16 @@ function renderAnalysisResult(analysis, source, paper) {
   const sections = Object.entries(analysis).map(([key, val]) => {
     let content;
     if (Array.isArray(val)) {
-      content = val.map(v => `<li>${escapeHtml(String(v))}</li>`).join("");
+      content = val.map(v => {
+        if (typeof v === "object" && v !== null) {
+          // 对象元素：渲染为 key-value 块（术语解释、图表解读等）
+          const entries = Object.entries(v);
+          const first = entries[0] ? `<strong>${escapeHtml(String(entries[0][1]))}</strong>` : "";
+          const rest = entries.slice(1).map(([k2, v2]) => escapeHtml(String(v2 || ""))).join(" — ");
+          return `<li>${first}${rest ? "：" + rest : ""}</li>`;
+        }
+        return `<li>${escapeHtml(String(v))}</li>`;
+      }).join("");
       content = `<ul>${content}</ul>`;
     } else if (typeof val === "object" && val !== null) {
       content = Object.entries(val).map(([k, v]) => `<div><strong>${escapeHtml(k)}:</strong> ${escapeHtml(String(v))}</div>`).join("");

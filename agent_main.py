@@ -11,10 +11,12 @@ import sys
 import re
 import logging
 import argparse
+import time
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Semaphore
 
 # 配置logging：默认只在控制台输出重要日志（WARNING及以上）
 log_level_name = os.environ.get("BIOAI_LOG_LEVEL", "WARNING").upper()
@@ -100,6 +102,10 @@ class LiteratureAgent:
                     logger.warning("未设置 LLM_API_KEY，将使用简单模式")
             except Exception as e:
                 logger.warning(f"无法初始化LLM: {e}，将使用简单模式")
+
+        # 并发控制信号量（用于单篇论文总结）
+        self._summarize_semaphore = Semaphore(3)  # 最多 3 并发，避免触发 API rate limit
+
         
         # 初始化 RAG 领域分类器
         self.field_classifier = None
@@ -876,23 +882,26 @@ class LiteratureAgent:
             logger.warning(f"LLM解析用户需求失败: {e}，使用简单解析结果")
             return parsed  # 返回简单解析的结果
     
-    def summarize_papers(self, papers: List) -> Dict[str, str]:
+    def summarize_papers(self, papers: List, progress_callback=None) -> Dict[str, str]:
         """
-        为每篇论文生成中文总结
-        
+        为每篇论文生成中文总结（并行处理，带耗时统计）
+
         Args:
             papers: 论文列表
-        
+            progress_callback: 可选的进度回调函数，签名 callback(completed: int, total: int, elapsed_sec: float)
+
         Returns:
-            论文总结字典，key为论文ID（DOI、标题或索引），value为中文总结
+            论文总结字典，key 为论文 ID（DOI、标题或索引），value 为中文总结
         """
+        import time
         if not papers or not self.use_llm:
             return {}
-        
+
         paper_summaries = {}
-        
+
         total = len(papers)
-        logger.warning("开始为 %d 篇论文生成中文总结(并行处理)...", total)
+        start_time = time.time()
+        logger.warning("开始为 %d 篇论文生成中文总结 (并行处理，最多 5 并发)...", total)
 
         max_workers = min(5, total)
         completed_count = 0
@@ -910,9 +919,20 @@ class LiteratureAgent:
                 try:
                     i, paper, summary = future.result()
                     completed_count += 1
+                    elapsed = time.time() - start_time
+
+                    # 进度回调
+                    if progress_callback:
+                        try:
+                            progress_callback(completed_count, total, elapsed)
+                        except Exception:
+                            pass
+
+                    # 日志（每 5 篇或首尾）
                     if completed_count == 1 or completed_count % 5 == 0 or completed_count == total:
                         tp = paper.title[:50] if paper.title else "N/A"
-                        logger.warning("中文总结进度: %d/%d (完成: %s)", completed_count, total, tp)
+                        logger.warning("中文总结进度：%d/%d (完成：%s), 耗时：%.1fs", completed_count, total, tp, elapsed)
+
                     if summary:
                         if paper.doi:
                             paper_summaries[paper.doi] = summary
@@ -923,9 +943,10 @@ class LiteratureAgent:
                         logger.warning("论文 %d/%d: 生成总结失败", i, total)
                 except Exception as e:
                     i = futures[future]
-                    logger.warning("论文 %d/%d: 生成总结时出错: %s", i, total, e)
+                    logger.warning("论文 %d/%d: 生成总结时出错：%s", i, total, e)
 
-        logger.warning("已为 %d 篇论文生成中文总结", len(set(paper_summaries.values())))
+        total_elapsed = time.time() - start_time
+        logger.warning("已为 %d 篇论文生成中文总结，总耗时：%.1fs (平均 %.2fs/篇)", len(paper_summaries), total_elapsed, total_elapsed / max(total, 1))
         return paper_summaries
     
     def _summarize_single_paper(self, paper, index: int = 0) -> Optional[str]:

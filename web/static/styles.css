@@ -1,31 +1,5 @@
-/* ===== CSS Variables — Dark (default) ===== */
+/* ===== CSS Variables — Light (default) ===== */
 :root {
-  --bg-950: #020617;
-  --bg-900: #0f172a;
-  --bg-800: #1e293b;
-  --bg-700: #334155;
-  --bg-600: #475569;
-  --text: #e2e8f0;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-dim: #1d4ed8;
-  --ok: #22c55e;
-  --warn: #f59e0b;
-  --err: #ef4444;
-  --border: #1e293b;
-  --border-light: #334155;
-  --radius: 8px;
-  --radius-lg: 12px;
-  --topbar-h: 48px;
-  --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  --shadow: 0 1px 3px rgba(0,0,0,0.3);
-  --checkbox-accent: #3b82f6;
-}
-
-/* ===== CSS Variables — Light ===== */
-:root[data-theme="light"] {
   --bg-950: #f8fafc;
   --bg-900: #f1f5f9;
   --bg-800: #e2e8f0;
@@ -42,8 +16,34 @@
   --err: #dc2626;
   --border: #e2e8f0;
   --border-light: #cbd5e1;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --topbar-h: 48px;
+  --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   --shadow: 0 1px 3px rgba(0,0,0,0.08);
   --checkbox-accent: #2563eb;
+}
+
+/* ===== CSS Variables — Dark ===== */
+:root[data-theme="dark"] {
+  --bg-950: #020617;
+  --bg-900: #0f172a;
+  --bg-800: #1e293b;
+  --bg-700: #334155;
+  --bg-600: #475569;
+  --text: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-dim: #1d4ed8;
+  --ok: #22c55e;
+  --warn: #f59e0b;
+  --err: #ef4444;
+  --border: #1e293b;
+  --border-light: #334155;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  --checkbox-accent: #3b82f6;
 }
 
 /* ===== Reset ===== */

@@ -83,7 +83,11 @@ class OpenAIProvider(LLMProvider):
                 last_exception = e
                 can_retry = self._can_retry(e) and attempt < self.max_retries
                 if can_retry:
-                    wait_seconds = 0.0 if self.retry_backoff <= 0 else self.retry_backoff ** (attempt - 1)
+                    import random
+                    base_wait = 0.0 if self.retry_backoff <= 0 else self.retry_backoff ** (attempt - 1)
+                    # 加入随机抖动，避免并发线程同时重试导致雪崩
+                    jitter = random.uniform(0, base_wait * 0.5) if base_wait > 0 else 0
+                    wait_seconds = base_wait + jitter
                     logger.warning(
                         f"LLM请求失败（第{attempt}/{self.max_retries}次）: {e}; "
                         f"{wait_seconds:.1f}s 后重试"

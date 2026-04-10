@@ -248,10 +248,24 @@ def _search_worker(session: Session, eq: queue.Queue):
         session.sync_config_to_agent()
 
         # Step 1: Search (with progress callback)
-        eq.put({"type": "status", "step": "searching", "message": "正在搜索文献..."})
+        eq.put({"type": "status", "step": "searching", "message": "正在搜索文献...", "progress": {"current": 1, "total": 4}})
 
         def _on_search_progress(step: str, message: str):
-            eq.put({"type": "status", "step": step, "message": message})
+            # Map internal steps to progress percentage (0-40% for search phase)
+            progress_map = {
+                "init": 5,
+                "searching": 10,
+                "dedup": 25,
+                "filtered": 35,
+                "done": 40,
+            }
+            pct = progress_map.get(step, 20)
+            eq.put({
+                "type": "status",
+                "step": step,
+                "message": message,
+                "progress": {"current": pct, "total": 100}
+            })
 
         papers = agent.base_agent.search_literature(progress_callback=_on_search_progress)
         session.papers = papers or []
@@ -261,7 +275,19 @@ def _search_worker(session: Session, eq: queue.Queue):
             eq.put({"type": "done", "total_papers": 0})
             return
 
-        papers_data = [_paper_to_dict(p) for p in papers]
+        papers_data = []
+        for p in papers:
+            d = _paper_to_dict(p)
+            # 附加影响因子信息
+            if p.journal and hasattr(agent.base_agent, '_get_journal_impact_factor_info'):
+                try:
+                    if_val, if_src = agent.base_agent._get_journal_impact_factor_info(p.journal)
+                    if if_val is not None and if_val > 0:
+                        d["impact_factor"] = round(if_val, 1)
+                        d["impact_factor_source"] = if_src
+                except Exception:
+                    pass
+            papers_data.append(d)
         eq.put({"type": "papers", "data": papers_data, "total": len(papers)})
 
         # Step 4: Get validation info
@@ -276,24 +302,80 @@ def _search_worker(session: Session, eq: queue.Queue):
             eq.put({"type": "summary", "data": summary})
         except Exception as e:
             eq.put({"type": "status", "step": "summarizing", "message": f"综述生成失败: {e}"})
-
-        # Step 6: Per-paper summaries
+        # Step 6: Per-paper summaries (parallel with progress callback)
         total = len(papers)
-        eq.put({"type": "status", "step": "paper_summaries", "message": f"正在为 {total} 篇论文生成中文总结..."})
-        for i, paper in enumerate(papers):
+        eq.put({"type": "status", "step": "paper_summaries", "message": f"正在为 {total} 篇论文生成中文总结 (并行处理)..."})
+
+        # Track timing
+        import time
+        paper_summaries_start = time.time()
+
+        def _on_paper_summary_progress(completed: int, total: int, elapsed: float):
             eq.put({
-                "type": "status", "step": "paper_summaries",
-                "message": f"总结进度: {i + 1}/{total}",
-                "progress": {"current": i + 1, "total": total}
+                "type": "status",
+                "step": "paper_summaries",
+                "message": f"总结进度：{completed}/{total} (耗时：{elapsed:.1f}s)",
+                "progress": {"current": completed, "total": total}
             })
-            try:
-                s = agent._summarize_single_paper(paper, i + 1)
-                if s:
-                    key = paper.doi or paper.title or str(i)
-                    session.paper_summaries[key] = s
-                    eq.put({"type": "paper_summary", "paper_index": i, "paper_id": key, "summary": s})
-            except Exception as e:
-                logger.warning(f"Paper summary failed for index {i}: {e}")
+
+        # Use parallel summarization with progress callback
+        paper_summaries = agent.summarize_papers(papers, progress_callback=_on_paper_summary_progress)
+
+        # Push summaries to client
+        for i, paper in enumerate(papers):
+            key = paper.doi or paper.title or str(i)
+            summary = paper_summaries.get(key) or paper_summaries.get(paper.doi) or paper_summaries.get(paper.title) or paper_summaries.get(str(i+1))
+            if summary:
+                session.paper_summaries[key] = summary
+                eq.put({"type": "paper_summary", "paper_index": i, "paper_id": key, "summary": summary})
+
+        # Report final timing
+        paper_summaries_elapsed = time.time() - paper_summaries_start
+        eq.put({
+            "type": "status",
+            "step": "paper_summaries_done",
+            "message": f"论文总结完成，耗时：{paper_summaries_elapsed:.1f}s ({paper_summaries_elapsed/total:.1f}s/篇)",
+            "timing": {"step": "paper_summaries", "elapsed_sec": paper_summaries_elapsed, "avg_per_paper": paper_summaries_elapsed / max(total, 1)}
+        })
+
+        # Step 7: Abstract translation (parallel, if enabled)
+        translate_enabled = (session.config.get("report") or {}).get("translate_abstract", False)
+        if translate_enabled:
+            papers_with_abstract = [(i, p) for i, p in enumerate(papers) if p.abstract]
+            if papers_with_abstract:
+                eq.put({
+                    "type": "status", "step": "translating",
+                    "message": f"正在翻译 {len(papers_with_abstract)} 篇论文摘要..."
+                })
+                from concurrent.futures import ThreadPoolExecutor as _TPE, as_completed as _ac
+
+                def _translate_one(idx_paper):
+                    idx, paper = idx_paper
+                    translated = agent.base_agent._translate_abstract(paper.abstract)
+                    return idx, paper, translated
+
+                t_workers = min(5, len(papers_with_abstract))
+                with _TPE(max_workers=t_workers) as tex:
+                    futs = {tex.submit(_translate_one, item): item for item in papers_with_abstract}
+                    t_done = 0
+                    for fut in _ac(futs):
+                        t_done += 1
+                        try:
+                            idx, paper, translated = fut.result()
+                            if translated:
+                                eq.put({
+                                    "type": "paper_abstract_translated",
+                                    "paper_index": idx,
+                                    "translated": translated
+                                })
+                        except Exception as e:
+                            logger.warning("Abstract translation failed: %s", e)
+                        if t_done % 5 == 0 or t_done == len(papers_with_abstract):
+                            eq.put({
+                                "type": "status", "step": "translating",
+                                "message": f"翻译进度: {t_done}/{len(papers_with_abstract)}",
+                                "progress": {"current": t_done, "total": len(papers_with_abstract)}
+                            })
 
         eq.put({"type": "done", "total_papers": len(papers)})
 

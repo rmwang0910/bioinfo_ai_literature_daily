@@ -55,15 +55,25 @@ class OpenAlexClient:
         return paper
 
     def enrich_papers(self, papers: List[PaperMetadata]) -> List[PaperMetadata]:
-        """
-        Batch enrich a list of papers.
-        Currently processes sequentially, but could be optimized with batch filters if needed.
-        """
-        for paper in papers:
-            try:
-                self.enrich_paper(paper)
-            except Exception as e:
-                logger.warning(f"Failed to enrich paper {paper.id}: {e}")
+        """Batch enrich papers with OpenAlex data (parallel HTTP requests)."""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        if not papers:
+            return papers
+
+        def _enrich_one(paper):
+            self.enrich_paper(paper)
+            return paper
+
+        max_workers = min(8, len(papers))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(_enrich_one, p): p for p in papers}
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    p = futures[future]
+                    logger.warning(f"Failed to enrich paper {p.id}: {e}")
         return papers
 
     def _get_work_by_id(self, openalex_id_or_doi: str) -> Optional[Dict]:

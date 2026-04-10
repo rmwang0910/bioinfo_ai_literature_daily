@@ -105,16 +105,70 @@ class ScimagoMetrics:
         except Exception as e:
             logger.warning(f"Failed to load Scimago CSV: {e}")
 
+    # 常见期刊缩写→全称映射（用于缩写无法子串匹配时的回退）
+    _ABBREV_MAP = {
+        "int j surg": "international journal of surgery",
+        "pnas": "proceedings of the national academy of sciences of the united states of america",
+        "bmj": "british medical journal",
+        "jama": "jama journal of the american medical association",
+        "nejm": "new england journal of medicine",
+        "lancet": "the lancet",
+        "nat med": "nature medicine",
+        "nat commun": "nature communications",
+        "nat genet": "nature genetics",
+        "nat methods": "nature methods",
+        "nat biotechnol": "nature biotechnology",
+        "nat cell biol": "nature cell biology",
+        "nat rev genet": "nature reviews genetics",
+        "nat mach intell": "nature machine intelligence",
+        "nat comput sci": "nature computational science",
+        "sci adv": "science advances",
+        "cell rep": "cell reports",
+        "cell syst": "cell systems",
+        "nucleic acids res": "nucleic acids research",
+        "genome res": "genome research",
+        "genome biol": "genome biology",
+        "brief bioinform": "briefings in bioinformatics",
+        "bmc bioinformatics": "bmc bioinformatics",
+        "plos comput biol": "plos computational biology",
+        "plos biol": "plos biology",
+        "j comput biol": "journal of computational biology",
+        "bioinformatics": "bioinformatics",
+        "front immunol": "frontiers in immunology",
+        "front oncol": "frontiers in oncology",
+        "front genet": "frontiers in genetics",
+        "front cell dev biol": "frontiers in cell and developmental biology",
+        "j clin invest": "journal of clinical investigation",
+        "j exp med": "journal of experimental medicine",
+        "embo j": "embo journal",
+        "mol cell": "molecular cell",
+        "mol syst biol": "molecular systems biology",
+        "iscience": "iscience",
+        "adv sci": "advanced science",
+        "signal transduct target ther": "signal transduction and targeted therapy",
+    }
+
     def get_metrics(self, journal_name: str, issn: Optional[str] = None) -> Optional[Dict]:
         if issn and issn in self.by_issn:
             return self.by_issn[issn]
         norm = self._normalize(journal_name or "")
         if not norm:
             return None
+        # 精确匹配
         if norm in self.by_name:
             return self.by_name[norm]
+        # 缩写映射回退
+        if norm in self._ABBREV_MAP:
+            full = self._normalize(self._ABBREV_MAP[norm])
+            if full in self.by_name:
+                return self.by_name[full]
+        # 子串匹配：要求双方长度差不超过 2 倍，且匹配方长度 >= 6，避免短名误匹配
         for key, value in self.by_name.items():
-            if norm in key or key in norm:
+            if len(key) < 6 and len(norm) < 6:
+                continue
+            if norm in key and len(key) <= len(norm) * 2:
+                return value
+            if key in norm and len(norm) <= len(key) * 2:
                 return value
         return None
 
