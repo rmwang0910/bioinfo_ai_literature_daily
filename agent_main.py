@@ -2194,30 +2194,8 @@ class LiteratureAgent:
             return {"status": "error", "message": "邮件发送失败，请检查 SMTP 配置", "title": paper.title}
 
     def _analyze_paper_with_llm(self, paper, content: str, source_desc: str) -> Dict[str, Any]:
-        """调用 LLM 生成结构化解析结果"""
+        """调用 LLM 生成结构化解析结果，失败时自动用精简 prompt 重试"""
         import json
-
-        prompt_file = self.prompts_dir / "analyze_single_paper.txt"
-        template = (
-            prompt_file.read_text(encoding='utf-8')
-            if prompt_file.exists()
-            else self._default_analyze_prompt()
-        )
-
-        authors = paper.authors or []
-        authors_str = ", ".join(a.name for a in authors[:5])
-        if len(authors) > 5:
-            authors_str += " et al."
-
-        prompt = template.format(
-            title=paper.title or "N/A",
-            authors=authors_str or "N/A",
-            journal=paper.journal or "N/A",
-            date=str(paper.year or paper.publication_date or "N/A"),
-            doi=paper.doi or "N/A",
-            source_type=source_desc,
-            content=content
-        )
 
         if not self.use_llm or not self.llm_client:
             return {
@@ -2228,27 +2206,118 @@ class LiteratureAgent:
                 "解析级别": source_desc
             }
 
+        authors = paper.authors or []
+        authors_str = ", ".join(a.name for a in authors[:5])
+        if len(authors) > 5:
+            authors_str += " et al."
+
+        prompt_vars = {
+            "title": paper.title or "N/A",
+            "authors": authors_str or "N/A",
+            "journal": paper.journal or "N/A",
+            "date": str(paper.year or paper.publication_date or "N/A"),
+            "doi": paper.doi or "N/A",
+            "source_type": source_desc,
+            "content": content
+        }
+
+        # 第一次尝试：完整 prompt
+        result = self._try_llm_analyze(prompt_vars, "analyze_single_paper", max_tokens=4000)
+        if result:
+            result.setdefault("解析级别", source_desc)
+            return result
+
+        # 第二次尝试：精简 prompt
+        logger.warning("完整解析失败，使用精简 prompt 重试...")
+        result = self._try_llm_analyze(prompt_vars, "analyze_single_paper_lite", max_tokens=2000)
+        if result:
+            result.setdefault("解析级别", f"{source_desc}(精简)")
+            return result
+
+        # 全部失败
+        return {
+            "研究背景": "解析失败，请查看原文",
+            "研究目的": "", "方法": "",
+            "主要发现": [],
+            "结论与意义": "", "局限性": "",
+            "解析级别": source_desc
+        }
+
+    def _try_llm_analyze(self, prompt_vars: Dict, prompt_name: str, max_tokens: int) -> Optional[Dict[str, Any]]:
+        """尝试用指定 prompt 进行 LLM 解析，返回 None 表示失败"""
+        import json
+
+        prompt_file = self.prompts_dir / f"{prompt_name}.txt"
+        if not prompt_file.exists():
+            logger.warning(f"Prompt 文件不存在: {prompt_file}")
+            return None
+
+        template = prompt_file.read_text(encoding='utf-8')
+        prompt = template.format(**prompt_vars)
+
         try:
-            raw = self.llm_client.generate(prompt, max_tokens=2000, temperature=0.1)
-            # 提取 JSON（LLM 可能包裹在 ```json ... ``` 中）
+            raw = self.llm_client.generate(prompt, max_tokens=max_tokens, temperature=0.1)
             json_str = raw.strip()
+
+            # 提取 JSON（LLM 可能包裹在 ```json ... ``` 中）
             if "```" in json_str:
                 import re as _re
                 m = _re.search(r'```(?:json)?\s*([\s\S]+?)```', json_str)
                 if m:
                     json_str = m.group(1).strip()
-            result = json.loads(json_str)
-            result.setdefault("解析级别", source_desc)
-            return result
+
+            # 尝试解析 JSON
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                # 尝试修复截断的 JSON
+                json_str_fixed = self._try_fix_truncated_json(json_str)
+                return json.loads(json_str_fixed)
+
         except Exception as e:
-            logger.warning(f"LLM 解析结果非 JSON: {e}")
-            return {
-                "研究背景": "解析失败，请查看原文",
-                "研究目的": "", "方法": "",
-                "主要发现": [],
-                "结论与意义": "", "局限性": "",
-                "解析级别": source_desc
-            }
+            logger.warning(f"LLM 解析失败 ({prompt_name}): {e}")
+            return None
+
+    def _try_fix_truncated_json(self, json_str: str) -> str:
+        """尝试修复被截断的 JSON 字符串"""
+        s = json_str.rstrip()
+
+        # 统计未闭合的括号和引号
+        in_string = False
+        escape_next = False
+        brace_count = 0
+        bracket_count = 0
+
+        for ch in s:
+            if escape_next:
+                escape_next = False
+                continue
+            if ch == '\\':
+                escape_next = True
+                continue
+            if ch == '"' and not escape_next:
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if ch == '{':
+                brace_count += 1
+            elif ch == '}':
+                brace_count -= 1
+            elif ch == '[':
+                bracket_count += 1
+            elif ch == ']':
+                bracket_count -= 1
+
+        # 如果在字符串中截断，先闭合字符串
+        if in_string:
+            s += '"'
+
+        # 闭合未闭合的括号
+        s += ']' * bracket_count
+        s += '}' * brace_count
+
+        return s
 
     def _send_single_paper_email(self, paper, analysis: Dict, source_desc: str, to_email: str,
                                    pdf_bytes: Optional[bytes] = None) -> bool:
