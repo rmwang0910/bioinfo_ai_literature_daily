@@ -14,6 +14,7 @@ import argparse
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 配置logging：默认只在控制台输出重要日志（WARNING及以上）
 log_level_name = os.environ.get("BIOAI_LOG_LEVEL", "WARNING").upper()
@@ -202,157 +203,140 @@ class LiteratureAgent:
             logger.warning(f"LLM判断关键词运算符失败: {e}，默认使用AND")
             return 'AND'
     
+    def _parse_date_range(self, user_input: str) -> Dict[str, Any]:
+        """
+        统一的日期/时间范围解析。正则优先，LLM 兜底。
+
+        Returns:
+            包含 'min_date'/'max_date' 或 'days_back' 的字典，解析失败返回空字典。
+        """
+        from datetime import datetime, timedelta
+
+        result: Dict[str, Any] = {}
+        current_year = datetime.now().year
+        current_date = datetime.now()
+
+        # --- 具体日期范围（最高优先级）---
+        # "2023年1月1日到2024年12月31日"
+        m = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日[到至-](\d{4})年(\d{1,2})月(\d{1,2})日', user_input)
+        if m:
+            result['min_date'] = f"{int(m.group(1))}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+            result['max_date'] = f"{int(m.group(4))}-{int(m.group(5)):02d}-{int(m.group(6)):02d}"
+            return result
+
+        # --- 年份范围 ---
+        # "2023-2024年" 或 "2022年到2024年"
+        m = re.search(r'(\d{4})[年-](\d{4})年?', user_input)
+        if not m:
+            m = re.search(r'(\d{4})年[到至](\d{4})年', user_input)
+        if m:
+            result['min_date'] = f"{int(m.group(1))}-01-01"
+            result['max_date'] = f"{int(m.group(2))}-12-31"
+            return result
+
+        # "X年至今/到现在/到当前"
+        m = re.search(r'(\d{4})年[到至](?:今|现在|当前)', user_input)
+        if m:
+            result['min_date'] = f"{int(m.group(1))}-01-01"
+            result['max_date'] = current_date.strftime('%Y-%m-%d')
+            return result
+
+        # "X年初" / "X年底"
+        m = re.search(r'(\d{4})年初', user_input)
+        if m:
+            y = int(m.group(1))
+            return {'min_date': f"{y}-01-01", 'max_date': f"{y}-03-31"}
+        m = re.search(r'(\d{4})年底', user_input)
+        if m:
+            y = int(m.group(1))
+            return {'min_date': f"{y}-10-01", 'max_date': f"{y}-12-31"}
+
+        # 相对时间："去年"、"今年"、"明年"
+        if '去年' in user_input:
+            y = current_year - 1
+            return {'min_date': f"{y}-01-01", 'max_date': f"{y}-12-31"}
+        if '今年' in user_input:
+            return {'min_date': f"{current_year}-01-01", 'max_date': current_date.strftime('%Y-%m-%d')}
+        if '明年' in user_input:
+            y = current_year + 1
+            return {'min_date': f"{y}-01-01", 'max_date': f"{y}-12-31"}
+
+        # "YYYY年M月到N月"
+        m = re.search(r'(\d{4})年(\d{1,2})月[到至-](\d{1,2})月', user_input)
+        if m:
+            year, ms, me = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            result['min_date'] = f"{year}-{ms:02d}-01"
+            if me == 12:
+                result['max_date'] = f"{year}-12-31"
+            else:
+                last_day = (datetime(year, me + 1, 1) - timedelta(days=1)).day
+                result['max_date'] = f"{year}-{me:02d}-{last_day}"
+            return result
+
+        # "YYYY年M月"（单月）
+        m = re.search(r'(\d{4})年(\d{1,2})月(?![到至-]|\d)', user_input)
+        if m:
+            year, month = int(m.group(1)), int(m.group(2))
+            result['min_date'] = f"{year}-{month:02d}-01"
+            if month == 12:
+                result['max_date'] = f"{year}-12-31"
+            else:
+                last_day = (datetime(year, month + 1, 1) - timedelta(days=1)).day
+                result['max_date'] = f"{year}-{month:02d}-{last_day}"
+            return result
+
+        # "YYYY年"（单个年份，放在月份之后避免误匹配）
+        m = re.search(r'(\d{4})年(?![到至初底-]|\d)', user_input)
+        if m:
+            y = int(m.group(1))
+            return {'min_date': f"{y}-01-01", 'max_date': f"{y}-12-31"}
+
+        # --- 相对天数 ---
+        m = re.search(r'最近(\d+)天', user_input)
+        if m:
+            return {'days_back': int(m.group(1))}
+        m = re.search(r'最近(\d+)周', user_input)
+        if m:
+            return {'days_back': int(m.group(1)) * 7}
+        m = re.search(r'最近(\d+)月', user_input)
+        if m:
+            return {'days_back': int(m.group(1)) * 30}
+        m = re.search(r'(最近|近|过去)(\d+)年', user_input)
+        if m:
+            return {'days_back': int(m.group(2)) * 365}
+
+        # "YYYY-MM-DD 到 YYYY-MM-DD"（ISO 格式）
+        m = re.search(r'(\d{4}-\d{2}-\d{2})\s*[到至]\s*(\d{4}-\d{2}-\d{2})', user_input)
+        if m:
+            return {'min_date': m.group(1), 'max_date': m.group(2)}
+
+        # --- LLM 兜底 ---
+        if self.use_llm:
+            logger.info(f"正则日期解析未命中，尝试 LLM 解析: {user_input}")
+            llm_result = self._parse_time_with_llm(user_input)
+            if llm_result:
+                return llm_result
+
+        return result
+
     def _parse_simple_request(self, user_input: str) -> Dict[str, Any]:
         """
         简单模式：使用正则表达式和规则解析用户需求
-        
+
         Args:
             user_input: 用户输入的自然语言需求
-        
+
         Returns:
             解析后的参数字典
         """
-        from datetime import datetime, timedelta
-        
         parsed = {}
-        current_year = datetime.now().year
-        current_date = datetime.now()
-        
-        # 解析年份范围（如"2023-2024年"、"2022年到2024年"）
-        year_range_match = re.search(r'(\d{4})[年-](\d{4})年?', user_input)
-        if year_range_match:
-            year_start = int(year_range_match.group(1))
-            year_end = int(year_range_match.group(2))
-            parsed['min_date'] = f"{year_start}-01-01"
-            parsed['max_date'] = f"{year_end}-12-31"
-            logger.info(f"简单解析：检测到年份范围 {year_start}-{year_end}，设置日期范围 {parsed['min_date']} 至 {parsed['max_date']}")
-        
-        # 解析具体日期范围（如"2023年1月1日到2024年12月31日"）
-        full_date_range_match = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日[到至-](\d{4})年(\d{1,2})月(\d{1,2})日', user_input)
-        if full_date_range_match:
-            year1, month1, day1 = int(full_date_range_match.group(1)), int(full_date_range_match.group(2)), int(full_date_range_match.group(3))
-            year2, month2, day2 = int(full_date_range_match.group(4)), int(full_date_range_match.group(5)), int(full_date_range_match.group(6))
-            parsed['min_date'] = f"{year1}-{month1:02d}-{day1:02d}"
-            parsed['max_date'] = f"{year2}-{month2:02d}-{day2:02d}"
-            logger.info(f"简单解析：检测到具体日期范围，设置 {parsed['min_date']} 至 {parsed['max_date']}")
-        
-        # 解析"X年到Y年"（如"2022年到2024年"）
-        year_to_year_match = re.search(r'(\d{4})年[到至](\d{4})年', user_input)
-        if year_to_year_match and 'min_date' not in parsed:
-            year_start = int(year_to_year_match.group(1))
-            year_end = int(year_to_year_match.group(2))
-            parsed['min_date'] = f"{year_start}-01-01"
-            parsed['max_date'] = f"{year_end}-12-31"
-            logger.info(f"简单解析：检测到年份范围 {year_start}-{year_end}")
-        
-        # 解析"X年至今"、"X年到现在"（如"2023年至今"）
-        year_to_now_match = re.search(r'(\d{4})年[到至](?:今|现在|当前)', user_input)
-        if year_to_now_match and 'min_date' not in parsed:
-            year = int(year_to_now_match.group(1))
-            parsed['min_date'] = f"{year}-01-01"
-            parsed['max_date'] = current_date.strftime('%Y-%m-%d')
-            logger.info(f"简单解析：检测到从{year}年至今")
-        
-        # 解析"X年初"、"X年底"（如"2024年初"、"2025年底"）
-        year_start_match = re.search(r'(\d{4})年初', user_input)
-        if year_start_match and 'min_date' not in parsed:
-            year = int(year_start_match.group(1))
-            parsed['min_date'] = f"{year}-01-01"
-            parsed['max_date'] = f"{year}-03-31"  # 年初通常指第一季度
-            logger.info(f"简单解析：检测到{year}年初")
-        
-        year_end_match = re.search(r'(\d{4})年底', user_input)
-        if year_end_match and 'min_date' not in parsed:
-            year = int(year_end_match.group(1))
-            parsed['min_date'] = f"{year}-10-01"  # 年底通常指第四季度
-            parsed['max_date'] = f"{year}-12-31"
-            logger.info(f"简单解析：检测到{year}年底")
-        
-        # 解析相对时间（"去年"、"今年"、"明年"）
-        if '去年' in user_input and 'min_date' not in parsed:
-            last_year = current_year - 1
-            parsed['min_date'] = f"{last_year}-01-01"
-            parsed['max_date'] = f"{last_year}-12-31"
-            logger.info(f"简单解析：检测到去年（{last_year}年）")
-        
-        if '今年' in user_input and 'min_date' not in parsed:
-            parsed['min_date'] = f"{current_year}-01-01"
-            parsed['max_date'] = current_date.strftime('%Y-%m-%d')
-            logger.info(f"简单解析：检测到今年（{current_year}年）")
-        
-        if '明年' in user_input and 'min_date' not in parsed:
-            next_year = current_year + 1
-            parsed['min_date'] = f"{next_year}-01-01"
-            parsed['max_date'] = f"{next_year}-12-31"
-            logger.info(f"简单解析：检测到明年（{next_year}年）")
-        
-        # 解析年份（如"2026年"、"2025年"）- 放在后面，避免覆盖更具体的范围
-        year_match = re.search(r'(\d{4})年(?![到至-]|\d)', user_input)
-        if year_match and 'min_date' not in parsed:
-            year = int(year_match.group(1))
-            parsed['min_date'] = f"{year}-01-01"
-            parsed['max_date'] = f"{year}-12-31"
-            logger.info(f"简单解析：检测到年份 {year}，设置日期范围 {parsed['min_date']} 至 {parsed['max_date']}")
-        
-        # 解析日期范围（如"2024年1月到3月"、"2025年1月-3月"）
-        date_range_match = re.search(r'(\d{4})年(\d{1,2})月[到至-](\d{1,2})月', user_input)
-        if date_range_match and 'min_date' not in parsed:
-            year = int(date_range_match.group(1))
-            month_start = int(date_range_match.group(2))
-            month_end = int(date_range_match.group(3))
-            parsed['min_date'] = f"{year}-{month_start:02d}-01"
-            # 计算结束月份的最后一天
-            if month_end == 12:
-                parsed['max_date'] = f"{year}-12-31"
-            else:
-                next_month = datetime(year, month_end + 1, 1)
-                last_day = (next_month - timedelta(days=1)).day
-                parsed['max_date'] = f"{year}-{month_end:02d}-{last_day}"
-            logger.info(f"简单解析：检测到日期范围，设置 {parsed['min_date']} 至 {parsed['max_date']}")
-        
-        # 解析单个月份（如"2024年1月"）
-        month_match = re.search(r'(\d{4})年(\d{1,2})月(?![到至-]|\d)', user_input)
-        if month_match and 'min_date' not in parsed:
-            year = int(month_match.group(1))
-            month = int(month_match.group(2))
-            parsed['min_date'] = f"{year}-{month:02d}-01"
-            if month == 12:
-                parsed['max_date'] = f"{year}-12-31"
-            else:
-                next_month = datetime(year, month + 1, 1)
-                last_day = (next_month - timedelta(days=1)).day
-                parsed['max_date'] = f"{year}-{month:02d}-{last_day}"
-            logger.info(f"简单解析：检测到月份，设置 {parsed['min_date']} 至 {parsed['max_date']}")
-        
-        # 解析"最近N天"
-        days_match = re.search(r'最近(\d+)天', user_input)
-        if days_match and 'min_date' not in parsed:
-            days = int(days_match.group(1))
-            parsed['days_back'] = days
-            logger.info(f"简单解析：检测到最近{days}天")
-        
-        # 解析"最近N周"
-        weeks_match = re.search(r'最近(\d+)周', user_input)
-        if weeks_match and 'min_date' not in parsed:
-            weeks = int(weeks_match.group(1))
-            parsed['days_back'] = weeks * 7
-            logger.info(f"简单解析：检测到最近{weeks}周，转换为{weeks * 7}天")
-        
-        # 解析"最近N月"
-        months_match = re.search(r'最近(\d+)月', user_input)
-        if months_match and 'min_date' not in parsed:
-            months = int(months_match.group(1))
-            parsed['days_back'] = months * 30  # 近似值
-            logger.info(f"简单解析：检测到最近{months}月，转换为{months * 30}天")
-        
-        # 解析"近N年/最近N年/过去N年"
-        years_match = re.search(r'(最近|近|过去)(\d+)年', user_input)
-        if years_match and 'min_date' not in parsed and 'days_back' not in parsed:
-            years = int(years_match.group(2))
-            days = years * 365  # 按年近似为365天
-            parsed['days_back'] = days
-            logger.info(f"简单解析：检测到{years_match.group(1)}{years}年，转换为最近{days}天")
-        
+
+        # 日期解析（统一入口）
+        date_result = self._parse_date_range(user_input)
+        if date_result:
+            parsed.update(date_result)
+            logger.info(f"简单解析：日期解析结果: {date_result}")
+
         # 解析关键词（简单提取）
         keywords = []
         
@@ -525,7 +509,7 @@ class LiteratureAgent:
             journal_str = m.group(1).strip()
             journal_str = re.split(r'(?:领域|方向|学科|field|domain|影响因子|IF|发送|邮箱)', journal_str, maxsplit=1)[0].strip()
             journal_parts = re.split(r'[、,，;；]|和|或|以及|/|\|', journal_str)
-            journals = [j.strip(" \"'“”‘’") for j in journal_parts if j.strip(" \"'“”‘’")]
+            journals = [j.strip(" \"'""‘’") for j in journal_parts if j.strip(" \"'""‘’")]
             if journals:
                 filter_cfg['allowed_journals'] = journals
                 break
@@ -541,7 +525,7 @@ class LiteratureAgent:
             field_str = m.group(1).strip()
             field_str = re.split(r'(?:期刊|journal|影响因子|IF|发送|邮箱)', field_str, maxsplit=1)[0].strip()
             field_parts = re.split(r'[、,，;；]|和|或|以及|/|\|', field_str)
-            fields = [f.strip(" \"'“”‘’") for f in field_parts if f.strip(" \"'“”‘’")]
+            fields = [f.strip(" \"'""‘’") for f in field_parts if f.strip(" \"'""‘’")]
             if fields:
                 filter_cfg['allowed_fields'] = fields
                 break
@@ -766,7 +750,7 @@ class LiteratureAgent:
         )
         
         try:
-            response = self.llm_client.generate(prompt, max_tokens=500, temperature=0.3)
+            response = self.llm_client.generate(prompt, max_tokens=800, temperature=0.3)
             
             # 解析JSON响应
             import json
@@ -822,6 +806,10 @@ class LiteratureAgent:
                             merged['boolean_query'] = str(value).strip()
                         elif key == 'keyword_operator' and value:
                             merged['keyword_operator'] = value
+                        elif key == 'keyword_mapping' and value and isinstance(value, dict):
+                            merged['keyword_mapping'] = value
+                        elif key == 'expanded_keywords' and value and isinstance(value, list):
+                            merged['expanded_keywords'] = value
                         elif key == 'to_email' and value:
                             merged['to_email'] = value
                         elif key == 'max_papers' and value:
@@ -904,34 +892,40 @@ class LiteratureAgent:
         paper_summaries = {}
         
         total = len(papers)
-        # 使用WARNING级别，让用户在精简日志模式下也能看到“进入总结阶段”
-        logger.warning(f"开始为 {total} 篇论文生成中文总结（可能稍有耗时，请耐心等待）...")
-        
-        # 逐篇处理，更可靠
-        for i, paper in enumerate(papers, 1):
-            try:
-                # 定期打印进度，避免用户误以为卡住
-                if i == 1 or i % 5 == 0 or i == total:
-                    title_preview = paper.title[:50] if paper.title else "无标题"
-                    logger.warning(f"中文总结进度: 第 {i}/{total} 篇论文（当前: {title_preview}）")
-                
-                summary = self._summarize_single_paper(paper, i)
-                if summary:
-                    # 使用多种key，确保能匹配到
-                    if paper.doi:
-                        paper_summaries[paper.doi] = summary
-                    if paper.title:
-                        paper_summaries[paper.title] = summary
-                    # 也使用索引作为key
-                    paper_summaries[str(i)] = summary
-                    logger.info(f"✓ 论文 {i}/{len(papers)}: {paper.title[:50] if paper.title else '无标题'}...")
-                else:
-                    logger.warning(f"✗ 论文 {i}/{len(papers)}: 生成总结失败")
-            except Exception as e:
-                logger.warning(f"✗ 论文 {i}/{len(papers)}: 生成总结时出错: {e}")
-        
-        # 使用WARNING级别，总结生成完毕
-        logger.warning(f"已为 {len(set(paper_summaries.values()))} 篇论文生成中文总结")
+        logger.warning("开始为 %d 篇论文生成中文总结(并行处理)...", total)
+
+        max_workers = min(5, total)
+        completed_count = 0
+
+        def _task(idx_paper):
+            idx, p = idx_paper
+            return idx, p, self._summarize_single_paper(p, idx)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(_task, (i, paper)): i
+                for i, paper in enumerate(papers, 1)
+            }
+            for future in as_completed(futures):
+                try:
+                    i, paper, summary = future.result()
+                    completed_count += 1
+                    if completed_count == 1 or completed_count % 5 == 0 or completed_count == total:
+                        tp = paper.title[:50] if paper.title else "N/A"
+                        logger.warning("中文总结进度: %d/%d (完成: %s)", completed_count, total, tp)
+                    if summary:
+                        if paper.doi:
+                            paper_summaries[paper.doi] = summary
+                        if paper.title:
+                            paper_summaries[paper.title] = summary
+                        paper_summaries[str(i)] = summary
+                    else:
+                        logger.warning("论文 %d/%d: 生成总结失败", i, total)
+                except Exception as e:
+                    i = futures[future]
+                    logger.warning("论文 %d/%d: 生成总结时出错: %s", i, total, e)
+
+        logger.warning("已为 %d 篇论文生成中文总结", len(set(paper_summaries.values())))
         return paper_summaries
     
     def _summarize_single_paper(self, paper, index: int = 0) -> Optional[str]:
@@ -989,32 +983,34 @@ class LiteratureAgent:
             logger.warning(f"生成单篇论文总结失败: {e}")
             return None
     
+    def _summarize_literature_simple(self, papers, keyword_validation_info: Dict = None) -> str:
+        """无 LLM 的简单文献总结（fallback）"""
+        if not papers:
+            return "未找到相关文献。"
+        summary = f"共找到 {len(papers)} 篇相关文献。\n\n"
+        for i, paper in enumerate(papers[:5], 1):
+            summary += f"{i}. {paper.title or '无标题'}\n"
+            summary += f"   期刊: {paper.journal or '未知'}, 年份: {paper.year or '未知'}\n\n"
+        if keyword_validation_info:
+            summary += self._generate_validation_table(papers, keyword_validation_info)
+        return summary
+
     def summarize_literature(self, papers, keyword_validation_info: Dict = None) -> str:
         """
         总结文献
-        
+
         Args:
             papers: 论文列表
             keyword_validation_info: 关键词验证信息（用于生成验证表）
-        
+
         Returns:
             总结文本
         """
         if not papers:
             return "未找到相关文献。"
-        
+
         if not self.use_llm:
-            # 简单模式：返回基本信息
-            summary = f"共找到 {len(papers)} 篇相关文献。\n\n"
-            for i, paper in enumerate(papers[:5], 1):
-                summary += f"{i}. {paper.title or '无标题'}\n"
-                summary += f"   期刊: {paper.journal or '未知'}, 年份: {paper.year or '未知'}\n\n"
-            
-            # 添加验证表（如果有）
-            if keyword_validation_info:
-                summary += self._generate_validation_table(papers, keyword_validation_info)
-            
-            return summary
+            return self._summarize_literature_simple(papers, keyword_validation_info)
         
         # 准备论文信息
         papers_text = ""
@@ -1068,49 +1064,34 @@ class LiteratureAgent:
             return summary
         except Exception as e:
             logger.warning(f"文献总结失败: {e}，使用简单总结")
-            return self.summarize_literature(papers, keyword_validation_info)  # 递归调用简单模式
+            return self._summarize_literature_simple(papers, keyword_validation_info)
     
-    def update_config_from_request(self, parsed_request: Dict[str, Any], user_input: str = ""):
-        """
-        根据解析的需求更新配置
-        
-        Args:
-            parsed_request: 解析后的需求字典
-            user_input: 用户原始输入（用于LLM判断关键词运算符）
-        """
-        # 更新搜索配置
-        # 优先使用新的两层结构：topic_keywords（主题关键词）和 article_type_keywords（文章类型关键词）
+    # ------------------------------------------------------------------
+    # update_config_from_request 及其 helper 方法
+    # ------------------------------------------------------------------
+
+    def _resolve_topic_keywords(self, parsed_request: Dict[str, Any]):
+        """从解析结果中提取主题关键词和文章类型关键词，并做启发式分离。"""
         topic_keywords = None
         article_type_keywords: List[str] | None = None
 
-        # LLM 解析得到的主题关键词
         if 'topic_keywords' in parsed_request and parsed_request['topic_keywords']:
             topic_keywords = parsed_request['topic_keywords']
-            logger.info(f"✅ 检测到主题关键词: {topic_keywords}")
+            logger.info(f"检测到主题关键词: {topic_keywords}")
 
-        # 用户在交互式流程中可能**手动修改了 keywords**，
-        # 这时应当以用户提供的 keywords 为准，覆盖原来的 topic_keywords，
-        # 以避免像 "(child OR neonatal)" 被拆成 "(child) AND (neonatal)" 这样的情况。
+        # 用户手动覆盖
         raw_keywords = parsed_request.get('keywords')
         if raw_keywords:
-            # 如果 topic_keywords 已存在且与 keywords 不同，认为是“用户手动覆盖”
             if topic_keywords and raw_keywords != topic_keywords:
-                logger.info(
-                    f"检测到用户手动修改关键词，将覆盖LLM解析的主题关键词: "
-                    f"topic_keywords={topic_keywords} -> keywords={raw_keywords}"
-                )
+                logger.info(f"用户手动修改关键词: {topic_keywords} -> {raw_keywords}")
                 topic_keywords = raw_keywords
             elif not topic_keywords:
-                # 向后兼容：没有 topic_keywords 时，直接使用 keywords
                 topic_keywords = raw_keywords
-                logger.info(f"使用向后兼容模式，将keywords作为主题关键词: {topic_keywords}")
 
-        if 'article_type_keywords' in parsed_request and parsed_request.get('article_type_keywords'):
+        if parsed_request.get('article_type_keywords'):
             article_type_keywords = list(parsed_request['article_type_keywords'])
-            logger.info(f"✅ 检测到文章类型关键词: {article_type_keywords}")
 
-        # 进一步用启发式规则，把明显属于“文章类型”的词从 topic_keywords 中剥离到 article_type_keywords，
-        # 避免它们出现在严格主题关键词列表中（例如 "回顾性研究"、"review"、"retrospective study" 等）。
+        # 启发式：从 topic 中剥离文章类型词
         ARTICLE_TYPE_HINTS = [
             "回顾性", "回顾性研究", "队列研究", "病例对照", "病例系列",
             "综述", "系统综述", "meta分析", "meta-analysis",
@@ -1130,216 +1111,188 @@ class LiteratureAgent:
                 else:
                     cleaned_topic.append(kw_str)
             if extra_article_types:
-                logger.info(f"🔎 启发式识别到文章类型关键词，将从主题关键词中剥离: {extra_article_types}")
                 topic_keywords = cleaned_topic or None
                 if article_type_keywords is None:
                     article_type_keywords = []
-                # 合并去重
                 at_set = {str(x).strip() for x in article_type_keywords if str(x).strip()}
                 for at in extra_article_types:
                     if at not in at_set:
                         article_type_keywords.append(at)
                         at_set.add(at)
-                logger.info(f"✅ 最终文章类型关键词: {article_type_keywords}")
 
-        # 记录关键词逻辑描述（如果有），用于严格验证阶段指导 AND/OR 行为
+        return topic_keywords, article_type_keywords
+
+    def _build_search_query(self, cleaned_keywords: List[str], parsed_request: Dict[str, Any]) -> str:
+        """根据清洗后的关键词构建搜索查询字符串，并设置 config。返回最终 query。"""
+        boolean_query = parsed_request.get('boolean_query')
+
+        # 高级检索式（用户手动输入的完整 PubMed 查询）
+        if len(cleaned_keywords) == 1:
+            q = cleaned_keywords[0]
+            upper_q = q.upper()
+            if any(op in upper_q for op in [" AND ", " OR ", " NOT "]) or "[" in q or ":" in q:
+                self.base_agent.config['search']['keywords'] = [q]
+                self.base_agent.config['search']['semantic_keywords'] = cleaned_keywords
+                logger.info(f"检测到高级检索式: {q}")
+                return q
+
+        # LLM 构建的布尔查询
+        if boolean_query:
+            self.base_agent.config['search']['keywords'] = [boolean_query]
+            self.base_agent.config['search']['semantic_keywords'] = cleaned_keywords
+            logger.info(f"使用布尔查询: {boolean_query}")
+            return boolean_query
+
+        # 常规情况：扩展关键词 → 构建 AND 查询
+        expanded_keywords = cleaned_keywords
+        force_expand = getattr(self, "force_llm_expand_keywords", False)
+
+        # 优先使用统一解析中已返回的扩展结果（避免额外 LLM 调用）
+        pre_expanded = parsed_request.get('expanded_keywords')
+        pre_mapping = parsed_request.get('keyword_mapping')
+        used_pre_expansion = False
+
+        if pre_expanded and isinstance(pre_expanded, list) and len(pre_expanded) > 0:
+            english_expanded = self._filter_english_keywords(pre_expanded)
+            if english_expanded:
+                expanded_keywords = english_expanded
+                used_pre_expansion = True
+                logger.info(f"使用统一解析扩展词: {expanded_keywords}")
+        if not used_pre_expansion and pre_mapping and isinstance(pre_mapping, dict):
+            primary = []
+            for orig_kw in cleaned_keywords:
+                mapped = pre_mapping.get(str(orig_kw).strip(), [])
+                if mapped:
+                    primary.append(str(mapped[0]).strip())
+            english_primary = self._filter_english_keywords(primary)
+            if english_primary:
+                expanded_keywords = english_primary
+                used_pre_expansion = True
+                logger.info(f"使用 keyword_mapping 扩展: {expanded_keywords}")
+
+        # Fallback: 单独调用 LLM 扩展
+        if not used_pre_expansion and self.use_llm:
+            try:
+                expanded_keywords = self._expand_search_keywords_with_llm(cleaned_keywords)
+                logger.info(f"关键词扩展(fallback): {expanded_keywords}")
+            except Exception as e:
+                if force_expand:
+                    raise RuntimeError(f"LLM关键词扩展失败: {e}")
+                else:
+                    logger.warning(f"LLM扩展失败，使用原始关键词: {e}")
+                    expanded_keywords = cleaned_keywords
+
+        # 核心关键词裁剪
+        search_cfg = self.base_agent.config.get('search', {})
+        try:
+            max_core = int(search_cfg.get('max_core_keywords_for_and', 2))
+        except Exception:
+            max_core = 2
+        enforce_all = bool(search_cfg.get('enforce_all_keywords_and', False))
+
+        query_keywords = expanded_keywords if expanded_keywords != cleaned_keywords else cleaned_keywords
+        core_keywords = query_keywords
+        if len(query_keywords) > max_core and not enforce_all:
+            core_keywords = query_keywords[:max_core]
+
+        if len(core_keywords) > 1:
+            query = " AND ".join([f"({kw})" for kw in core_keywords])
+        else:
+            query = core_keywords[0] if core_keywords else ""
+
+        self.base_agent.config['search']['keywords'] = [query]
+        self.base_agent.config['search']['semantic_keywords'] = cleaned_keywords
+        logger.info(f"搜索查询: {query}")
+        return query
+
+    def _update_keyword_operator(self, parsed_request: Dict[str, Any], topic_keywords, user_input: str):
+        """更新关键词组合方式（AND/OR）。"""
+        keywords_for_operator = topic_keywords or parsed_request.get('keywords', [])
+        if not keywords_for_operator:
+            return
+        keywords = keywords_for_operator
+        if 'keyword_operator' not in parsed_request or not parsed_request['keyword_operator']:
+            if self.use_llm and len(keywords) > 1:
+                has_operator = any(' AND ' in kw.upper() or ' OR ' in kw.upper() or ' NOT ' in kw.upper() for kw in keywords)
+                if not has_operator:
+                    operator = self.determine_keyword_operator(keywords, user_input)
+                    self.base_agent.config['search']['keyword_operator'] = operator
+                    logger.info(f"LLM判断关键词组合: {operator}")
+        else:
+            self.base_agent.config['search']['keyword_operator'] = parsed_request['keyword_operator']
+
+    def _update_date_config(self, parsed_request: Dict[str, Any]):
+        """更新日期/时间范围配置。"""
+        if parsed_request.get('days_back'):
+            self.base_agent.config['search']['days_back'] = parsed_request['days_back']
+            logger.info(f"时间范围: 最近{parsed_request['days_back']}天")
+        if parsed_request.get('min_date'):
+            self.base_agent.config['search']['min_date'] = parsed_request['min_date']
+            self.base_agent.config['search'].pop('days_back', None)
+            logger.info(f"最小日期: {parsed_request['min_date']}")
+        if parsed_request.get('max_date'):
+            self.base_agent.config['search']['max_date'] = parsed_request['max_date']
+            self.base_agent.config['search'].pop('days_back', None)
+            logger.info(f"最大日期: {parsed_request['max_date']}")
+
+    def _update_filter_config(self, parsed_request: Dict[str, Any]):
+        """更新过滤配置（影响因子、期刊、领域等）。"""
+        if not parsed_request.get('filter'):
+            return
+        fc = parsed_request['filter']
+        cfg = self.base_agent.config['filter']
+        for key in ['min_abstract_length', 'exclude_keywords', 'include_keywords',
+                     'allowed_journals', 'allowed_fields', 'min_impact_factor', 'max_impact_factor']:
+            if key in fc:
+                cfg[key] = fc[key]
+
+    def update_config_from_request(self, parsed_request: Dict[str, Any], user_input: str = ""):
+        """根据解析的需求更新配置。"""
+        # 1. 解析关键词
+        topic_keywords, article_type_keywords = self._resolve_topic_keywords(parsed_request)
+
+        # 2. 记录关键词逻辑描述
         logical_desc = parsed_request.get('logical_keywords_description')
         if logical_desc:
             if 'search' not in self.base_agent.config:
                 self.base_agent.config['search'] = {}
             self.base_agent.config['search']['logical_keywords_description'] = str(logical_desc).strip()
-            logger.info(f"✅ 记录关键词逻辑描述（用于严格验证阶段）：{logical_desc}")
-        
-        # 获取LLM构建的布尔查询字符串
-        boolean_query = parsed_request.get('boolean_query')
-        if boolean_query:
-            logger.info(f"✅ LLM构建了布尔查询字符串: {boolean_query}")
-        
-        # 处理主题关键词（用于第一层检索）
+
+        # 3. 构建搜索查询
         if topic_keywords:
-            keywords = topic_keywords
-            logger.info(f"准备更新主题关键词，原始关键词: {keywords}")
-            # 清理和验证关键词
-            cleaned_keywords = []
-            for kw in keywords:
-                kw_str = str(kw).strip()
-                if self._is_valid_keyword(kw_str):
-                    cleaned_keywords.append(kw_str)
-                else:
-                    logger.warning(f"过滤无效关键词: {kw_str}")
-            
+            cleaned_keywords = [str(kw).strip() for kw in topic_keywords if self._is_valid_keyword(str(kw))]
             if cleaned_keywords:
-                # 特殊情况：用户在交互模式下手动输入了完整 PubMed 检索式，
-                # 例如 "(child OR neonatal) electrolyte disorders genetic variants"
-                # 这类“高级查询”已经包含 AND/OR/NOT 等逻辑，不应该再被拆分和LLM扩展，
-                # 否则会出现 "(child) AND (children)" 之类的意外组合。
-                advanced_query = False
-                if len(cleaned_keywords) == 1:
-                    q = cleaned_keywords[0]
-                    upper_q = q.upper()
-                    if any(op in upper_q for op in [" AND ", " OR ", " NOT "]) or "[" in q or ":" in q:
-                        advanced_query = True
-                
-                if advanced_query:
-                    # 直接将用户提供的完整检索式作为查询，不再做LLM扩展和核心关键词裁剪
-                    query = cleaned_keywords[0]
-                    self.base_agent.config['search']['keywords'] = [query]
-                    logger.info(f"✅ 检测到高级检索式，直接使用用户提供的查询: {query}")
-                    # 语义关键词仍然保存原始 cleaned_keywords，供严格验证使用
-                    self.base_agent.config['search']['semantic_keywords'] = cleaned_keywords
-                    logger.info(f"✅ 保留语义关键词（用于验证）: {cleaned_keywords}")
-                elif boolean_query:
-                    # 使用LLM构建的布尔查询字符串
-                    self.base_agent.config['search']['keywords'] = [boolean_query]
-                    logger.info(f"✅ 使用LLM构建的布尔查询字符串: {boolean_query}")
-                    # 语义关键词保存原始 cleaned_keywords，供严格验证使用
-                    self.base_agent.config['search']['semantic_keywords'] = cleaned_keywords
-                    logger.info(f"✅ 保留语义关键词（用于验证）: {cleaned_keywords}")
-                else:
-                    # 常规情况：使用LLM将中文/混合关键词扩展为适合PubMed的英文检索词（用于参考和验证）
-                    expanded_keywords = cleaned_keywords
-                    force_expand = getattr(self, "force_llm_expand_keywords", False)
-                    
-                    if self.use_llm:
-                        try:
-                            expanded_keywords = self._expand_search_keywords_with_llm(cleaned_keywords)
-                            logger.info(f"✅ 关键词扩展结果（用于检索参考）: {expanded_keywords}")
-                        except Exception as e:
-                            if force_expand:
-                                # 强制模式下，LLM扩展失败视为致命错误
-                                msg = f"强制LLM关键词扩展开启，但扩展失败: {e}。请检查LLM配置或修改关键词后重试。"
-                                logger.error(msg)
-                                raise RuntimeError(msg)
-                            else:
-                                logger.warning(f"使用LLM扩展关键词失败，暂时仅使用原始关键词进行检索: {e}")
-                                expanded_keywords = cleaned_keywords
-                
-                    # 从配置中读取AND核心关键词个数与强制全AND开关
-                    search_cfg = self.base_agent.config.get('search', {})
-                    try:
-                        max_core = int(search_cfg.get('max_core_keywords_for_and', 2))
-                    except Exception:
-                        max_core = 2
-                    enforce_all = bool(search_cfg.get('enforce_all_keywords_and', False))
-                
-                    # 关键修复：使用扩展后的英文关键词构建查询，而不是原始中文关键词
-                    # 如果LLM扩展成功，使用扩展后的英文关键词；否则使用原始关键词（可能是英文）
-                    query_keywords = expanded_keywords if expanded_keywords != cleaned_keywords else cleaned_keywords
-                    
-                    # 默认只对少数核心关键词使用AND，其余交给LLM严格验证
-                    core_keywords = query_keywords
-                    if len(query_keywords) > max_core and not enforce_all:
-                        core_keywords = query_keywords[:max_core]
-                        logger.info(
-                            f"解析到关键词较多，默认仅对以下核心关键词使用AND组合: {core_keywords}；"
-                            f"其余关键词将在严格验证阶段由LLM判断相关性。"
-                        )
-                    elif enforce_all:
-                        logger.info(f"已启用强制全AND模式，将对所有关键词使用AND组合: {query_keywords}")
-        
-                    # 构建查询字符串：只对 core_keywords 使用 AND
-                    # 这个查询会用于所有搜索源（PubMed、arXiv、bioRxiv），所以必须使用英文
-                    if len(core_keywords) > 1:
-                        query = " AND ".join([f"({kw})" for kw in core_keywords])
-                    else:
-                        query = core_keywords[0] if core_keywords else ""
-        
-                    # 将单个查询字符串作为keywords列表的唯一元素
-                    # main.py 中会识别出其中的AND，不再二次组合
-                    self.base_agent.config['search']['keywords'] = [query]
-                    logger.info(f"✅ 更新搜索查询（用于所有检索源，已转换为英文）: {query}")
-                    
-                    # 同时保留语义层面的原始关键词，供严格验证和验证表使用
-                    self.base_agent.config['search']['semantic_keywords'] = cleaned_keywords
-                    logger.info(f"✅ 保留语义关键词（用于验证）: {cleaned_keywords}")
-                
-                # 保存文章类型关键词（用于第二层过滤）
+                self._build_search_query(cleaned_keywords, parsed_request)
+                # 保存文章类型关键词
                 if article_type_keywords:
-                    # 清理文章类型关键词
-                    cleaned_article_types = []
-                    for at_kw in article_type_keywords:
-                        at_kw_str = str(at_kw).strip()
-                        if at_kw_str:
-                            cleaned_article_types.append(at_kw_str)
-                    
-                    if cleaned_article_types:
-                        self.base_agent.config['search']['article_type_keywords'] = cleaned_article_types
-                        logger.info(f"✅ 保存文章类型关键词（用于第二层过滤）: {cleaned_article_types}")
+                    cleaned_at = [str(at).strip() for at in article_type_keywords if str(at).strip()]
+                    if cleaned_at:
+                        self.base_agent.config['search']['article_type_keywords'] = cleaned_at
                     else:
-                        # 清除文章类型关键词
                         self.base_agent.config['search'].pop('article_type_keywords', None)
                 else:
-                    # 清除文章类型关键词
                     self.base_agent.config['search'].pop('article_type_keywords', None)
             else:
                 logger.warning("所有关键词都被过滤，使用配置文件中的默认关键词")
         else:
-            logger.warning(f"解析结果中没有关键词字段，parsed_request keys: {list(parsed_request.keys()) if parsed_request else 'None'}")
-            if parsed_request:
-                logger.warning(f"parsed_request 内容: {parsed_request}")
-        
-        # 如果LLM没有提供keyword_operator，使用LLM智能判断（需要在有keywords的情况下）
-        # 优先使用topic_keywords，向后兼容使用keywords
-        keywords_for_operator = topic_keywords or parsed_request.get('keywords', [])
-        if keywords_for_operator:
-            keywords = keywords_for_operator
-            if 'keyword_operator' not in parsed_request or not parsed_request['keyword_operator']:
-                if self.use_llm and len(keywords) > 1:
-                    # 检查是否已包含逻辑运算符
-                    has_operator = any(' AND ' in kw.upper() or ' OR ' in kw.upper() or ' NOT ' in kw.upper() for kw in keywords)
-                    if not has_operator:
-                        operator = self.determine_keyword_operator(keywords, user_input)
-                        self.base_agent.config['search']['keyword_operator'] = operator
-                        logger.info(f"LLM智能判断关键词组合方式: {operator}")
-            else:
-                self.base_agent.config['search']['keyword_operator'] = parsed_request['keyword_operator']
-                logger.info(f"使用解析的keyword_operator: {parsed_request['keyword_operator']}")
-        
-        if 'days_back' in parsed_request and parsed_request['days_back']:
-            self.base_agent.config['search']['days_back'] = parsed_request['days_back']
-            logger.info(f"更新搜索时间范围: 最近{parsed_request['days_back']}天")
-        
-        if 'min_date' in parsed_request and parsed_request['min_date']:
-            self.base_agent.config['search']['min_date'] = parsed_request['min_date']
-            # 如果设置了min_date，清除days_back（避免冲突）
-            if 'days_back' in self.base_agent.config['search']:
-                self.base_agent.config['search']['days_back'] = None
-            logger.info(f"更新最小日期: {parsed_request['min_date']}")
-        
-        if 'max_date' in parsed_request and parsed_request['max_date']:
-            self.base_agent.config['search']['max_date'] = parsed_request['max_date']
-            # 如果设置了max_date，清除days_back（避免冲突）
-            if 'days_back' in self.base_agent.config['search']:
-                self.base_agent.config['search']['days_back'] = None
-            logger.info(f"更新最大日期: {parsed_request['max_date']}")
-        
-        # 更新邮件配置
-        if 'to_email' in parsed_request and parsed_request['to_email']:
+            logger.warning(f"解析结果中没有关键词字段: {list(parsed_request.keys()) if parsed_request else 'None'}")
+
+        # 4. 关键词运算符
+        self._update_keyword_operator(parsed_request, topic_keywords, user_input)
+
+        # 5. 日期配置
+        self._update_date_config(parsed_request)
+
+        # 6. 邮件配置
+        if parsed_request.get('to_email'):
             self.base_agent.config['email']['to_email'] = parsed_request['to_email']
-            logger.info(f"更新收件人邮箱: {parsed_request['to_email']}")
-        
-        # 更新报告配置
-        if 'max_papers' in parsed_request and parsed_request['max_papers']:
+
+        # 7. 报告配置
+        if parsed_request.get('max_papers'):
             self.base_agent.config['report']['max_papers'] = parsed_request['max_papers']
-            logger.info(f"更新最大文献数: {parsed_request['max_papers']}")
-        
-        # 更新过滤配置
-        if 'filter' in parsed_request and parsed_request['filter']:
-            filter_config = parsed_request['filter']
-            if 'min_abstract_length' in filter_config:
-                self.base_agent.config['filter']['min_abstract_length'] = filter_config['min_abstract_length']
-            if 'exclude_keywords' in filter_config:
-                self.base_agent.config['filter']['exclude_keywords'] = filter_config['exclude_keywords']
-            if 'include_keywords' in filter_config:
-                self.base_agent.config['filter']['include_keywords'] = filter_config['include_keywords']
-            if 'allowed_journals' in filter_config:
-                self.base_agent.config['filter']['allowed_journals'] = filter_config['allowed_journals']
-            if 'allowed_fields' in filter_config:
-                self.base_agent.config['filter']['allowed_fields'] = filter_config['allowed_fields']
-            if 'min_impact_factor' in filter_config:
-                self.base_agent.config['filter']['min_impact_factor'] = filter_config['min_impact_factor']
-            if 'max_impact_factor' in filter_config:
-                self.base_agent.config['filter']['max_impact_factor'] = filter_config['max_impact_factor']
+
+        # 8. 过滤配置
+        self._update_filter_config(parsed_request)
     
     def run_with_request(self, user_input: str = None, override_config: Optional[Dict[str, Any]] = None):
         """
@@ -1622,7 +1575,7 @@ class LiteratureAgent:
             
             if time_input:
                 # 重新解析时间范围
-                time_parsed = self._parse_time_range(time_input)
+                time_parsed = self._parse_date_range(time_input)
                 if time_parsed:
                     required_info.update(time_parsed)
                     logger.info(f"用户输入的时间范围: {time_parsed}")
@@ -1659,7 +1612,7 @@ class LiteratureAgent:
                     
                     if time_input:
                         # 重新解析时间范围
-                        time_parsed = self._parse_time_range(time_input)
+                        time_parsed = self._parse_date_range(time_input)
                         if time_parsed:
                             # 清除旧的时间范围
                             required_info.pop('days_back', None)
@@ -1791,48 +1744,6 @@ class LiteratureAgent:
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return bool(re.match(pattern, email))
     
-    def _parse_time_range(self, time_input: str) -> Dict[str, Any]:
-        """解析时间范围输入"""
-        from datetime import datetime, timedelta
-        
-        # 解析"最近N天"
-        days_match = re.search(r'最近(\d+)天', time_input)
-        if days_match:
-            return {'days_back': int(days_match.group(1))}
-        
-        # 解析"近N年/最近N年/过去N年"
-        years_match = re.search(r'(最近|近|过去)(\d+)年', time_input)
-        if years_match:
-            years = int(years_match.group(2))
-            days = years * 365  # 按年近似为365天
-            return {'days_back': days}
-        
-        # 解析年份
-        year_match = re.search(r'(\d{4})年', time_input)
-        if year_match:
-            year = int(year_match.group(1))
-            return {
-                'min_date': f"{year}-01-01",
-                'max_date': f"{year}-12-31"
-            }
-        
-        # 解析日期范围（YYYY-MM-DD 到 YYYY-MM-DD）
-        date_range_match = re.search(r'(\d{4}-\d{2}-\d{2})\s*到\s*(\d{4}-\d{2}-\d{2})', time_input)
-        if date_range_match:
-            return {
-                'min_date': date_range_match.group(1),
-                'max_date': date_range_match.group(2)
-            }
-        
-        # 简单规则没命中时，尝试使用LLM兜底解析时间范围
-        if self.use_llm:
-            logger.info(f"简单时间解析失败，尝试使用LLM解析时间范围: {time_input}")
-            llm_result = self._parse_time_with_llm(time_input)
-            if llm_result:
-                return llm_result
-        
-        return None
-
     def _parse_time_with_llm(self, user_input: str) -> Dict[str, Any]:
         """
         使用LLM解析时间范围（兜底方案）
@@ -1850,8 +1761,8 @@ class LiteratureAgent:
 用户需求：{user_input}
 
 请从中解析出文献检索的时间范围，并只输出JSON：
-- 如果是“最近N年/近N年/过去N年/最近N月/最近N天”等相对时间，用days_back字段（整数，天数）。
-- 如果是“2020年到2023年”、“2015年至今”、“2010年-2012年”等具体年份或日期，返回min_date和max_date（YYYY-MM-DD）。
+- 如果是"最近N年/近N年/过去N年/最近N月/最近N天"等相对时间，用days_back字段（整数，天数）。
+- 如果是"2020年到2023年"、"2015年至今"、"2010年-2012年"等具体年份或日期，返回min_date和max_date（YYYY-MM-DD）。
 
 输出格式示例：
 {{
@@ -1892,14 +1803,36 @@ class LiteratureAgent:
             logger.warning(f"LLM解析时间范围失败: {e}")
             return {}
     
+    def _find_keyword_evidence(self, keyword: str, keyword_evidence: Dict[str, str]) -> Optional[str]:
+        """
+        在 keyword_evidence 字典中查找关键词对应的证据。
+        查找顺序: 精确匹配 → 忽略大小写 → 子串匹配 → 取第一个可用值。
+        """
+        if not keyword_evidence:
+            return None
+        # 1. 精确匹配
+        if keyword in keyword_evidence:
+            return keyword_evidence[keyword]
+        # 2. 忽略大小写
+        kw_lower = keyword.lower()
+        for key, value in keyword_evidence.items():
+            if key.lower() == kw_lower:
+                return value
+        # 3. 子串匹配
+        for key, value in keyword_evidence.items():
+            if kw_lower in key.lower() or key.lower() in kw_lower:
+                return value
+        # 4. 第一个可用值
+        return next(iter(keyword_evidence.values()), None)
+
     def _generate_validation_table(self, papers: List, keyword_validation_info: Dict) -> str:
         """
         生成关键词匹配验证表（优化可读性）
-        
+
         Args:
             papers: 论文列表
             keyword_validation_info: 关键词验证信息
-        
+
         Returns:
             验证表的Markdown格式文本
         """
@@ -1956,31 +1889,9 @@ class LiteratureAgent:
                 
                 # 获取第一个（也是唯一一个）关键词的证据
                 kw = keywords[0] if keywords else ""
-                # 尝试多种可能的key格式匹配
-                evidence = None
-                # 1. 直接匹配
-                if kw in keyword_evidence:
-                    evidence = keyword_evidence[kw]
-                else:
-                    # 2. 尝试不区分大小写匹配
-                    for key, value in keyword_evidence.items():
-                        if key.lower() == kw.lower():
-                            evidence = value
-                            break
-                    # 3. 如果还是找不到，尝试部分匹配
-                    if not evidence:
-                        kw_lower = kw.lower()
-                        for key, value in keyword_evidence.items():
-                            if kw_lower in key.lower() or key.lower() in kw_lower:
-                                evidence = value
-                                break
-                
+                evidence = self._find_keyword_evidence(kw, keyword_evidence)
                 if not evidence:
-                    # 如果还是找不到，尝试获取第一个可用的证据
-                    if keyword_evidence:
-                        evidence = list(keyword_evidence.values())[0]
-                    else:
-                        evidence = "未提及"
+                    evidence = "未提及"
                 # 证据内容控制在40字符以内，保持简洁
                 if len(evidence) > 40:
                     evidence = evidence[:37] + "..."
@@ -2013,25 +1924,7 @@ class LiteratureAgent:
                 # 合并所有关键词的证据，用分号分隔
                 evidence_parts = []
                 for kw in keywords:
-                    # 尝试多种可能的key格式匹配
-                    ev = None
-                    # 1. 直接匹配
-                    if kw in keyword_evidence:
-                        ev = keyword_evidence[kw]
-                    else:
-                        # 2. 尝试不区分大小写匹配
-                        for key, value in keyword_evidence.items():
-                            if key.lower() == kw.lower():
-                                ev = value
-                                break
-                        # 3. 如果还是找不到，尝试部分匹配（用于处理查询字符串中的关键词）
-                        if not ev:
-                            kw_lower = kw.lower()
-                            for key, value in keyword_evidence.items():
-                                if kw_lower in key.lower() or key.lower() in kw_lower:
-                                    ev = value
-                                    break
-                    
+                    ev = self._find_keyword_evidence(kw, keyword_evidence)
                     if ev and ev not in ["未提及", "未检查", ""]:
                         # 简化证据文本，去掉冗余描述
                         ev_clean = ev.replace("摘要中提及", "").replace("方法中", "").replace("结果中", "").strip()
@@ -2057,6 +1950,133 @@ class LiteratureAgent:
                 table += f"| {row_index} | {title} | {combined_evidence} | {match_status} |\n"
         
         return table
+
+    # ------------------------------------------------------------------
+    # 智能交互处理
+    # ------------------------------------------------------------------
+
+    def handle_user_input(self, user_input: str, default_email: str = None) -> Dict[str, Any]:
+        """
+        智能处理用户输入，自动分类意图并执行相应操作。
+
+        Args:
+            user_input: 用户输入的自然语言
+            default_email: 默认邮箱（从配置中获取）
+
+        Returns:
+            {"status": "success"|"error"|"chat", "message": str, "intent": str}
+        """
+        intent_result = _classify_user_intent(user_input)
+        intent = intent_result["intent"]
+        params = intent_result["params"]
+        confidence = intent_result["confidence"]
+
+        logger.info(f"意图识别: {intent} (置信度: {confidence:.2f})")
+
+        # 1. 帮助意图
+        if intent == UserIntent.HELP:
+            return {
+                "status": "chat",
+                "message": self._get_help_message(),
+                "intent": intent
+            }
+
+        # 2. 本地 PDF 解析
+        if intent == UserIntent.LOCAL_PDF:
+            pdf_path = params.get("pdf_path")
+            email = params.get("email") or default_email
+            title = params.get("title")
+
+            if not email:
+                return {
+                    "status": "error",
+                    "message": "请提供收件邮箱，例如：解析 /path/to/file.pdf 发送到 xxx@qq.com",
+                    "intent": intent
+                }
+
+            result = self.analyze_local_pdf(pdf_path, email, title=title)
+            return {**result, "intent": intent}
+
+        # 3. 单篇文献解析
+        if intent == UserIntent.SINGLE_PAPER:
+            paper_id = params.get("paper_id")
+            email = params.get("email") or default_email
+
+            if not email:
+                return {
+                    "status": "error",
+                    "message": "请提供收件邮箱，例如：解析 PMID 发送到 xxx@qq.com",
+                    "intent": intent
+                }
+
+            result = self.analyze_paper(paper_id, email)
+            return {**result, "intent": intent}
+
+        # 4. 文献搜索
+        if intent == UserIntent.LITERATURE_SEARCH:
+            # 交给现有的搜索流程处理
+            return {
+                "status": "search",
+                "message": "执行文献搜索",
+                "intent": intent,
+                "query": params.get("query")
+            }
+
+        # 5. 闲聊/无法识别 - 用 LLM 回复
+        if intent == UserIntent.CHAT:
+            response = self._llm_chat_response(user_input)
+            return {
+                "status": "chat",
+                "message": response,
+                "intent": intent
+            }
+
+        return {"status": "error", "message": "未知错误", "intent": intent}
+
+    def _get_help_message(self) -> str:
+        """返回帮助信息"""
+        return """我是文献智能体，可以帮你：
+
+1. **搜索文献**
+   - "找最近7天关于单细胞和AI的文献，发送到 xxx@qq.com"
+   - "搜索 CRISPR 相关的综述"
+
+2. **解析单篇论文**（PMID/DOI/标题）
+   - "解析 38096903 发到 xxx@qq.com"
+   - "帮我分析 10.1038/s41586-023-06924-6"
+   - "解读这篇论文 BiOmics: A Foundational Agent"
+
+3. **解析本地 PDF**
+   - "解析 ~/Downloads/paper.pdf 发到 xxx@qq.com"
+   - "分析 /path/to/论文.pdf 标题是 XXX"
+
+请告诉我你的需求，我会尽力帮助你！"""
+
+    def _llm_chat_response(self, user_input: str) -> str:
+        """用 LLM 回复无法识别的用户输入"""
+        if not self.use_llm or not self.llm_client:
+            return self._get_help_message()
+
+        prompt = f"""你是一个文献检索智能助手。用户输入了以下内容，但我无法明确识别其意图：
+
+用户输入：{user_input}
+
+请你：
+1. 如果用户似乎想搜索文献或解析论文，引导他们提供更明确的信息（如关键词、PMID、DOI、PDF路径、邮箱等）
+2. 如果用户在闲聊，友好回复并引导他们使用文献功能
+3. 回复要简洁，不超过100字
+
+我支持的功能：
+- 文献搜索（需要：关键词 + 邮箱）
+- 单篇解析（需要：PMID/DOI/标题 + 邮箱）
+- 本地PDF解析（需要：PDF路径 + 邮箱）"""
+
+        try:
+            response = self.llm_client.generate(prompt, max_tokens=300, temperature=0.7)
+            return response.strip()
+        except Exception as e:
+            logger.warning(f"LLM 回复失败: {e}")
+            return self._get_help_message()
 
     # ------------------------------------------------------------------
     # 单篇文献快速解析
@@ -2561,6 +2581,206 @@ class LiteratureAgent:
 {{"研究背景":"...","研究目的":"...","方法":"...","主要发现":["发现1","发现2","发现3"],"结论与意义":"...","局限性":"...","解析级别":"全文解析"}}"""
 
 
+class UserIntent:
+    """用户意图类型"""
+    LOCAL_PDF = "local_pdf"           # 本地 PDF 解析
+    SINGLE_PAPER = "single_paper"     # 单篇文献解析（PMID/DOI/标题）
+    LITERATURE_SEARCH = "search"      # 文献搜索
+    HELP = "help"                     # 帮助/使用指导
+    CHAT = "chat"                     # 闲聊/无法识别
+
+
+def _llm_classify_intent(text: str) -> dict | None:
+    """
+    当规则全部未命中时，用 LLM 判断用户意图是文献搜索还是闲聊。
+    返回 intent dict 或 None（LLM 不可用时）。
+    """
+    try:
+        from core.config import get_config
+        from core.llm.openai import OpenAIProvider
+        config = get_config()
+        if not config.llm.api_key:
+            return None
+        client = OpenAIProvider(config.llm)
+    except Exception:
+        return None
+
+    prompt = (
+        "你是一个文献检索智能助手的意图分类器。\n"
+        "请判断以下用户输入是否包含文献搜索意图（想查找论文/文献/研究/科学进展等）。\n\n"
+        f"用户输入：{text}\n\n"
+        "只输出一个 JSON：\n"
+        '{"intent": "search"} 如果用户想搜索/查找文献或科学信息\n'
+        '{"intent": "chat"} 如果用户在闲聊、打招呼或询问非文献问题\n'
+        "不要输出其他任何文字。"
+    )
+    try:
+        import json as _json
+        raw = client.generate(prompt, max_tokens=30, temperature=0.1)
+        m = re.search(r'\{[^}]+\}', raw)
+        if m:
+            data = _json.loads(m.group(0))
+            if data.get("intent") == "search":
+                return {
+                    "intent": UserIntent.LITERATURE_SEARCH,
+                    "params": {"query": text},
+                    "confidence": 0.7
+                }
+    except Exception as e:
+        logger.warning("LLM 意图分类失败: %s", e)
+
+    return None
+
+
+def _classify_user_intent(text: str) -> dict:
+    """
+    分类用户意图，返回意图类型和提取的参数。
+
+    Returns:
+        {
+            "intent": UserIntent.XXX,
+            "params": {...},  # 根据意图类型不同
+            "confidence": float  # 置信度 0-1
+        }
+    """
+    text = text.strip()
+
+    # 空输入
+    if not text:
+        return {"intent": UserIntent.HELP, "params": {}, "confidence": 1.0}
+
+    # 1. 帮助意图
+    help_patterns = [
+        r'^(帮助|help|怎么用|如何使用|使用方法|用法|\?|？)$',
+        r'(怎么|如何|怎样)(使用|操作|用)',
+        r'(有什么|有哪些)(功能|命令)',
+        r'(教我|告诉我)(怎么|如何)',
+    ]
+    for p in help_patterns:
+        if re.search(p, text, re.IGNORECASE):
+            return {"intent": UserIntent.HELP, "params": {}, "confidence": 0.9}
+
+    # 2. 本地 PDF 解析
+    pdf_path, pdf_email, pdf_title = _detect_local_pdf_intent(text)
+    if pdf_path:
+        return {
+            "intent": UserIntent.LOCAL_PDF,
+            "params": {"pdf_path": pdf_path, "email": pdf_email, "title": pdf_title},
+            "confidence": 0.95
+        }
+
+    # 3. 单篇文献解析（PMID/DOI/标题）
+    paper_id, paper_email = _detect_single_paper_intent(text)
+    if paper_id:
+        return {
+            "intent": UserIntent.SINGLE_PAPER,
+            "params": {"paper_id": paper_id, "email": paper_email},
+            "confidence": 0.9
+        }
+
+    # 4. 文献搜索意图（扩大覆盖面）
+    search_patterns = [
+        r'(找|搜|搜索|查|检索|推荐|推送|看看|整理|汇总).*(文献|论文|文章|研究|paper|article|进展|动态)',
+        r'(文献|论文|文章|paper|article).*(找|搜|推荐|推送|汇总)',
+        r'(最近|近期|\d+天|\d+年|\d+月).*(文献|论文|文章|研究|进展)',
+        r'(关于|有关|涉及|围绕).+的?(文献|论文|文章|研究|进展)',
+        r'发送到.+@',
+        r'(综述|review|meta.?analysis|survey)',
+        r'(最新|最近|近期).*(进展|成果|发现|突破)',
+        r'\b\w+@\w+\.\w+\b.*?(关键词|keyword|搜索|search)',
+    ]
+    for p in search_patterns:
+        if re.search(p, text, re.IGNORECASE):
+            return {
+                "intent": UserIntent.LITERATURE_SEARCH,
+                "params": {"query": text},
+                "confidence": 0.8
+            }
+
+    # 5. 包含生物医学/AI 领域关键词 - 默认当搜索处理
+    keyword_hints = [
+        # 分子/基因
+        '基因', '蛋白', 'DNA', 'RNA', 'mRNA', '转录', '表达', '突变', '变异', '基因组',
+        'genome', 'transcriptome', 'proteome', 'epigenetic', '表观遗传', '甲基化',
+        # 细胞/组织
+        '细胞', 'cell', '类器官', 'organoid', '干细胞', 'stem cell', '免疫', 'immune',
+        # 技术/方法
+        'CRISPR', '测序', 'sequencing', 'single cell', 'single-cell', '空间转录',
+        'spatial', '质谱', 'mass spec', 'flow cytometry', 'PCR', 'NGS', 'Hi-C',
+        'ChIP', 'ATAC', 'scRNA', 'scATAC', 'long read', 'nanopore',
+        # AI/计算
+        'AI', '机器学习', 'deep learning', 'machine learning', 'transformer',
+        'neural network', 'language model', 'LLM', 'AlphaFold', 'foundation model',
+        'bioinformatics', '生信', '生物信息',
+        # 疾病/临床
+        '癌', 'cancer', 'tumor', '肿瘤', '糖尿病', 'diabetes', '阿尔茨海默',
+        'Alzheimer', '帕金森', 'Parkinson', '心血管', 'cardiovascular',
+        # 组学
+        '组学', 'omics', '代谢组', 'metabolom', '微生物组', 'microbiome', '宏基因组',
+        'metagenom', '蛋白质组', '脂质组', 'lipidom',
+    ]
+    text_lower = text.lower()
+    for kw in keyword_hints:
+        if kw.lower() in text_lower:
+            return {
+                "intent": UserIntent.LITERATURE_SEARCH,
+                "params": {"query": text},
+                "confidence": 0.6
+            }
+
+    # 6. LLM 兜底意图分类（规则全部未命中时）
+    llm_intent = _llm_classify_intent(text)
+    if llm_intent:
+        return llm_intent
+
+    return {"intent": UserIntent.CHAT, "params": {"query": text}, "confidence": 0.3}
+
+
+def _detect_local_pdf_intent(text: str):
+    """
+    检测输入是否为本地 PDF 解析意图。
+    返回 (pdf_path, email, title) 或 (None, None, None)。
+
+    支持的路径格式：
+    - 绝对路径：/Users/xxx/paper.pdf
+    - 相对路径：./paper.pdf, ../docs/paper.pdf
+    - Home 路径：~/Downloads/paper.pdf
+    - Windows 路径：C:\\Users\\xxx\\paper.pdf
+    """
+    # 检测 PDF 文件路径的正则
+    # 匹配：绝对路径、相对路径、~ 开头的路径、Windows 路径
+    pdf_pattern = r'((?:[~.]?[/\\]|[A-Za-z]:[/\\])?(?:[\w\-.\u4e00-\u9fff]+[/\\])*[\w\-.\u4e00-\u9fff]+\.pdf)'
+
+    pdf_match = re.search(pdf_pattern, text, re.IGNORECASE)
+    if not pdf_match:
+        return None, None, None
+
+    pdf_path = pdf_match.group(1)
+
+    # 展开 ~ 路径
+    if pdf_path.startswith('~'):
+        pdf_path = os.path.expanduser(pdf_path)
+
+    # 提取邮箱
+    email_match = re.search(r'[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}', text)
+    email = email_match.group(0) if email_match else None
+
+    # 提取标题（如果用户指定了）
+    title = None
+    title_patterns = [
+        r'标题[是为：:]\s*[「「"\'"]?(.+?)[」」"\'"]?(?:\s|$|，|,)',
+        r'题目[是为：:]\s*[「「"\'"]?(.+?)[」」"\'"]?(?:\s|$|，|,)',
+        r'叫[做作]\s*[「「"\'"]?(.+?)[」」"\'"]?(?:\s|$|，|,)',
+    ]
+    for pattern in title_patterns:
+        title_match = re.search(pattern, text)
+        if title_match:
+            title = title_match.group(1).strip()
+            break
+
+    return pdf_path, email, title
+
+
 def _detect_single_paper_intent(text: str):
     """
     检测输入是否为单篇解析意图。
@@ -2848,27 +3068,44 @@ def main():
             print("=" * 80)
             print()
             print("请输入你的需求（例如：帮我找最近7天关于单细胞和AI的文献，发送到example@qq.com）")
-            print("或输入 'quit' 退出")
+            print("支持：文献搜索 | 单篇解析（PMID/DOI/标题）| 本地PDF解析")
+            print("输入 'help' 获取帮助，'quit' 退出")
             print()
-            
+
             user_input = input("> ").strip()
-            
+
             if not user_input or user_input.lower() in ['quit', 'exit', 'q']:
                 print("退出")
                 return
 
-            # 检测单篇解析意图
-            paper_id, detected_email = _detect_single_paper_intent(user_input)
-            if paper_id:
-                to_email = detected_email or (agent.base_agent.config.get('email', {}) or {}).get('to_email', '')
-                if to_email:
-                    print(f"\n检测到单篇解析意图，正在处理: {paper_id[:60]}")
-                    result = agent.analyze_paper(paper_id, to_email)
-                    if result.get('status') == 'success':
-                        print(f"✓ {result.get('message')}")
-                    else:
-                        print(f"✗ 解析失败: {result.get('message')}")
-                    return
+            # 使用智能意图分类处理用户输入
+            default_email = (agent.base_agent.config.get('email', {}) or {}).get('to_email', '')
+            result = agent.handle_user_input(user_input, default_email=default_email)
+
+            status = result.get("status")
+            intent = result.get("intent")
+            message = result.get("message", "")
+
+            if status == "chat":
+                # 帮助或闲聊回复
+                print(f"\n{message}")
+                return
+
+            if status == "error":
+                # 出错但给出引导
+                print(f"\n⚠️ {message}")
+                return
+
+            if status == "success":
+                # 成功执行
+                print(f"\n✓ {message}")
+                return
+
+            if status == "search":
+                # 文献搜索，继续走原有流程
+                user_input = result.get("query", user_input)
+                # 不 return，继续执行下面的搜索逻辑
+
         else:
             user_input = None
     

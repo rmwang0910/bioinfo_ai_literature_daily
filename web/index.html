@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioLit Daily</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__brand">BioLit Daily</div>
+    <div class="topbar__meta">
+      <span id="statusBadge" class="badge badge--ok">connected</span>
+      <button id="themeToggle" class="theme-toggle" title="切换主题"></button>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- LEFT PANEL -->
+    <aside class="panel-left">
+      <!-- Natural language input -->
+      <div class="card">
+        <label class="card__title" for="nlInput">Search</label>
+        <textarea id="nlInput" class="textarea" rows="3"
+          placeholder="例: 找最近7天关于 single cell AND AI 的文献&#10;例: 搜索 CRISPR organoid 相关的综述"></textarea>
+        <div class="row" style="margin-top:8px;">
+          <button id="parseBtn" class="btn btn--primary" style="flex:1;">解析需求</button>
+        </div>
+      </div>
+
+      <!-- Advanced config -->
+      <details class="card" id="advancedDetails">
+        <summary class="card__title card__title--toggle">高级参数</summary>
+        <div class="config-form">
+          <div class="form-group">
+            <label for="cfgKeywords">关键词</label>
+            <input id="cfgKeywords" class="input" type="text" placeholder="single cell AND AI">
+          </div>
+          <div class="form-group">
+            <label for="cfgTimeMode">时间范围</label>
+            <select id="cfgTimeMode" class="select">
+              <option value="days">最近 N 天</option>
+              <option value="range">日期范围</option>
+            </select>
+          </div>
+          <div id="timeDaysGroup" class="row">
+            <div class="form-group" style="flex:1;">
+              <label for="cfgDaysBack">天数</label>
+              <input id="cfgDaysBack" class="input" type="number" value="7" min="1" max="3650">
+            </div>
+            <div class="form-group" style="flex:1;">
+              <label for="cfgOperator">关键词逻辑</label>
+              <select id="cfgOperator" class="select">
+                <option value="AND">AND</option>
+                <option value="OR">OR</option>
+              </select>
+            </div>
+          </div>
+          <div id="timeRangeGroup" class="row" style="display:none;">
+            <div class="form-group" style="flex:1;">
+              <label for="cfgMinDate">起始日期</label>
+              <input id="cfgMinDate" class="input" type="date">
+            </div>
+            <div class="form-group" style="flex:1;">
+              <label for="cfgMaxDate">截止日期</label>
+              <input id="cfgMaxDate" class="input" type="date">
+            </div>
+          </div>
+          <div id="timeRangeOperatorGroup" class="row" style="display:none;">
+            <div class="form-group" style="flex:1;">
+              <label for="cfgOperator2">关键词逻辑</label>
+              <select id="cfgOperator2" class="select">
+                <option value="AND">AND</option>
+                <option value="OR">OR</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="form-group" style="flex:1;">
+              <label for="cfgMaxResults">每词上限</label>
+              <input id="cfgMaxResults" class="input" type="number" value="20" min="1" max="200">
+            </div>
+            <div class="form-group" style="flex:1;">
+              <label for="cfgMaxPapers">报告上限</label>
+              <input id="cfgMaxPapers" class="input" type="number" value="50" min="1" max="200">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>
+              <input id="cfgUnifiedSearch" type="checkbox"> 多源搜索 (PubMed + arXiv + bioRxiv)
+            </label>
+          </div>
+          <div class="form-group">
+            <label>
+              <input id="cfgStrictValidation" type="checkbox" checked> 严格关键词验证 (LLM)
+            </label>
+          </div>
+          <div class="form-group">
+            <label for="cfgStrictness">验证严格度</label>
+            <select id="cfgStrictness" class="select">
+              <option value="normal">normal</option>
+              <option value="strict" selected>strict</option>
+              <option value="very_strict">very_strict</option>
+            </select>
+          </div>
+
+          <hr class="divider">
+          <div class="form-group">
+            <label for="cfgMinIF">最小影响因子</label>
+            <input id="cfgMinIF" class="input" type="number" step="0.1" placeholder="不限">
+          </div>
+          <div class="form-group">
+            <label for="cfgMaxIF">最大影响因子</label>
+            <input id="cfgMaxIF" class="input" type="number" step="0.1" placeholder="不限">
+          </div>
+          <div class="form-group">
+            <label for="cfgFields">领域过滤</label>
+            <input id="cfgFields" class="input" type="text" placeholder="例: Oncology, Pediatrics">
+          </div>
+          <div class="form-group">
+            <label for="cfgJournals">期刊过滤</label>
+            <input id="cfgJournals" class="input" type="text" placeholder="例: Nature, Cell">
+          </div>
+
+          <hr class="divider">
+          <div class="form-group">
+            <label for="cfgEmail">收件邮箱</label>
+            <input id="cfgEmail" class="input" type="email" placeholder="your@email.com">
+          </div>
+
+          <button id="searchBtn" class="btn btn--primary" style="width:100%;margin-top:4px;">开始搜索</button>
+        </div>
+      </details>
+
+
+      <!-- Progress area -->
+      <div class="card" id="progressCard" style="display:none;">
+        <div class="card__title">进度</div>
+        <div id="progressArea" class="progress-area"></div>
+        <div class="progress-bar" id="progressBarWrap" style="display:none;">
+          <div class="progress-bar__fill" id="progressBarFill"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT PANEL -->
+    <section class="panel-right">
+      <div class="tabs">
+        <button class="tab tab--active" data-tab="papers">Papers <span id="papersCount" class="tab__count">0</span></button>
+        <button class="tab" data-tab="summary">Summary</button>
+        <button class="tab" data-tab="analysis">Analysis</button>
+        <button class="tab" data-tab="saved">Saved <span id="savedCount" class="tab__count">0</span></button>
+      </div>
+      <div id="papersTab" class="tab-content tab-content--active">
+        <div id="papersToolbar" class="papers-toolbar" style="display:none;">
+          <label class="papers-toolbar__select-all">
+            <input type="checkbox" id="selectAllCheckbox"> <span id="selectAllLabel">全选</span>
+          </label>
+          <span id="selectedCount" class="papers-toolbar__count">已选 0 篇</span>
+          <button id="saveSelectedBtn" class="btn btn--small btn--primary" disabled>存档</button>
+          <button id="emailSelectedBtn" class="btn btn--small btn--ghost" disabled>发送邮件</button>
+          <button id="exportSelectedBtn" class="btn btn--small btn--ghost" disabled>导出 RIS</button>
+        </div>
+        <div id="papersList" class="papers-list">
+          <div class="empty-state">输入搜索条件开始检索文献</div>
+        </div>
+      </div>
+      <div id="summaryTab" class="tab-content">
+        <div id="summaryContent" class="summary-content">
+          <div class="empty-state">搜索完成后将在此显示文献综述</div>
+        </div>
+      </div>
+      <div id="analysisTab" class="tab-content">
+        <div id="analysisContent" class="analysis-content">
+          <div class="empty-state">点击文献卡片上的「深度分析」按钮查看 LLM 分析结果</div>
+        </div>
+      </div>
+      <div id="savedTab" class="tab-content">
+        <div id="savedList" class="papers-list">
+          <div class="empty-state">暂无存档文献</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

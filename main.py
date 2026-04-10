@@ -214,13 +214,24 @@ class BioinfoAILiteratureDaily:
         except Exception as e:
             logger.warning(f"保存已发送文献缓存失败: {e}")
     
-    def search_literature(self) -> List[PaperMetadata]:
+    def search_literature(self, progress_callback=None) -> List[PaperMetadata]:
         """
         搜索最新的生信+AI相关文献
-        
+
+        Args:
+            progress_callback: 可选的进度回调函数，签名 callback(step: str, message: str)
+
         Returns:
             论文列表
         """
+        def _progress(step: str, message: str):
+            if progress_callback:
+                try:
+                    progress_callback(step, message)
+                except Exception:
+                    pass
+
+        _progress("init", "正在初始化搜索参数...")
         logger.info("开始搜索文献...")
         search_config = self.config['search']
         keywords = search_config.get('keywords', [])
@@ -277,7 +288,8 @@ class BioinfoAILiteratureDaily:
                 logger.info(f"使用{keyword_operator}组合关键词（并集）: {combined_keywords}")
         
         # 为每个查询搜索
-        for query_keywords in queries:
+        for qi, query_keywords in enumerate(queries, 1):
+            _progress("searching", f"正在检索第 {qi}/{len(queries)} 组查询...")
             logger.info(f"搜索查询: {query_keywords}")
             try:
                 # 确保年份是整数
@@ -383,7 +395,8 @@ class BioinfoAILiteratureDaily:
                 unique_papers.append(paper)
         
         logger.info(f"去重后共找到 {len(unique_papers)} 篇唯一论文")
-        
+        _progress("dedup", f"去重后共 {len(unique_papers)} 篇，正在进行关键词验证...")
+
         # 应用过滤器（启用严格关键词验证）
         strict_validation = self.config.get('search', {}).get('strict_keyword_validation', True)  # 默认启用
         validation_strictness = self.config.get('search', {}).get('validation_strictness', 'very_strict')  # 默认最严格
@@ -394,6 +407,7 @@ class BioinfoAILiteratureDaily:
         )
         # 使用WARNING级别，向用户展示严格验证后的论文数
         logger.warning(f"过滤后剩余 {len(filtered_papers)} 篇论文（严格度: {validation_strictness}）")
+        _progress("filtered", f"关键词验证完成，匹配 {len(filtered_papers)} 篇")
         
         # 保存关键词验证信息（用于生成验证表）
         self._keyword_validation_info = keyword_validation_info
@@ -442,7 +456,8 @@ class BioinfoAILiteratureDaily:
                 return datetime(1900, 1, 1)
         
         new_papers.sort(key=get_sort_date, reverse=True)  # reverse=True 表示近到远
-        
+
+        _progress("done", f"搜索完成，共 {len(new_papers)} 篇文献")
         self.last_ris_path = self._export_ris(new_papers)
         if self.last_ris_path:
             logger.warning(f"已生成 EndNote 导入文件: {self.last_ris_path}")
