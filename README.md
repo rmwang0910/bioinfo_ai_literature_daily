@@ -30,14 +30,8 @@ python web_server.py --port 8080
 
 ### 界面截图
 
-**搜索结果列表**
-![搜索结果列表](docs/screenshots/web-search-results.png)
-
-**论文卡片详情**（OA 徽标、IF、PDF 按钮、中文总结）
-![论文卡片详情](docs/screenshots/web-paper-cards.png)
-
-**深度分析面板**（全文概述、术语解释、实验解读）
-![深度分析面板](docs/screenshots/web-deep-analysis.png)
+**系统配置面板 + 收藏文献**（首次使用在此填写 LLM 和邮箱配置）
+![系统配置面板](docs/screenshots/web-system-config.png)
 
 ### 界面功能一览
 
@@ -129,7 +123,15 @@ pip install -r requirements.txt
 
 ### 配置
 
-1. **配置 LLM**（智能功能必需）：
+#### 方式一：Web 界面配置（推荐，无需手写配置文件）
+
+启动服务后，展开页面左侧「系统配置」面板，填写 LLM API Key 和邮箱 SMTP 信息，点击「保存配置」。配置会保存在浏览器本地，下次打开自动恢复。
+
+如需定时推送，点击「下载 config.yaml」生成配置文件，放到项目目录后运行 `python scheduler.py` 即可。
+
+#### 方式二：手动配置（命令行模式 / 定时推送）
+
+1. **配置 LLM**：
 ```bash
 export LLM_API_KEY='your-api-key'
 export LLM_BASE_URL='https://dashscope.aliyuncs.com/compatible-mode/v1'  # 可选
@@ -320,9 +322,10 @@ bioinfo_ai_literature_daily/
 ## ⚠️ 注意事项
 
 1. **网络连接**：需要访问 PubMed/arXiv/bioRxiv API
-2. **LLM 配置**：智能功能需要 `LLM_API_KEY` 环境变量
-3. **邮件配置**：SMTP 使用授权码而非密码
-4. **磁盘空间**：定期清理 `cache/sent_papers.json`
+2. **LLM 配置**：Web 界面可直接在「系统配置」面板填写；命令行模式需设置 `LLM_API_KEY` 环境变量
+3. **邮件配置**：SMTP 使用授权码而非登录密码
+4. **配置安全**：Web 界面保存的配置（含 API Key）仅存于浏览器本地，不写入服务器文件；如需导出请使用「下载 config.yaml」并妥善保管
+5. **磁盘空间**：定期清理 `cache/sent_papers.json`
 
 ## 🔧 故障排除
 
