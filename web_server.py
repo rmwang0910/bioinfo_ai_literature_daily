@@ -28,6 +28,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse, parse_qs
+import yaml
 
 # Ensure project root is on sys.path so imports work
 _PROJECT_DIR = Path(__file__).resolve().parent
@@ -200,6 +201,12 @@ class Session:
         self.session_id: str = str(uuid.uuid4())
         self.agent = LiteratureAgent(config_path=config_path, mode="interactive")
         self.config: Dict[str, Any] = copy.deepcopy(self.agent.base_agent.config)
+        # 初始化 LLM 配置（从环境变量读取当前值作为默认）
+        self.config.setdefault("llm", {
+            "api_key": "",  # 不暴露实际 key，让用户填
+            "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "model": "qwen-plus",
+        })
         self.papers: List[PaperMetadata] = []
         self.paper_summaries: Dict[str, str] = {}
         self.overall_summary: Optional[str] = None
@@ -208,7 +215,14 @@ class Session:
 
     def sync_config_to_agent(self):
         """Push session config overlay into the agent's base_agent.config."""
-        self.agent.base_agent.config = copy.deepcopy(self.config)
+        # 同步 search/filter/report/email 配置
+        agent_config = copy.deepcopy(self.config)
+        llm_config = agent_config.pop("llm", None)
+        self.agent.base_agent.config = agent_config
+
+        # 如果 LLM 配置有 api_key，重新初始化 LLM
+        if llm_config and llm_config.get("api_key"):
+            self.agent.reinit_llm(llm_config)
 
 
 class SessionManager:
@@ -475,6 +489,9 @@ def _safe_config(config: Dict[str, Any]) -> Dict[str, Any]:
     email = c.get("email", {})
     if email.get("smtp_password"):
         email["smtp_password"] = "***"
+    llm = c.get("llm", {})
+    if llm.get("api_key"):
+        llm["api_key"] = "***"
     return _sanitize(c)
 
 
@@ -831,6 +848,63 @@ def make_handler(manager: SessionManager):
                 deleted = manager.saved_store.delete(ids)
                 total = len(manager.saved_store.list_all())
                 return _json_response(self, {"ok": True, "deleted": deleted, "total": total})
+
+            # --- Download config.yaml ---
+            if path == "/api/config/download-yaml":
+                session = manager.get(str(body.get("session_id", "")))
+                if not session:
+                    return _json_response(self, {"error": "unknown session"}, status=404)
+
+                # 构建 config 字典（排除敏感信息的显示，但保留实际值用于下载）
+                cfg = copy.deepcopy(session.config)
+
+                # 构建 yaml 友好的结构
+                yaml_config = {}
+
+                # LLM 配置
+                llm = cfg.get("llm", {})
+                if llm.get("api_key"):
+                    yaml_config["llm"] = {
+                        "api_key": llm.get("api_key", ""),
+                        "base_url": llm.get("base_url", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+                        "model": llm.get("model", "qwen-plus"),
+                    }
+
+                # 搜索配置
+                search = cfg.get("search", {})
+                if search:
+                    yaml_config["search"] = {
+                        "keywords": search.get("keywords", []),
+                        "days_back": search.get("days_back", 7),
+                    }
+
+                # 邮件配置
+                email = cfg.get("email", {})
+                if email:
+                    yaml_config["email"] = {
+                        "smtp_server": email.get("smtp_server", "smtp.example.com"),
+                        "smtp_port": email.get("smtp_port", 587),
+                        "smtp_username": email.get("smtp_username", ""),
+                        "smtp_password": email.get("smtp_password", ""),
+                        "from_email": email.get("from_email", ""),
+                        "to_email": email.get("to_email", ""),
+                        "use_tls": email.get("use_tls", True),
+                    }
+
+                # 生成 YAML
+                yaml_content = "# BioLit Daily 配置文件\n"
+                yaml_content += "# 由 Web UI 生成，请妥善保管（包含敏感信息）\n\n"
+                yaml_content += yaml.dump(yaml_config, allow_unicode=True, default_flow_style=False, sort_keys=False)
+
+                yaml_bytes = yaml_content.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-yaml; charset=utf-8")
+                self.send_header("Content-Disposition", 'attachment; filename="config.yaml"')
+                self.send_header("Content-Length", str(len(yaml_bytes)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(yaml_bytes)
+                return
 
             _json_response(self, {"error": "not found"}, status=404)
 

@@ -136,6 +136,69 @@
         </div>
       </details>
 
+      <!-- System config (LLM + SMTP) -->
+      <details class="card" id="systemConfigDetails">
+        <summary class="card__title card__title--toggle">系统配置</summary>
+        <div class="config-form">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+            首次使用需要配置 LLM 和邮箱。配置会保存在浏览器中，下次打开自动恢复。
+          </div>
+
+          <div class="form-group">
+            <label for="cfgLlmApiKey">LLM API Key</label>
+            <input id="cfgLlmApiKey" class="input" type="password" placeholder="sk-xxx 或 阿里云 API Key">
+          </div>
+          <div class="form-group">
+            <label for="cfgLlmBaseUrl">LLM Base URL</label>
+            <input id="cfgLlmBaseUrl" class="input" type="text" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1">
+          </div>
+          <div class="form-group">
+            <label for="cfgLlmModel">LLM Model</label>
+            <input id="cfgLlmModel" class="input" type="text" placeholder="qwen-plus">
+          </div>
+
+          <hr class="divider">
+          <div class="form-group">
+            <label for="cfgSmtpServer">SMTP 服务器</label>
+            <input id="cfgSmtpServer" class="input" type="text" placeholder="smtp.example.com">
+          </div>
+          <div class="row">
+            <div class="form-group" style="flex:1;">
+              <label for="cfgSmtpPort">端口</label>
+              <input id="cfgSmtpPort" class="input" type="number" value="587">
+            </div>
+            <div class="form-group" style="flex:1;">
+              <label>
+                <input id="cfgSmtpTls" type="checkbox" checked> 使用 TLS
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="cfgSmtpUsername">SMTP 用户名</label>
+            <input id="cfgSmtpUsername" class="input" type="text" placeholder="your-email@example.com">
+          </div>
+          <div class="form-group">
+            <label for="cfgSmtpPassword">SMTP 密码</label>
+            <input id="cfgSmtpPassword" class="input" type="password" placeholder="应用专用密码">
+          </div>
+          <div class="form-group">
+            <label for="cfgFromEmail">发件人邮箱</label>
+            <input id="cfgFromEmail" class="input" type="email" placeholder="your-email@example.com">
+          </div>
+
+          <hr class="divider">
+          <div class="row" style="gap:8px;">
+            <button id="saveConfigBtn" class="btn btn--primary" style="flex:1;">保存配置</button>
+            <button id="downloadConfigBtn" class="btn btn--ghost" style="flex:1;">下载 config.yaml</button>
+          </div>
+          <div style="margin-top:8px;">
+            <button id="clearConfigBtn" class="btn btn--ghost btn--small" style="color:var(--err);">清除配置</button>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">
+            下载的 config.yaml 可用于定时推送（python scheduler.py）
+          </div>
+        </div>
+      </details>
 
       <!-- Progress area -->
       <div class="card" id="progressCard" style="display:none;">

@@ -7,14 +7,35 @@ from typing import Optional
 
 class LLMConfig:
     """LLM配置"""
-    
-    def __init__(self):
-        self.api_key = os.getenv("LLM_API_KEY", "")
-        self.base_url = os.getenv("LLM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
-        self.model = os.getenv("LLM_MODEL", "qwen-plus")
-        self.max_tokens = int(os.getenv("LLM_MAX_TOKENS", "4096"))
-        self.temperature = float(os.getenv("LLM_TEMPERATURE", "0.7"))
-        self.timeout = int(os.getenv("LLM_TIMEOUT", "120"))
+
+    def __init__(self, **kwargs):
+        """
+        初始化 LLM 配置
+
+        优先使用传入的 kwargs，其次读环境变量，最后用默认值
+        """
+        self.api_key = kwargs.get("api_key") or os.getenv("LLM_API_KEY", "")
+        self.base_url = kwargs.get("base_url") or os.getenv("LLM_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+        self.model = kwargs.get("model") or os.getenv("LLM_MODEL", "qwen-plus")
+        self.max_tokens = int(kwargs.get("max_tokens") or os.getenv("LLM_MAX_TOKENS", "4096"))
+        self.temperature = float(kwargs.get("temperature") or os.getenv("LLM_TEMPERATURE", "0.7"))
+        self.timeout = int(kwargs.get("timeout") or os.getenv("LLM_TIMEOUT", "120"))
+
+    def to_dict(self):
+        """转为字典，用于序列化"""
+        return {
+            "api_key": self.api_key,
+            "base_url": self.base_url,
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "temperature": self.temperature,
+            "timeout": self.timeout,
+        }
+
+    @classmethod
+    def from_dict(cls, d):
+        """从字典创建"""
+        return cls(**d) if d else cls()
 
 
 class LiteratureConfig:

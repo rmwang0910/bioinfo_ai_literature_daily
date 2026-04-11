@@ -53,6 +53,132 @@ function sourceBadgeClass(source) {
 }
 
 // ---------------------------------------------------------------------------
+// LocalStorage config persistence
+// ---------------------------------------------------------------------------
+const CONFIG_STORAGE_KEY = "biolit-config";
+
+function saveConfigToStorage(cfg) {
+  try {
+    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(cfg));
+  } catch (e) {
+    console.warn("Failed to save config to localStorage:", e);
+  }
+}
+
+function loadConfigFromStorage() {
+  try {
+    const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.warn("Failed to load config from localStorage:", e);
+    return {};
+  }
+}
+
+function collectFullConfig() {
+  // 收集完整配置（包含敏感信息），用于 localStorage 和下载
+  const patch = collectConfigPatch();
+  return patch;
+}
+
+async function saveConfig() {
+  if (!state.sessionId) return;
+
+  const cfg = collectFullConfig();
+
+  // 保存到 localStorage
+  saveConfigToStorage(cfg);
+
+  // 同步到服务器 session
+  try {
+    const data = await apiJson("/api/config/update", { session_id: state.sessionId, config: cfg });
+    state.config = data.config || state.config;
+    addProgress("配置已保存到浏览器", "ok");
+  } catch (e) {
+    addProgress("配置同步失败: " + e.message, "err");
+  }
+}
+
+async function downloadConfigYaml() {
+  if (!state.sessionId) return;
+
+  // 先保存最新配置到 session
+  const cfg = collectFullConfig();
+  try {
+    await apiJson("/api/config/update", { session_id: state.sessionId, config: cfg });
+  } catch (e) {
+    addProgress("配置同步失败: " + e.message, "err");
+    return;
+  }
+
+  // 下载 yaml
+  try {
+    const res = await fetch("/api/config/download-yaml", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: state.sessionId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "config.yaml";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    addProgress("config.yaml 已下载", "ok");
+  } catch (e) {
+    addProgress("下载失败: " + e.message, "err");
+  }
+}
+
+async function restoreConfigFromStorage() {
+  const saved = loadConfigFromStorage();
+  if (!saved || Object.keys(saved).length === 0) return;
+
+  // 如果有保存的 LLM 或 email 配置，同步到服务器
+  if (saved.llm?.api_key || saved.email?.smtp_server) {
+    try {
+      await apiJson("/api/config/update", { session_id: state.sessionId, config: saved });
+      addProgress("已从浏览器恢复配置", "ok");
+    } catch (e) {
+      console.warn("Failed to restore config to server:", e);
+    }
+  }
+}
+
+function clearConfig() {
+  if (!confirm("确定要清除保存的配置吗？包括 API Key 和邮箱设置。")) return;
+
+  // 清除 localStorage
+  try {
+    localStorage.removeItem(CONFIG_STORAGE_KEY);
+  } catch (e) {
+    console.warn("Failed to clear localStorage:", e);
+  }
+
+  // 重置表单字段
+  el("cfgLlmApiKey").value = "";
+  el("cfgLlmBaseUrl").value = "https://dashscope.aliyuncs.com/compatible-mode/v1";
+  el("cfgLlmModel").value = "qwen-plus";
+  el("cfgSmtpServer").value = "";
+  el("cfgSmtpPort").value = "587";
+  el("cfgSmtpUsername").value = "";
+  el("cfgSmtpPassword").value = "";
+  el("cfgFromEmail").value = "";
+  el("cfgSmtpTls").checked = true;
+
+  addProgress("配置已清除", "ok");
+}
+
+// ---------------------------------------------------------------------------
 // API
 // ---------------------------------------------------------------------------
 async function apiJson(path, body) {
@@ -133,6 +259,7 @@ function populateConfigForm(cfg) {
   const f = cfg.filter || {};
   const r = cfg.report || {};
   const e = cfg.email || {};
+  const l = cfg.llm || {};
 
   const kws = s.keywords;
   if (Array.isArray(kws)) el("cfgKeywords").value = kws.join(", ");
@@ -164,6 +291,35 @@ function populateConfigForm(cfg) {
   el("cfgFields").value = (f.allowed_fields || []).join(", ");
   el("cfgJournals").value = (f.allowed_journals || []).join(", ");
   el("cfgEmail").value = e.to_email || "";
+
+  // LLM 配置（从 localStorage 恢复，不从服务器，因为服务器不保存敏感信息）
+  const saved = loadConfigFromStorage();
+  if (saved.llm) {
+    el("cfgLlmApiKey").value = saved.llm.api_key || "";
+    el("cfgLlmBaseUrl").value = saved.llm.base_url || l.base_url || "https://dashscope.aliyuncs.com/compatible-mode/v1";
+    el("cfgLlmModel").value = saved.llm.model || l.model || "qwen-plus";
+  } else {
+    el("cfgLlmApiKey").value = "";
+    el("cfgLlmBaseUrl").value = l.base_url || "https://dashscope.aliyuncs.com/compatible-mode/v1";
+    el("cfgLlmModel").value = l.model || "qwen-plus";
+  }
+
+  // SMTP 配置（优先 localStorage，其次服务器配置）
+  if (saved.email) {
+    el("cfgSmtpServer").value = saved.email.smtp_server || e.smtp_server || "";
+    el("cfgSmtpPort").value = saved.email.smtp_port || e.smtp_port || 587;
+    el("cfgSmtpUsername").value = saved.email.smtp_username || e.smtp_username || "";
+    el("cfgSmtpPassword").value = saved.email.smtp_password || "";
+    el("cfgFromEmail").value = saved.email.from_email || e.from_email || "";
+    el("cfgSmtpTls").checked = saved.email.use_tls !== false;
+  } else {
+    el("cfgSmtpServer").value = e.smtp_server || "";
+    el("cfgSmtpPort").value = e.smtp_port || 587;
+    el("cfgSmtpUsername").value = e.smtp_username || "";
+    el("cfgSmtpPassword").value = "";
+    el("cfgFromEmail").value = e.from_email || "";
+    el("cfgSmtpTls").checked = e.use_tls !== false;
+  }
 }
 
 function setTimeMode(mode) {
@@ -212,6 +368,17 @@ function collectConfigPatch() {
     },
     email: {
       to_email: el("cfgEmail").value.trim(),
+      smtp_server: el("cfgSmtpServer").value.trim(),
+      smtp_port: parseInt(el("cfgSmtpPort").value) || 587,
+      smtp_username: el("cfgSmtpUsername").value.trim(),
+      smtp_password: el("cfgSmtpPassword").value,
+      from_email: el("cfgFromEmail").value.trim(),
+      use_tls: el("cfgSmtpTls").checked,
+    },
+    llm: {
+      api_key: el("cfgLlmApiKey").value.trim(),
+      base_url: el("cfgLlmBaseUrl").value.trim() || "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      model: el("cfgLlmModel").value.trim() || "qwen-plus",
     },
   };
 }
@@ -961,6 +1128,11 @@ function bind() {
   el("emailSelectedBtn").addEventListener("click", sendEmail);
   el("saveSelectedBtn").addEventListener("click", saveSelectedPapers);
 
+  // System config buttons
+  el("saveConfigBtn").addEventListener("click", saveConfig);
+  el("downloadConfigBtn").addEventListener("click", downloadConfigYaml);
+  el("clearConfigBtn").addEventListener("click", clearConfig);
+
   // Select all checkbox
   el("selectAllCheckbox").addEventListener("change", toggleSelectAll);
 
@@ -1014,5 +1186,6 @@ window.addEventListener("load", async () => {
   el("themeToggle").addEventListener("click", toggleTheme);
   bind();
   await createSession();
+  await restoreConfigFromStorage();
   loadSavedPapers();
 });

@@ -130,12 +130,12 @@ class BioinfoAILiteratureDaily:
                 'min_date': None  # 如果设置，将覆盖days_back
             },
             'email': {
-                'smtp_server': 'smtp.example.com',
+                'smtp_server': '',
                 'smtp_port': 587,
-                'smtp_username': 'your-email@example.com',
-                'smtp_password': 'your-password',
-                'from_email': 'your-email@example.com',
-                'to_email': 'recipient@example.com',
+                'smtp_username': '',
+                'smtp_password': '',
+                'from_email': '',
+                'to_email': '',
                 'use_tls': True
             },
             'filter': {

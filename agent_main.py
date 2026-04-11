@@ -115,7 +115,37 @@ class LiteratureAgent:
                 logger.info("RAG 领域分类器已初始化，支持基于知识库的领域增强")
             except Exception as e:
                 logger.warning(f"无法初始化 RAG 领域分类器: {e}")
-    
+
+    def reinit_llm(self, llm_config: dict) -> bool:
+        """
+        使用新配置重新初始化 LLM 客户端
+
+        Args:
+            llm_config: LLM 配置字典，包含 api_key, base_url, model 等
+
+        Returns:
+            是否成功初始化
+        """
+        if not OpenAIProvider:
+            logger.warning("OpenAIProvider 不可用，无法重新初始化 LLM")
+            return False
+
+        api_key = llm_config.get("api_key", "").strip()
+        if not api_key:
+            logger.warning("未提供 api_key，无法重新初始化 LLM")
+            return False
+
+        try:
+            from core.config.settings import LLMConfig
+            new_llm_config = LLMConfig.from_dict(llm_config)
+            self.llm_client = OpenAIProvider(new_llm_config)
+            self.use_llm = True
+            logger.info("LLM 已使用新配置重新初始化")
+            return True
+        except Exception as e:
+            logger.warning(f"重新初始化 LLM 失败: {e}")
+            return False
+
     def _load_prompt(self, prompt_name: str) -> str:
         """
         从文件加载提示词模板
