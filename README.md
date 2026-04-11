@@ -33,6 +33,15 @@ python web_server.py --port 8080
 **系统配置面板 + 收藏文献**（首次使用在此填写 LLM 和邮箱配置）
 ![系统配置面板](docs/screenshots/web-system-config.png)
 
+**搜索结果列表**
+![搜索结果列表](docs/screenshots/web-search-results.png)
+
+**论文卡片详情**（OA 徽标、IF、PDF 按钮、中文总结）
+![论文卡片详情](docs/screenshots/web-paper-cards.png)
+
+**深度分析面板**（全文概述、术语解释、实验解读）
+![深度分析面板](docs/screenshots/web-deep-analysis.png)
+
 ### 界面功能一览
 
 | 功能 | 说明 |
