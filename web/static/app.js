@@ -15,8 +15,10 @@ const state = {
   activeTab: "papers",
   selectedPapers: new Set(),  // set of indices
   savedPapers: [],            // from server
+  analysisArchives: [],       // from index.json
   searchStartTime: null,      // for timing
-  timings: {}                 // step timing info
+  timings: {},                // step timing info
+  currentAbortController: null  // for cancelling operations
 };
 
 // ---------------------------------------------------------------------------
@@ -192,11 +194,12 @@ async function apiJson(path, body) {
   return json;
 }
 
-async function apiStreamNdjson(path, body, onEvent) {
+async function apiStreamNdjson(path, body, onEvent, signal) {
   const res = await fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body || {}),
+    signal: signal,  // AbortSignal for cancellation
   });
   if (!res.ok) {
     const errJson = await res.json().catch(() => ({}));
@@ -208,28 +211,33 @@ async function apiStreamNdjson(path, body, onEvent) {
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-
+  try {
     while (true) {
-      const idx = buffer.indexOf("\n");
-      if (idx < 0) break;
-      const line = buffer.slice(0, idx).trim();
-      buffer = buffer.slice(idx + 1);
-      if (!line) continue;
-      try {
-        const obj = JSON.parse(line);
-        if (obj && typeof onEvent === "function") onEvent(obj);
-      } catch (_) { /* skip invalid */ }
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      while (true) {
+        const idx = buffer.indexOf("\n");
+        if (idx < 0) break;
+        const line = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx + 1);
+        if (!line) continue;
+        try {
+          const obj = JSON.parse(line);
+          if (obj && typeof onEvent === "function") onEvent(obj);
+        } catch (_) { /* skip invalid */ }
+      }
     }
-  }
-  // tail
-  buffer += decoder.decode();
-  const tail = buffer.trim();
-  if (tail) {
-    try { onEvent(JSON.parse(tail)); } catch (_) {}
+    // tail
+    buffer += decoder.decode();
+    const tail = buffer.trim();
+    if (tail) {
+      try { onEvent(JSON.parse(tail)); } catch (_) {}
+    }
+  } finally {
+    // Ensure reader is released on abort or completion
+    reader.releaseLock();
   }
 }
 
@@ -398,9 +406,29 @@ async function applyConfig() {
 // ---------------------------------------------------------------------------
 // Progress
 // ---------------------------------------------------------------------------
-function showProgress() {
+function showProgress(showCancel = false) {
   el("progressCard").style.display = "";
   el("progressArea").innerHTML = "";
+  const cancelBtn = el("cancelBtn");
+  if (cancelBtn) {
+    cancelBtn.style.display = showCancel ? "" : "none";
+  }
+}
+
+function hideCancel() {
+  const cancelBtn = el("cancelBtn");
+  if (cancelBtn) {
+    cancelBtn.style.display = "none";
+  }
+}
+
+function cancelOperation() {
+  if (state.currentAbortController) {
+    state.currentAbortController.abort();
+    state.currentAbortController = null;
+    addProgress("操作已取消", "err");
+    hideCancel();
+  }
 }
 
 function addProgress(msg, type) {
@@ -442,6 +470,7 @@ function switchTab(tab) {
     tc.classList.toggle("tab-content--active", tc.id === tab + "Tab");
   });
   if (tab === "saved") loadSavedPapers();
+  if (tab === "archives") loadAnalysisArchives();
 }
 
 // ---------------------------------------------------------------------------
@@ -502,9 +531,12 @@ async function runSearch() {
   state.searchStartTime = Date.now();
   state.timings = {};
 
+  // Create AbortController for cancellation
+  state.currentAbortController = new AbortController();
+
   el("searchBtn").disabled = true;
   el("searchBtn").innerHTML = '<span class="spinner"></span>搜索中...';
-  showProgress();
+  showProgress(true);  // show cancel button
   setProgressBar(0, true);
   switchTab("papers");
   el("papersList").innerHTML = '<div class="empty-state"><span class="spinner"></span> 正在搜索...</div>';
@@ -625,14 +657,21 @@ async function runSearch() {
       if (t === "error") {
         addProgress("错误: " + ev.message, "err");
       }
-    });
+    }, state.currentAbortController.signal);
   } catch (e) {
-    addProgress("请求失败: " + e.message, "err");
+    if (e.name === "AbortError") {
+      // User cancelled - already handled in cancelOperation()
+      el("papersList").innerHTML = '<div class="empty-state">搜索已取消</div>';
+    } else {
+      addProgress("请求失败: " + e.message, "err");
+    }
   } finally {
     state.searching = false;
+    state.currentAbortController = null;
     el("searchBtn").disabled = false;
     el("searchBtn").textContent = "开始搜索";
     hideProgressBar();
+    hideCancel();
   }
 }
 
@@ -812,17 +851,27 @@ async function runAnalyze(paperQuery) {
   state.analyzing = true;
   switchTab("analysis");
 
+  // Create AbortController for cancellation
+  state.currentAbortController = new AbortController();
+
   const c = el("analysisContent");
   c.innerHTML = '<div class="empty-state"><span class="spinner"></span> 正在分析文献...</div>';
 
-  showProgress();
+  showProgress(true);  // show cancel button
   addProgress("开始深度分析: " + truncate(paperQuery, 60));
   setProgressBar(0, true);
 
   try {
+    // topic = LLM 解析后的关键词（已在 runParse 时提取好）
+    // 优先级：1) 高级参数中已解析的关键词 2) state.config 中的关键词 3) 原始输入
+    const cfgKeywordsInput = el("cfgKeywords").value.trim();
+    const stateKeywords = (state.config.search || {}).keywords || [];
+    const topic = cfgKeywordsInput || stateKeywords.join(", ") || el("nlInput").value.trim() || "";
+
     await apiStreamNdjson("/api/analyze", {
       session_id: state.sessionId,
       query: paperQuery,
+      topic: topic,
     }, (ev) => {
       const t = String(ev.type || "");
 
@@ -855,13 +904,20 @@ async function runAnalyze(paperQuery) {
         c.innerHTML = `<div class="empty-state" style="color:var(--err);">分析失败: ${escapeHtml(ev.message)}</div>`;
         addProgress("分析失败: " + ev.message, "err");
       }
-    });
+    }, state.currentAbortController.signal);
   } catch (e) {
-    c.innerHTML = `<div class="empty-state" style="color:var(--err);">请求失败: ${escapeHtml(e.message)}</div>`;
-    addProgress("请求失败: " + e.message, "err");
+    if (e.name === "AbortError") {
+      // User cancelled - already handled in cancelOperation()
+      c.innerHTML = '<div class="empty-state">分析已取消</div>';
+    } else {
+      c.innerHTML = `<div class="empty-state" style="color:var(--err);">请求失败: ${escapeHtml(e.message)}</div>`;
+      addProgress("请求失败: " + e.message, "err");
+    }
   } finally {
     state.analyzing = false;
+    state.currentAbortController = null;
     hideProgressBar();
+    hideCancel();
   }
 }
 
@@ -1039,6 +1095,111 @@ function renderSavedPapers() {
 }
 
 // ---------------------------------------------------------------------------
+// Analysis Archives (grouped by topic)
+// ---------------------------------------------------------------------------
+async function loadAnalysisArchives() {
+  try {
+    const data = await apiJson("/api/analyses/list", {});
+    state.analysisArchives = data.entries || [];
+    el("archivesCount").textContent = String(state.analysisArchives.length);
+    if (state.activeTab === "archives") renderAnalysisArchives();
+  } catch (_) {}
+}
+
+function renderAnalysisArchives() {
+  const list = el("archivesList");
+  const entries = state.analysisArchives;
+
+  if (!entries.length) {
+    list.innerHTML = '<div class="empty-state">暂无分析存档，在文献上点击「深度分析」后结果会自动保存</div>';
+    el("archivesCount").textContent = "0";
+    return;
+  }
+  el("archivesCount").textContent = String(entries.length);
+
+  // Group by topic
+  const grouped = {};
+  for (const e of entries) {
+    const topic = e.topic || "未分类";
+    if (!grouped[topic]) grouped[topic] = [];
+    grouped[topic].push(e);
+  }
+
+  const topicNames = Object.keys(grouped).sort();
+  const html = topicNames.map(topic => {
+    const items = grouped[topic];
+    const itemsHtml = items.map(e => {
+      const title = escapeHtml(e.title || "Untitled");
+      const date = (e.analyzed_at || "").slice(0, 10);
+      const source = escapeHtml(e.source_desc || "");
+      const doi = e.doi ? escapeHtml(e.doi) : "";
+      const htmlFile = escapeHtml(e.html_file || "");
+
+      return `
+        <div class="paper-card" style="margin-left:12px;">
+          <div class="paper-card__header">
+            <div class="paper-card__title" style="flex:1;">${title}</div>
+          </div>
+          <div class="paper-card__meta">
+            ${source ? `<span class="source-badge source-badge--oa">${source}</span>` : ""}
+            ${date ? `<span class="paper-card__meta-item">${date}</span>` : ""}
+            ${doi ? `<span class="paper-card__meta-item" style="font-family:var(--mono);font-size:11px;">${doi}</span>` : ""}
+          </div>
+          <div class="paper-card__actions">
+            ${htmlFile ? `<button class="btn btn--small btn--ghost" data-action="view-archive-html" data-html-file="${htmlFile}">查看报告</button>` : ""}
+          </div>
+        </div>`;
+    }).join("");
+
+    const topicEsc = escapeHtml(topic);
+    return `
+      <div class="archive-topic-group" style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+          <span style="font-weight:600;font-size:14px;color:var(--accent);">${topicEsc}</span>
+          <span style="color:var(--text-muted);font-size:12px;">(${items.length})</span>
+          <button class="btn btn--small btn--ghost" data-action="rename-topic" data-old-topic="${topicEsc}" style="margin-left:auto;font-size:11px;">改名</button>
+        </div>
+        ${itemsHtml}
+      </div>`;
+  }).join("");
+
+  list.innerHTML = html;
+}
+
+async function renameTopic(oldTopic) {
+  const newTopic = prompt("输入新的主题名：", oldTopic);
+  if (!newTopic || newTopic.trim() === oldTopic) return;
+
+  try {
+    const data = await apiJson("/api/analyses/rename-topic", {
+      old_topic: oldTopic,
+      new_topic: newTopic.trim()
+    });
+    if (data.ok) {
+      addProgress(`已将「${oldTopic}」改名为「${newTopic.trim()}」(${data.renamed} 条)`, "ok");
+      await loadAnalysisArchives();
+    } else {
+      addProgress("改名失败: " + (data.error || ""), "err");
+    }
+  } catch (e) {
+    addProgress("改名失败: " + e.message, "err");
+  }
+}
+
+async function viewArchiveHtml(htmlFile) {
+  try {
+    const data = await apiJson("/api/analyses/html", { html_file: htmlFile });
+    if (data.html) {
+      const w = window.open("", "_blank");
+      w.document.write(data.html);
+      w.document.close();
+    }
+  } catch (e) {
+    addProgress("查看报告失败: " + e.message, "err");
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Export RIS
 // ---------------------------------------------------------------------------
 async function exportRIS() {
@@ -1133,6 +1294,9 @@ function bind() {
   el("downloadConfigBtn").addEventListener("click", downloadConfigYaml);
   el("clearConfigBtn").addEventListener("click", clearConfig);
 
+  // Cancel button for aborting operations
+  el("cancelBtn").addEventListener("click", cancelOperation);
+
   // Select all checkbox
   el("selectAllCheckbox").addEventListener("change", toggleSelectAll);
 
@@ -1156,6 +1320,21 @@ function bind() {
     if (action === "analyze") {
       const query = btn.getAttribute("data-query");
       if (query) runAnalyze(query);
+    }
+  });
+
+  // Archives list delegation (rename-topic + view-archive-html)
+  el("archivesList").addEventListener("click", (ev) => {
+    const btn = ev.target.closest("[data-action]");
+    if (!btn) return;
+    const action = btn.getAttribute("data-action");
+    if (action === "rename-topic") {
+      const oldTopic = btn.getAttribute("data-old-topic");
+      if (oldTopic) renameTopic(oldTopic);
+    }
+    if (action === "view-archive-html") {
+      const htmlFile = btn.getAttribute("data-html-file");
+      if (htmlFile) viewArchiveHtml(htmlFile);
     }
   });
 }

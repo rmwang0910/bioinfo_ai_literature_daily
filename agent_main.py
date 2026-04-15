@@ -2045,7 +2045,7 @@ class LiteratureAgent:
                     "intent": intent
                 }
 
-            result = self.analyze_local_pdf(pdf_path, email, title=title)
+            result = self.analyze_local_pdf(pdf_path, email, title=title, topic=user_input)
             return {**result, "intent": intent}
 
         # 3. 单篇文献解析
@@ -2060,7 +2060,7 @@ class LiteratureAgent:
                     "intent": intent
                 }
 
-            result = self.analyze_paper(paper_id, email)
+            result = self.analyze_paper(paper_id, email, topic=user_input)
             return {**result, "intent": intent}
 
         # 4. 文献搜索
@@ -2133,14 +2133,15 @@ class LiteratureAgent:
     # 单篇文献快速解析
     # ------------------------------------------------------------------
 
-    def analyze_local_pdf(self, pdf_path: str, to_email: str, title: str = None) -> Dict[str, Any]:
+    def analyze_local_pdf(self, pdf_path: str, to_email: str, title: str = None, topic: str = None) -> Dict[str, Any]:
         """
-        解析本地 PDF 文件 → LLM 结构化解析 → 发送邮件
+        解析本地 PDF 文件 → LLM 结构化解析 → 保存结果 → 发送邮件
 
         Args:
             pdf_path: 本地 PDF 文件路径
             to_email: 收件人邮箱
             title: 可选的论文标题（若不提供则从 PDF 文件名推断）
+            topic: 可选的主题分类标签（若不提供则从标题推断）
 
         Returns:
             {"status": "success"|"error", "message": str, "title": str}
@@ -2186,20 +2187,30 @@ class LiteratureAgent:
         source_desc = "本地PDF全文"
         analysis = self._analyze_paper_with_llm(paper, content, source_desc)
 
+        # 保存分析结果
+        clean_topic = self._extract_topic(topic, fallback=inferred_title)
+        saved_path = self._save_analysis_result(paper, analysis, source_desc, clean_topic)
+
         # 发送邮件
         ok = self._send_single_paper_email(paper, analysis, source_desc, to_email, pdf_bytes)
+        result = {
+            "title": inferred_title,
+            "saved_path": str(saved_path) if saved_path else None
+        }
         if ok:
-            return {"status": "success", "message": f"解析结果已发送至 {to_email}", "title": inferred_title}
+            result.update({"status": "success", "message": f"解析结果已发送至 {to_email}"})
         else:
-            return {"status": "error", "message": "邮件发送失败，请检查 SMTP 配置", "title": inferred_title}
+            result.update({"status": "error", "message": "邮件发送失败，请检查 SMTP 配置"})
+        return result
 
-    def analyze_paper(self, query: str, to_email: str) -> Dict[str, Any]:
+    def analyze_paper(self, query: str, to_email: str, topic: str = None) -> Dict[str, Any]:
         """
-        获取单篇文献 → LLM 结构化解析 → 发送邮件
+        获取单篇文献 → LLM 结构化解析 → 保存结果 → 发送邮件
 
         Args:
             query: PMID（6-8位纯数字）、DOI（10.xxx/...）或标题文本
             to_email: 收件人邮箱
+            topic: 可选的主题分类标签（若不提供则从论文标题推断）
 
         Returns:
             {"status": "success"|"error", "message": str, "title": str}
@@ -2257,12 +2268,21 @@ class LiteratureAgent:
             logger.warning(f"[单篇解析] 内容来源: {source_desc}，字符数: {len(content)}")
             analysis = self._analyze_paper_with_llm(paper, content, source_desc)
 
-        # Step 3: 发送邮件（含 PDF 附件，如有）
+        # Step 3: 保存分析结果
+        clean_topic = self._extract_topic(topic, fallback=paper.title)
+        saved_path = self._save_analysis_result(paper, analysis, source_desc, clean_topic)
+
+        # Step 4: 发送邮件（含 PDF 附件，如有）
         ok = self._send_single_paper_email(paper, analysis, source_desc, to_email, pdf_bytes)
+        result = {
+            "title": paper.title,
+            "saved_path": str(saved_path) if saved_path else None
+        }
         if ok:
-            return {"status": "success", "message": f"解析结果已发送至 {to_email}", "title": paper.title}
+            result.update({"status": "success", "message": f"解析结果已发送至 {to_email}"})
         else:
-            return {"status": "error", "message": "邮件发送失败，请检查 SMTP 配置", "title": paper.title}
+            result.update({"status": "error", "message": "邮件发送失败，请检查 SMTP 配置"})
+        return result
 
     def _analyze_paper_with_llm(self, paper, content: str, source_desc: str) -> Dict[str, Any]:
         """调用 LLM 生成结构化解析结果，失败时自动用精简 prompt 重试"""
@@ -2390,25 +2410,110 @@ class LiteratureAgent:
 
         return s
 
-    def _send_single_paper_email(self, paper, analysis: Dict, source_desc: str, to_email: str,
-                                   pdf_bytes: Optional[bytes] = None) -> bool:
-        """构建单篇解析 HTML 邮件并发送，如有 PDF 字节则作为附件"""
-        import smtplib
-        from email.mime.multipart import MIMEMultipart
-        from email.mime.text import MIMEText
-        from email.mime.base import MIMEBase
-        from email import encoders as _encoders
+    # ------------------------------------------------------------------
+    # 分析结果保存与主题分类
+    # ------------------------------------------------------------------
+
+    def _extract_topic(self, raw_input: str, fallback: str) -> str:
+        """提取主题。输入通常是 LLM 已解析好的关键词，直接使用即可。"""
+        if not raw_input or not raw_input.strip():
+            return fallback
+        return raw_input.strip()
+
+    def _save_analysis_result(self, paper, analysis: Dict, source_desc: str, topic: str) -> Optional[Path]:
+        """保存分析结果（JSON + HTML），更新主题索引"""
+        import json
         from datetime import datetime as _dt
 
-        email_cfg = self.base_agent.config.get('email', {})
-        smtp_server = email_cfg.get('smtp_server')
-        smtp_port = email_cfg.get('smtp_port', 587)
-        smtp_username = email_cfg.get('smtp_username')
-        smtp_password = email_cfg.get('smtp_password')
+        try:
+            analyses_dir = Path(self.base_agent.output_dir) / "analyses"
+            analyses_dir.mkdir(parents=True, exist_ok=True)
 
-        if not all([smtp_server, smtp_username, smtp_password]):
-            logger.error("SMTP 配置不完整")
-            return False
+            date_tag = _dt.now().strftime('%Y%m%d')
+            safe_title = self.base_agent._sanitize_filename((paper.title or "unknown")[:50])
+            base_name = f"{date_tag}_{safe_title}"
+
+            # 处理文件名冲突
+            json_path = analyses_dir / f"{base_name}.json"
+            html_path = analyses_dir / f"{base_name}.html"
+            counter = 1
+            while json_path.exists():
+                json_path = analyses_dir / f"{base_name}_{counter}.json"
+                html_path = analyses_dir / f"{base_name}_{counter}.html"
+                counter += 1
+
+            # 构建 JSON 数据
+            paper_dict = paper.to_dict()
+            paper_dict["full_text"] = None  # 不保存全文，避免文件过大
+
+            json_data = {
+                "version": 1,
+                "analyzed_at": _dt.now().isoformat(),
+                "topic": topic,
+                "source_desc": source_desc,
+                "paper": paper_dict,
+                "analysis": analysis
+            }
+
+            # 写入 JSON
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(json_data, f, ensure_ascii=False, indent=2)
+
+            # 写入 HTML
+            html_content = self._build_single_paper_html(paper, analysis, source_desc)
+            with open(html_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+
+            # 更新索引
+            self._update_analysis_index(analyses_dir, {
+                "id": json_path.stem,
+                "topic": topic,
+                "title": paper.title or "",
+                "doi": paper.doi,
+                "pubmed_id": paper.pubmed_id,
+                "source_desc": source_desc,
+                "analyzed_at": json_data["analyzed_at"],
+                "json_file": json_path.name,
+                "html_file": html_path.name
+            })
+
+            logger.warning(f"解析结果已保存: {json_path}")
+            return json_path
+
+        except Exception as e:
+            logger.warning(f"保存解析结果失败: {e}")
+            return None
+
+    def _update_analysis_index(self, analyses_dir: Path, entry: Dict):
+        """更新分析结果索引文件"""
+        import json
+        from datetime import datetime as _dt
+
+        index_path = analyses_dir / "index.json"
+
+        # 加载现有索引
+        if index_path.exists():
+            try:
+                with open(index_path, 'r', encoding='utf-8') as f:
+                    index = json.load(f)
+            except Exception:
+                index = {"version": 1, "updated_at": "", "entries": []}
+        else:
+            index = {"version": 1, "updated_at": "", "entries": []}
+
+        # 追加条目
+        index["entries"].append(entry)
+        index["updated_at"] = _dt.now().isoformat()
+
+        # 原子写入
+        tmp_path = index_path.with_suffix('.tmp')
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(index, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, index_path)
+
+    def _build_single_paper_html(self, paper, analysis: Dict, source_desc: str) -> str:
+        """构建单篇解析的 HTML 报告（邮件发送和本地保存共用）"""
+        from datetime import datetime as _dt
 
         authors = paper.authors or []
         authors_str = ", ".join(a.name for a in authors[:5])
@@ -2487,7 +2592,7 @@ class LiteratureAgent:
               <div style="padding-left:14px;line-height:1.8;">{content}</div>
             </div>'''
 
-        html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+        return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <style>
   body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
         line-height:1.6;color:#333;max-width:800px;margin:0 auto;padding:24px;}}
@@ -2524,6 +2629,27 @@ class LiteratureAgent:
 </p>
 <div class="footer">由 Bioinfo Literature Daily 自动生成</div>
 </body></html>"""
+
+    def _send_single_paper_email(self, paper, analysis: Dict, source_desc: str, to_email: str,
+                                   pdf_bytes: Optional[bytes] = None) -> bool:
+        """发送单篇解析邮件，如有 PDF 字节则作为附件"""
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from email.mime.base import MIMEBase
+        from email import encoders as _encoders
+
+        email_cfg = self.base_agent.config.get('email', {})
+        smtp_server = email_cfg.get('smtp_server')
+        smtp_port = email_cfg.get('smtp_port', 587)
+        smtp_username = email_cfg.get('smtp_username')
+        smtp_password = email_cfg.get('smtp_password')
+
+        if not all([smtp_server, smtp_username, smtp_password]):
+            logger.error("SMTP 配置不完整")
+            return False
+
+        html = self._build_single_paper_html(paper, analysis, source_desc)
 
         title_short = (paper.title or "未知标题")[:40]
         msg = MIMEMultipart("alternative")
@@ -3150,6 +3276,8 @@ def main():
             if status == "success":
                 # 成功执行
                 print(f"\n✓ {message}")
+                if result.get('saved_path'):
+                    print(f"  结果已保存: {result['saved_path']}")
                 return
 
             if status == "search":
@@ -3167,9 +3295,12 @@ def main():
             print("错误: 请通过 --email 指定收件人邮箱")
             return
         print(f"\n正在解析本地 PDF: {args.pdf}")
-        result = agent.analyze_local_pdf(args.pdf, to_email, title=args.title)
+        pdf_topic = args.title or Path(args.pdf).stem
+        result = agent.analyze_local_pdf(args.pdf, to_email, title=args.title, topic=pdf_topic)
         if result.get('status') == 'success':
             print(f"✓ {result.get('message')}")
+            if result.get('saved_path'):
+                print(f"  结果已保存: {result['saved_path']}")
         else:
             print(f"✗ 解析失败: {result.get('message')}")
         return
@@ -3181,9 +3312,11 @@ def main():
             print("错误: 请通过 --email 指定收件人邮箱")
             return
         print(f"\n正在解析文献: {args.paper}")
-        result = agent.analyze_paper(args.paper, to_email)
+        result = agent.analyze_paper(args.paper, to_email, topic=args.paper)
         if result.get('status') == 'success':
             print(f"✓ {result.get('message')}")
+            if result.get('saved_path'):
+                print(f"  结果已保存: {result['saved_path']}")
         else:
             print(f"✗ 解析失败: {result.get('message')}")
         return

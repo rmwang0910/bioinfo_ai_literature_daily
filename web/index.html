@@ -202,7 +202,10 @@
 
       <!-- Progress area -->
       <div class="card" id="progressCard" style="display:none;">
-        <div class="card__title">进度</div>
+        <div class="card__title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>进度</span>
+          <button id="cancelBtn" class="btn btn--small btn--ghost" style="display:none;color:var(--err);">取消</button>
+        </div>
         <div id="progressArea" class="progress-area"></div>
         <div class="progress-bar" id="progressBarWrap" style="display:none;">
           <div class="progress-bar__fill" id="progressBarFill"></div>
@@ -217,6 +220,7 @@
         <button class="tab" data-tab="summary">Summary</button>
         <button class="tab" data-tab="analysis">Analysis</button>
         <button class="tab" data-tab="saved">Saved <span id="savedCount" class="tab__count">0</span></button>
+        <button class="tab" data-tab="archives">Archives <span id="archivesCount" class="tab__count">0</span></button>
       </div>
       <div id="papersTab" class="tab-content tab-content--active">
         <div id="papersToolbar" class="papers-toolbar" style="display:none;">
@@ -245,6 +249,11 @@
       <div id="savedTab" class="tab-content">
         <div id="savedList" class="papers-list">
           <div class="empty-state">暂无存档文献</div>
+        </div>
+      </div>
+      <div id="archivesTab" class="tab-content">
+        <div id="archivesList" class="papers-list">
+          <div class="empty-state">暂无分析存档</div>
         </div>
       </div>
     </section>

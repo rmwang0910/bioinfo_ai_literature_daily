@@ -398,7 +398,7 @@ def _search_worker(session: Session, eq: queue.Queue):
         eq.put({"type": "error", "message": str(e)})
 
 
-def _analyze_worker(session: Session, paper_query: str, eq: queue.Queue):
+def _analyze_worker(session: Session, paper_query: str, eq: queue.Queue, topic: str = None):
     """Execute single paper deep analysis, pushing progress events."""
     try:
         from literature.paper_fetcher import SinglePaperFetcher
@@ -462,7 +462,18 @@ def _analyze_worker(session: Session, paper_query: str, eq: queue.Queue):
                 eq.put({"type": "error", "message": f"LLM 分析失败: {e}"})
                 return
 
-        eq.put({"type": "analysis", "data": analysis, "source": source_desc, "paper": _paper_to_dict(paper)})
+        # 保存分析结果（topic 优先使用用户的搜索关键词）
+        saved_path = None
+        try:
+            # topic 为空或空字符串时，使用 paper.title 作为 fallback
+            clean_topic = agent._extract_topic(topic, fallback=paper.title) if topic and topic.strip() else paper.title
+            logger.info(f"[analyze] topic={topic!r} -> clean_topic={clean_topic!r} (fallback={paper.title[:50]!r})")
+            saved_path = agent._save_analysis_result(paper, analysis, source_desc, clean_topic)
+        except Exception as e:
+            logger.warning(f"保存分析结果失败: {e}")
+
+        eq.put({"type": "analysis", "data": analysis, "source": source_desc, "paper": _paper_to_dict(paper),
+                "saved_path": str(saved_path) if saved_path else None})
         eq.put({"type": "done"})
 
     except Exception as e:
@@ -689,9 +700,12 @@ def make_handler(manager: SessionManager):
                 if session.busy:
                     return _json_response(self, {"error": "session is busy"}, status=409)
 
+                topic = str(body.get("topic", "")).strip() or None
+                logger.info(f"[analyze] received topic={topic!r}, query={paper_query!r}")
+
                 session.busy = True
                 eq = queue.Queue()
-                t = threading.Thread(target=_analyze_worker, args=(session, paper_query, eq), daemon=True)
+                t = threading.Thread(target=_analyze_worker, args=(session, paper_query, eq, topic), daemon=True)
                 t.start()
 
                 try:
@@ -848,6 +862,77 @@ def make_handler(manager: SessionManager):
                 deleted = manager.saved_store.delete(ids)
                 total = len(manager.saved_store.list_all())
                 return _json_response(self, {"ok": True, "deleted": deleted, "total": total})
+
+            # --- Analyses: list (grouped by topic) ---
+            if path == "/api/analyses/list":
+                analyses_dir = Path(__file__).parent / "outputs" / "analyses"
+                index_path = analyses_dir / "index.json"
+                if index_path.exists():
+                    try:
+                        with open(index_path, "r", encoding="utf-8") as f:
+                            index = json.load(f)
+                        return _json_response(self, {"entries": index.get("entries", [])})
+                    except Exception as e:
+                        return _json_response(self, {"entries": [], "error": str(e)})
+                return _json_response(self, {"entries": []})
+
+            # --- Analyses: rename topic ---
+            if path == "/api/analyses/rename-topic":
+                old_topic = body.get("old_topic", "").strip()
+                new_topic = body.get("new_topic", "").strip()
+                if not old_topic or not new_topic:
+                    return _json_response(self, {"error": "old_topic and new_topic are required"}, status=400)
+
+                analyses_dir = Path(__file__).parent / "outputs" / "analyses"
+                index_path = analyses_dir / "index.json"
+                if not index_path.exists():
+                    return _json_response(self, {"error": "no analyses found"}, status=404)
+
+                try:
+                    with open(index_path, "r", encoding="utf-8") as f:
+                        index = json.load(f)
+
+                    renamed = 0
+                    for entry in index.get("entries", []):
+                        if entry.get("topic") == old_topic:
+                            entry["topic"] = new_topic
+                            renamed += 1
+                            # 同步更新对应的 JSON 文件
+                            json_file = analyses_dir / entry.get("json_file", "")
+                            if json_file.exists():
+                                try:
+                                    with open(json_file, "r", encoding="utf-8") as jf:
+                                        data = json.load(jf)
+                                    data["topic"] = new_topic
+                                    with open(json_file, "w", encoding="utf-8") as jf:
+                                        json.dump(data, jf, ensure_ascii=False, indent=2)
+                                except Exception:
+                                    pass
+
+                    index["updated_at"] = __import__("datetime").datetime.now().isoformat()
+                    tmp = index_path.with_suffix(".tmp")
+                    with open(tmp, "w", encoding="utf-8") as f:
+                        json.dump(index, f, ensure_ascii=False, indent=2)
+                    os.replace(tmp, index_path)
+
+                    return _json_response(self, {"ok": True, "renamed": renamed})
+                except Exception as e:
+                    return _json_response(self, {"error": str(e)}, status=500)
+
+            # --- Analyses: get single HTML ---
+            if path == "/api/analyses/html":
+                html_file = body.get("html_file", "")
+                if not html_file:
+                    return _json_response(self, {"error": "html_file is required"}, status=400)
+                analyses_dir = Path(__file__).parent / "outputs" / "analyses"
+                html_path = analyses_dir / Path(html_file).name  # 防止路径穿越
+                if not html_path.exists():
+                    return _json_response(self, {"error": "file not found"}, status=404)
+                try:
+                    content = html_path.read_text(encoding="utf-8")
+                    return _json_response(self, {"html": content})
+                except Exception as e:
+                    return _json_response(self, {"error": str(e)}, status=500)
 
             # --- Download config.yaml ---
             if path == "/api/config/download-yaml":

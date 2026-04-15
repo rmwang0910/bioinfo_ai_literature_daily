@@ -3,24 +3,26 @@
 [![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-一个智能化的文献检索与推送系统，支持从 PubMed、arXiv、bioRxiv 等多源数据库检索文献，使用 LLM 进行智能总结，通过 Web 界面实时交互或自动邮件推送。
+一个智能化的文献检索与推送系统，支持从 PubMed、arXiv、bioRxiv 等多源数据库检索文献，使用 LLM 进行智能总结与深度分析，通过 Web 界面实时交互或自动邮件推送。
 
-## ✨ 核心特性
+## 核心特性
 
-- 🌐 **Web 可视化界面**：浏览器端实时搜索、结果浏览、深度分析、邮件发送
-- 🧠 **LLM 驱动的智能决策**：自然语言需求解析，一次 LLM 调用完成关键词提取+翻译+布尔查询构建
-- 🔍 **多源并行检索**：PubMed + arXiv + bioRxiv 并行搜索，OpenAlex 并行补全元数据
-- 📄 **单篇论文深度解读**：支持 PMID/DOI/标题/本地 PDF，生成结构化解读报告
-- 📊 **并行文献总结**：多线程并行生成每篇论文的中文总结（5 并发，提速 3-5x）
-- 📧 **自动邮件推送**：HTML 格式报告，可附带 PDF 原文
-- 🎯 **并行严格验证**：LLM 并行验证关键词匹配（5 并发），三级匹配标准
-- 📈 **期刊影响因子**：Scimago 数据库 + 常见缩写映射，自动显示 IF
-- 🔄 **智能去重**：自动记录已发送文献，避免重复推送
-- ⏰ **定时任务**：支持每日自动推送
+- **Web 可视化界面**：浏览器端实时搜索、结果浏览、深度分析、邮件发送
+- **LLM 驱动的智能决策**：自然语言需求解析，一次 LLM 调用完成关键词提取+翻译+布尔查询构建
+- **多源并行检索**：PubMed + arXiv + bioRxiv 并行搜索，OpenAlex 并行补全元数据
+- **单篇论文深度解读**：支持 PMID/DOI/标题/本地 PDF，生成结构化解读报告
+- **深度分析存档**：分析结果自动保存，按搜索关键词主题分类，支持归档浏览和主题重命名
+- **操作可中断**：搜索和分析过程中可随时取消
+- **并行文献总结**：多线程并行生成每篇论文的中文总结（5 并发，提速 3-5x）
+- **自动邮件推送**：HTML 格式报告，可附带 PDF 原文
+- **并行严格验证**：LLM 并行验证关键词匹配（5 并发），三级匹配标准
+- **期刊影响因子**：Scimago 数据库 + 常见缩写映射，自动显示 IF
+- **智能去重**：自动记录已发送文献，避免重复推送
+- **定时任务**：支持每日自动推送
 
 ---
 
-## 🌐 Web 界面功能（v2.0 更新）
+## Web 界面功能
 
 启动 Web 服务：
 ```bash
@@ -48,44 +50,47 @@ python web_server.py --port 8080
 |------|------|
 | **自然语言搜索** | 输入框直接输入中文需求，自动解析关键词、时间、邮箱 |
 | **实时进度反馈** | 搜索、验证、总结、翻译各阶段进度条实时推送 |
-| **论文卡片展示** | 每篇论文展示完整信息（见下表） |
+| **操作取消** | 搜索和深度分析过程中可随时点击取消按钮中断 |
+| **论文卡片展示** | 每篇论文展示完整信息（标题、OA 标识、IF、PDF 链接等） |
 | **深度分析** | 一键对单篇论文进行 LLM 深度解读，术语解释+图表解读 |
+| **分析存档** | 深度分析结果自动按搜索主题归档，支持浏览历史分析和主题重命名 |
 | **高级筛选** | 影响因子范围、期刊、领域、时间范围、验证严格度 |
 | **邮件发送** | 勾选论文后一键发送 HTML 邮件报告 |
 | **RIS 导出** | 勾选论文导出 EndNote 兼容的 RIS 文件 |
 | **收藏管理** | 收藏论文跨会话持久化存储 |
-| **浅色/深色主题** | 默认浅色，支持一键切换，无闪烁 |
+| **浅色/深色主题** | 默认浅色，支持一键切换 |
 
 ### 论文卡片显示字段
 
 | 字段 | 说明 |
 |------|------|
 | 标题 | 可点击跳转原文 |
-| Open Access 徽标 | 绿色 OA 标签，一眼识别免费获取 |
+| Open Access 徽标 | 绿色 OA 标签 |
 | 来源徽标 | PubMed / arXiv / bioRxiv 彩色标签 |
 | 期刊名 | 显示期刊全名 |
 | **影响因子 (IF)** | 橙色加粗显示，来源 Scimago 数据库 |
-| **完整发布日期** | 精确到日（YYYY-MM-DD），非仅年份 |
+| **完整发布日期** | 精确到日（YYYY-MM-DD） |
 | 引用数 | 来自 OpenAlex |
-| DOI | 单色等宽字体显示 |
+| DOI | 等宽字体显示 |
 | 作者 + 机构 | 前 5 位作者及前 2 位机构 |
 | 英文摘要 | 截断 300 字符 |
-| **中文摘要翻译** | 开启 `translate_abstract` 后并行翻译，实时推送到卡片下方 |
+| **中文摘要翻译** | 开启 `translate_abstract` 后并行翻译 |
 | 中文总结 | 2-3 句话精简概括 |
-| **PDF 下载** | 有 PDF 链接时显示 PDF 按钮，一键下载 |
-| DOI / PubMed 链接 | 一键跳转 |
+| **PDF 下载** | 有 PDF 链接时显示 PDF 按钮 |
 | 深度分析按钮 | 触发单篇 LLM 深度解读 |
 
-### 深度分析面板
+### 深度分析
 
 点击论文卡片的"深度分析"按钮，触发 LLM 结构化解读：
 
 - **全文概述**：300-500 字综合概述
-- **术语解释**：核心术语加粗 + 通俗解释（修复了 `[object Object]` 显示问题）
+- **术语解释**：核心术语加粗 + 通俗解释
 - **论文实验**：实验设计、数据集、评估指标
-- **关键图表解读**：图表编号 + 标题 + 详细解读（修复了 `[object Object]` 显示问题）
+- **关键图表解读**：图表编号 + 标题 + 详细解读
 - **核心结论**：量化结论列表
 - **局限性与展望**
+
+分析结果自动保存到 `outputs/analyses/`，按搜索关键词分类。可在 Archives 标签页中浏览历史分析，支持主题重命名。
 
 ### 实时进度流
 
@@ -104,16 +109,14 @@ Web 端使用 NDJSON 流式推送，搜索全过程可见：
 
 ---
 
-## 🚀 快速开始
+## 快速开始
 
 ### 安装
 
 ```bash
-# 构建环境
-conda create -n bioinfo_ai_literature_daily python=3.13
-conda activate bioai_literature_daily
+conda create -n biolit python=3.13
+conda activate biolit
 
-# 安装依赖
 pip install -r requirements.txt
 ```
 
@@ -128,11 +131,10 @@ pip install -r requirements.txt
 - `httpx>=0.25.0` - HTTP 客户端
 - `PyMuPDF>=1.23.0` - PDF 文本提取
 - `pdfplumber>=0.10.0` - PDF 文本提取（双栏排版更佳）
-- `mcp>=1.0.0` - BGPT 结构化论文数据查询
 
 ### 配置
 
-#### 方式一：Web 界面配置（推荐，无需手写配置文件）
+#### 方式一：Web 界面配置（推荐）
 
 启动服务后，展开页面左侧「系统配置」面板，填写 LLM API Key 和邮箱 SMTP 信息，点击「保存配置」。配置会保存在浏览器本地，下次打开自动恢复。
 
@@ -192,6 +194,12 @@ python agent_main.py "找单细胞和AI的文献" \
   --email example@qq.com
 ```
 
+智能体模式支持智能意图分类：
+- **文献搜索**：自然语言描述搜索需求
+- **单篇解析**：输入 PMID、DOI 或论文标题
+- **本地 PDF 解析**：输入 PDF 文件路径
+- **帮助 / 闲聊**：其他问题由 LLM 回答
+
 #### 3. 定时推送模式
 
 ```bash
@@ -200,7 +208,7 @@ python agent_main.py --mode scheduled
 
 ---
 
-## 📄 单篇论文深度解读
+## 单篇论文深度解读
 
 ```bash
 # PMID
@@ -220,7 +228,7 @@ python agent_main.py --pdf /path/to/paper.pdf --email recipient@example.com
 
 ---
 
-## ⚙️ 配置文件说明
+## 配置文件说明
 
 ```yaml
 # 搜索配置
@@ -256,23 +264,21 @@ report:
 
 ---
 
-## 🔧 性能优化说明
-
-本系统在以下环节采用了并行化和合并优化：
+## 性能优化
 
 | 环节 | 优化方式 | 效果 |
 |------|---------|------|
-| 用户需求解析 | 3 次 LLM 调用合并为 1 次（解析+翻译+运算符） | 延迟减少 ~60% |
-| 多源文献检索 | PubMed/arXiv/bioRxiv ThreadPoolExecutor 并行 | ~3x 加速 |
+| 用户需求解析 | 3 次 LLM 调用合并为 1 次 | 延迟减少 ~60% |
+| 多源文献检索 | PubMed/arXiv/bioRxiv 并行 | ~3x 加速 |
 | 严格关键词验证 | LLM 逐篇验证并行化（5 worker） | ~5x 加速 |
 | 论文中文总结 | ThreadPoolExecutor 并行（5 worker） | ~5x 加速 |
 | OpenAlex 元数据补全 | HTTP 请求并行化（8 worker） | ~8x 加速 |
 | 摘要中文翻译 | LLM 翻译并行化（5 worker） | ~5x 加速 |
-| LLM 重试策略 | 指数退避 + 随机抖动 | 避免并发限流雪崩 |
+| LLM 重试策略 | 指数退避 + 随机抖动 + Lite 降级 | 避免限流雪崩 |
 
 ---
 
-## 📚 CWTS 领域筛选（RAG 增强）
+## CWTS 领域筛选
 
 使用 CWTS 学科体系进行领域增强筛选：
 
@@ -288,7 +294,7 @@ python3 scripts/process_cwts_data.py --resolve-sources --email your@email.com
 
 ---
 
-## 📝 项目结构
+## 项目结构
 
 ```
 bioinfo_ai_literature_daily/
@@ -298,10 +304,11 @@ bioinfo_ai_literature_daily/
 │   └── static/
 │       ├── app.js                 # 前端逻辑
 │       └── styles.css             # 样式（浅色/深色主题）
-├── agent_main.py                  # 智能体模式入口
+├── agent_main.py                  # 智能体模式入口（含意图分类、PDF 解析）
 ├── main.py                        # 基础模式入口 + 搜索/过滤/邮件核心
 ├── scheduler.py                   # 定时任务调度
-├── config.yaml                    # 配置文件
+├── config.yaml.example            # 配置文件示例
+├── agent_example.py               # 使用示例
 ├── prompts/                       # LLM 提示词模板
 ├── literature/                    # 文献检索模块
 │   ├── unified_search.py          # 多源并行检索
@@ -319,24 +326,26 @@ bioinfo_ai_literature_daily/
 │       ├── scimago_metrics.py     # 期刊 IF 查询（含缩写映射）
 │       ├── field_classifier.py    # RAG 领域分类
 │       └── cwts_source_filter.py  # CWTS 期刊过滤
-├── data/                          # 数据文件
-│   └── scimagojr 2024.csv         # Scimago 期刊指标（11MB）
-└── cache/                         # 运行时缓存
-    ├── sent_papers.json           # 已发送文献记录
-    └── saved_papers.json          # Web 收藏文献
+├── data/                          # 参考数据
+│   └── scimagojr 2024.csv         # Scimago 期刊指标
+├── scripts/                       # 辅助脚本
+│   └── process_cwts_data.py       # CWTS 数据处理
+├── cache/                         # 运行时缓存（.gitignore）
+└── outputs/                       # 输出目录（.gitignore）
+    └── analyses/                  # 深度分析存档（按主题分类）
 ```
 
 ---
 
-## ⚠️ 注意事项
+## 注意事项
 
 1. **网络连接**：需要访问 PubMed/arXiv/bioRxiv API
 2. **LLM 配置**：Web 界面可直接在「系统配置」面板填写；命令行模式需设置 `LLM_API_KEY` 环境变量
 3. **邮件配置**：SMTP 使用授权码而非登录密码
-4. **配置安全**：Web 界面保存的配置（含 API Key）仅存于浏览器本地，不写入服务器文件；如需导出请使用「下载 config.yaml」并妥善保管
+4. **配置安全**：Web 界面保存的配置（含 API Key）仅存于浏览器本地，不写入服务器文件
 5. **磁盘空间**：定期清理 `cache/sent_papers.json`
 
-## 🔧 故障排除
+## 故障排除
 
 | 问题 | 解决方案 |
 |------|---------|
@@ -344,13 +353,12 @@ bioinfo_ai_literature_daily/
 | 搜索无结果 | 降低验证严格度（`strict` → `normal`），扩大时间范围 |
 | LLM 不可用 | 检查 `LLM_API_KEY` 和 `openai` 库安装 |
 | IF 不显示 | 确认 `data/scimagojr 2024.csv` 存在且路径正确 |
-| Web 页面黑色闪烁 | 已修复：默认浅色主题，`<head>` 内联脚本消除闪烁 |
-| 深度分析显示 `[object Object]` | 已修复：正确渲染术语/图表的对象数组 |
+| 深度分析 JSON 解析失败 | 系统会自动重试（Lite 模式降级），无需手动处理 |
 
-## 📄 许可证
+## 许可证
 
 本项目遵循 MIT 许可证。
 
-## 🤝 贡献
+## 贡献
 
 欢迎提交 Issue 和 Pull Request！

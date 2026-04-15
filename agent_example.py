@@ -9,7 +9,7 @@ def example_interactive():
     agent = LiteratureAgent()
     
     # 模拟用户输入
-    user_input = "帮我找最近7天关于单细胞和AI的文献，发送到654409646@qq.com"
+    user_input = "帮我找最近7天关于单细胞和AI的文献，发送到your-email@example.com"
     
     print("=" * 80)
     print("示例：交互式使用智能体")
@@ -37,7 +37,7 @@ def example_with_date_range():
     """示例3：指定日期范围"""
     agent = LiteratureAgent()
     
-    user_input = "找2024年1月到3月关于CRISPR和基因编辑的文献，发送到654409646@qq.com"
+    user_input = "找2024年1月到3月关于CRISPR和基因编辑的文献，发送到your-email@example.com"
     
     print("=" * 80)
     print("示例：指定日期范围")
