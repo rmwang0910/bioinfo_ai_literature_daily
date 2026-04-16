@@ -898,6 +898,7 @@ async function runAnalyze(paperQuery) {
 
       if (t === "done") {
         setProgressBar(100, false);
+        loadAnalysisArchives();  // 刷新 Archives 计数
       }
 
       if (t === "error") {
@@ -1117,16 +1118,34 @@ function renderAnalysisArchives() {
   }
   el("archivesCount").textContent = String(entries.length);
 
+  // 搜索框（保留已有输入值）
+  const prevQuery = document.getElementById("archiveSearchInput")?.value || "";
+  const searchHtml = `<div style="margin-bottom:12px;">
+    <input id="archiveSearchInput" class="input" type="text" placeholder="搜索主题关键词..." value="${escapeHtml(prevQuery)}" style="width:100%;">
+  </div>`;
+
+  // 按关键词过滤
+  const query = prevQuery.toLowerCase();
+  const filtered = query
+    ? entries.filter(e => (e.topic || "").toLowerCase().includes(query) || (e.title || "").toLowerCase().includes(query))
+    : entries;
+
+  if (!filtered.length) {
+    list.innerHTML = searchHtml + `<div class="empty-state">无匹配的存档</div>`;
+    _bindArchiveSearch();
+    return;
+  }
+
   // Group by topic
   const grouped = {};
-  for (const e of entries) {
+  for (const e of filtered) {
     const topic = e.topic || "未分类";
     if (!grouped[topic]) grouped[topic] = [];
     grouped[topic].push(e);
   }
 
   const topicNames = Object.keys(grouped).sort();
-  const html = topicNames.map(topic => {
+  const html = searchHtml + topicNames.map(topic => {
     const items = grouped[topic];
     const itemsHtml = items.map(e => {
       const title = escapeHtml(e.title || "Untitled");
@@ -1147,6 +1166,7 @@ function renderAnalysisArchives() {
           </div>
           <div class="paper-card__actions">
             ${htmlFile ? `<button class="btn btn--small btn--ghost" data-action="view-archive-html" data-html-file="${htmlFile}">查看报告</button>` : ""}
+            <button class="btn btn--small btn--ghost" data-action="delete-archive" data-archive-id="${escapeHtml(e.id || "")}" style="color:var(--err);">删除</button>
           </div>
         </div>`;
     }).join("");
@@ -1164,6 +1184,16 @@ function renderAnalysisArchives() {
   }).join("");
 
   list.innerHTML = html;
+  _bindArchiveSearch();
+}
+
+function _bindArchiveSearch() {
+  const input = document.getElementById("archiveSearchInput");
+  if (!input) return;
+  input.oninput = () => renderAnalysisArchives();
+  // 保持焦点和光标位置
+  input.focus();
+  input.selectionStart = input.selectionEnd = input.value.length;
 }
 
 async function renameTopic(oldTopic) {
@@ -1196,6 +1226,21 @@ async function viewArchiveHtml(htmlFile) {
     }
   } catch (e) {
     addProgress("查看报告失败: " + e.message, "err");
+  }
+}
+
+async function deleteArchiveEntry(archiveId) {
+  if (!confirm("确定删除此条分析存档？本地文件也会一并删除。")) return;
+  try {
+    const data = await apiJson("/api/analyses/delete", { id: archiveId });
+    if (data.ok) {
+      addProgress("已删除存档", "ok");
+      await loadAnalysisArchives();
+    } else {
+      addProgress("删除失败: " + (data.error || ""), "err");
+    }
+  } catch (e) {
+    addProgress("删除失败: " + e.message, "err");
   }
 }
 
@@ -1336,6 +1381,10 @@ function bind() {
       const htmlFile = btn.getAttribute("data-html-file");
       if (htmlFile) viewArchiveHtml(htmlFile);
     }
+    if (action === "delete-archive") {
+      const archiveId = btn.getAttribute("data-archive-id");
+      if (archiveId) deleteArchiveEntry(archiveId);
+    }
   });
 }
 
@@ -1367,4 +1416,5 @@ window.addEventListener("load", async () => {
   await createSession();
   await restoreConfigFromStorage();
   loadSavedPapers();
+  loadAnalysisArchives();
 });

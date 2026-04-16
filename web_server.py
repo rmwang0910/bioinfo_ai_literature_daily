@@ -919,6 +919,53 @@ def make_handler(manager: SessionManager):
                 except Exception as e:
                     return _json_response(self, {"error": str(e)}, status=500)
 
+            # --- Analyses: delete entry ---
+            if path == "/api/analyses/delete":
+                entry_id = body.get("id", "").strip()
+                if not entry_id:
+                    return _json_response(self, {"error": "id is required"}, status=400)
+
+                analyses_dir = Path(__file__).parent / "outputs" / "analyses"
+                index_path = analyses_dir / "index.json"
+                if not index_path.exists():
+                    return _json_response(self, {"error": "no archives"}, status=404)
+
+                try:
+                    with open(index_path, "r", encoding="utf-8") as f:
+                        index = json.load(f)
+
+                    entries = index.get("entries", [])
+                    target = None
+                    remaining = []
+                    for e in entries:
+                        if e.get("id") == entry_id:
+                            target = e
+                        else:
+                            remaining.append(e)
+
+                    if not target:
+                        return _json_response(self, {"error": "entry not found"}, status=404)
+
+                    # 删除本地文件
+                    for key in ("json_file", "html_file"):
+                        fname = target.get(key, "")
+                        if fname:
+                            fpath = analyses_dir / Path(fname).name
+                            if fpath.exists():
+                                fpath.unlink()
+
+                    # 更新 index.json
+                    index["entries"] = remaining
+                    index["updated_at"] = __import__("datetime").datetime.now().isoformat()
+                    tmp = index_path.with_suffix(".tmp")
+                    with open(tmp, "w", encoding="utf-8") as f:
+                        json.dump(index, f, ensure_ascii=False, indent=2)
+                    os.replace(tmp, index_path)
+
+                    return _json_response(self, {"ok": True})
+                except Exception as e:
+                    return _json_response(self, {"error": str(e)}, status=500)
+
             # --- Analyses: get single HTML ---
             if path == "/api/analyses/html":
                 html_file = body.get("html_file", "")
