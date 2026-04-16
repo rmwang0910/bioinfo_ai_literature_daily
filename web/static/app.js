@@ -845,7 +845,9 @@ function renderSummary() {
 // ---------------------------------------------------------------------------
 // Single paper analysis
 // ---------------------------------------------------------------------------
-async function runAnalyze(paperQuery) {
+// useSearchTopic: true = 从搜索关键词取主题（搜索结果中点"深度分析"）
+//                 false = 用论文标题做主题（直接输入 PMID/DOI/标题）
+async function runAnalyze(paperQuery, useSearchTopic = true) {
   if (state.analyzing || !state.sessionId) return;
 
   state.analyzing = true;
@@ -862,11 +864,14 @@ async function runAnalyze(paperQuery) {
   setProgressBar(0, true);
 
   try {
-    // topic = LLM 解析后的关键词（已在 runParse 时提取好）
-    // 优先级：1) 高级参数中已解析的关键词 2) state.config 中的关键词 3) 原始输入
-    const cfgKeywordsInput = el("cfgKeywords").value.trim();
-    const stateKeywords = (state.config.search || {}).keywords || [];
-    const topic = cfgKeywordsInput || stateKeywords.join(", ") || el("nlInput").value.trim() || "";
+    // useSearchTopic=true: 从搜索关键词取主题（搜索结果触发）
+    // useSearchTopic=false: 传空字符串，后端用论文标题做主题（直接查询触发）
+    let topic = "";
+    if (useSearchTopic) {
+      const cfgKeywordsInput = el("cfgKeywords").value.trim();
+      const stateKeywords = (state.config.search || {}).keywords || [];
+      topic = cfgKeywordsInput || stateKeywords.join(", ") || el("nlInput").value.trim() || "";
+    }
 
     await apiStreamNdjson("/api/analyze", {
       session_id: state.sessionId,
@@ -1312,6 +1317,18 @@ function bind() {
   // Search (step 2)
   el("searchBtn").addEventListener("click", runSearch);
 
+  // Single paper analysis (by PMID/DOI/title) — topic = 论文标题
+  el("analyzeQueryBtn").addEventListener("click", () => {
+    const q = el("analyzeQueryInput").value.trim();
+    if (q) runAnalyze(q, false);
+  });
+  el("analyzeQueryInput").addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      const q = el("analyzeQueryInput").value.trim();
+      if (q) runAnalyze(q, false);
+    }
+  });
 
   // Tabs
   document.querySelectorAll(".tab").forEach(tab => {

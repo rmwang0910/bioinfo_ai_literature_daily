@@ -242,8 +242,12 @@
         </div>
       </div>
       <div id="analysisTab" class="tab-content">
+        <div class="row" style="margin-bottom:12px;gap:8px;">
+          <input id="analyzeQueryInput" class="input" type="text" placeholder="输入 PMID、DOI 或论文标题，直接深度分析" style="flex:1;">
+          <button id="analyzeQueryBtn" class="btn btn--primary">分析</button>
+        </div>
         <div id="analysisContent" class="analysis-content">
-          <div class="empty-state">点击文献卡片上的「深度分析」按钮查看 LLM 分析结果</div>
+          <div class="empty-state">输入 PMID / DOI / 标题，或在文献卡片上点击「深度分析」</div>
         </div>
       </div>
       <div id="savedTab" class="tab-content">
