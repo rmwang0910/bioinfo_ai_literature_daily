@@ -1,8 +1,11 @@
 """
 独立的配置管理系统（简化版，不依赖 pydantic-settings）
 """
+import logging
 import os
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class LLMConfig:

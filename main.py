@@ -21,12 +21,27 @@ from email.mime.base import MIMEBase
 from email import encoders
 import smtplib
 
-# 配置logging：默认只在控制台输出重要日志（WARNING及以上）
+# 配置logging：同时输出到控制台和文件（INFO及以上）
+_log_dir = Path(__file__).parent / "logs"
+_log_dir.mkdir(exist_ok=True)
+_log_file = _log_dir / "agent.log"
+
 log_level_name = os.environ.get("BIOAI_LOG_LEVEL", "WARNING").upper()
-log_level = getattr(logging, log_level_name, logging.WARNING)
+console_log_level = getattr(logging, log_level_name, logging.WARNING)
+log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+file_handler = logging.FileHandler(_log_file, encoding='utf-8')
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(logging.Formatter(log_format))
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(console_log_level)
+console_handler.setFormatter(logging.Formatter(log_format))
+
 logging.basicConfig(
-    level=log_level,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO,
+    format=log_format,
+    handlers=[file_handler, console_handler],
 )
 logger = logging.getLogger(__name__)
 
