@@ -201,11 +201,11 @@ class Session:
         self.session_id: str = str(uuid.uuid4())
         self.agent = LiteratureAgent(config_path=config_path, mode="interactive")
         self.config: Dict[str, Any] = copy.deepcopy(self.agent.base_agent.config)
-        # 初始化 LLM 配置（从环境变量读取当前值作为默认）
+        # 初始化 LLM 配置（从环境变量读取当前值作为默认，api_key 不暴露）
         self.config.setdefault("llm", {
-            "api_key": "",  # 不暴露实际 key，让用户填
-            "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-            "model": "qwen-plus",
+            "api_key": os.getenv("LLM_API_KEY", ""),
+            "base_url": os.getenv("LLM_BASE_URL", ""),
+            "model": os.getenv("LLM_MODEL", ""),
         })
         self.papers: List[PaperMetadata] = []
         self.paper_summaries: Dict[str, str] = {}
@@ -620,6 +620,15 @@ def make_handler(manager: SessionManager):
                         session.config[section].update(values)
                     else:
                         session.config[section] = values
+
+                # 如果 base_url 有值但 api_key 为空，使用占位值
+                llm_cfg = session.config.get("llm", {})
+                base_url = str(llm_cfg.get("base_url", "")).strip()
+                api_key = str(llm_cfg.get("api_key", "")).strip()
+                if base_url and not api_key:
+                    llm_cfg["api_key"] = "no-key"
+                    logging.warning("LLM API Key 为空，使用 no-key 作为占位值")
+
                 session.sync_config_to_agent()
                 return _json_response(self, {"ok": True, "config": _safe_config(session.config)})
 
