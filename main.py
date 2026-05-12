@@ -731,10 +731,14 @@ class BioinfoAILiteratureDaily:
                 article_type_keywords=article_types_str,
                 logical_keywords_description=logical_desc
             )
-            response = llm_client.generate(prompt, max_tokens=400, temperature=0.0)
+            response = llm_client.generate(prompt, max_tokens=500, temperature=0.0,
+                               extra_body=llm_client.disable_thinking_body)
             json_match = _re.search(r'\{.*\}', response, _re.DOTALL)
             if json_match:
-                return idx, paper, _json.loads(json_match.group(0))
+                try:
+                    return idx, paper, _json.loads(json_match.group(0))
+                except _json.JSONDecodeError:
+                    pass
             return idx, paper, None
 
         completed_count = 0
@@ -1122,7 +1126,7 @@ class BioinfoAILiteratureDaily:
 {abstract[:2000]}  # 限制长度避免token过多
 """
             
-            translated = llm_client.generate(prompt, max_tokens=1000, temperature=0.3)
+            translated = llm_client.generate(prompt, max_tokens=1000, temperature=0.3, extra_body=llm_client.disable_thinking_body)
             
             # 清理翻译结果（移除可能的引号或多余内容）
             translated = translated.strip()

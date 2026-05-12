@@ -89,17 +89,25 @@ class LiteratureAgent:
             self.mode = "interactive"
         
         # 初始化LLM（用于需求解析和文献总结）
+        # 只要设置了 base_url，就测试连接是否可用（无论是否有 api_key）。
+        # 连接成功后初始化 LLM；未设置 URL 或连接失败则使用简单模式。
         self.llm_client = None
         self.use_llm = False
         if OpenAIProvider and get_config:
             try:
                 config = get_config()
-                if config.llm.api_key:
-                    self.llm_client = OpenAIProvider(config.llm)
-                    self.use_llm = True
-                    logger.info("LLM已初始化，支持智能需求解析和文献总结")
+                if config.llm.base_url:
+                    if not config.llm.api_key:
+                        logger.info("未设置 API_KEY，使用占位值测试连接")
+                        config.llm.api_key = "sk-local"
+                    if self._test_llm_connection(config.llm):
+                        self.llm_client = OpenAIProvider(config.llm)
+                        self.use_llm = True
+                        logger.info("LLM已初始化，支持智能需求解析和文献总结")
+                    else:
+                        logger.warning("LLM连接测试失败 (%s)，将使用简单模式", config.llm.base_url)
                 else:
-                    logger.warning("未设置 LLM_API_KEY，将使用简单模式")
+                    logger.warning("未设置 LLM_BASE_URL，将使用简单模式")
             except Exception as e:
                 logger.warning(f"无法初始化LLM: {e}，将使用简单模式")
 
@@ -116,6 +124,32 @@ class LiteratureAgent:
             except Exception as e:
                 logger.warning(f"无法初始化 RAG 领域分类器: {e}")
 
+    @staticmethod
+    def _test_llm_connection(llm_config: 'LLMConfig') -> bool:
+        """
+        轻量测试 LLM 连接是否可用。
+        发送一条最短消息，能收到响应即认为可用。
+        """
+        try:
+            from openai import OpenAI
+            client = OpenAI(
+                api_key=llm_config.api_key,
+                base_url=llm_config.base_url,
+                timeout=min(llm_config.timeout, 15),
+            )
+            _disable_body = {"chat_template_kwargs": {"enable_thinking": False}} if "glm" in (llm_config.model or "").lower() else {"enable_thinking": False}
+            resp = client.chat.completions.create(
+                model=llm_config.model,
+                messages=[{"role": "user", "content": "hi"}],
+                max_tokens=4,
+                temperature=0,
+                extra_body=_disable_body,
+            )
+            return bool(resp.choices[0].message.content)
+        except Exception as e:
+            logger.warning(f"LLM连接测试失败: {e}")
+            return False
+
     def reinit_llm(self, llm_config: dict) -> bool:
         """
         使用新配置重新初始化 LLM 客户端
@@ -130,14 +164,22 @@ class LiteratureAgent:
             logger.warning("OpenAIProvider 不可用，无法重新初始化 LLM")
             return False
 
+        base_url = llm_config.get("base_url", "").strip()
+        if not base_url:
+            logger.warning("未提供 base_url，无法重新初始化 LLM")
+            return False
+
         api_key = llm_config.get("api_key", "").strip()
         if not api_key:
-            logger.warning("未提供 api_key，无法重新初始化 LLM")
-            return False
+            logger.info("未提供 api_key，使用占位值测试连接")
+            llm_config["api_key"] = "sk-local"
 
         try:
             from core.config.settings import LLMConfig
             new_llm_config = LLMConfig.from_dict(llm_config)
+            if not self._test_llm_connection(new_llm_config):
+                logger.warning("LLM连接测试失败，重新初始化取消")
+                return False
             self.llm_client = OpenAIProvider(new_llm_config)
             self.use_llm = True
             logger.info("LLM 已使用新配置重新初始化")
@@ -220,7 +262,7 @@ class LiteratureAgent:
         )
         
         try:
-            response = self.llm_client.generate(prompt, max_tokens=50, temperature=0.3)
+            response = self.llm_client.generate(prompt, max_tokens=50, temperature=0.3, extra_body=self.llm_client.disable_thinking_body)
             response = response.strip().upper()
             
             if 'AND' in response:
@@ -786,7 +828,7 @@ class LiteratureAgent:
         )
         
         try:
-            response = self.llm_client.generate(prompt, max_tokens=800, temperature=0.3)
+            response = self.llm_client.generate(prompt, max_tokens=800, temperature=0.3, extra_body=self.llm_client.disable_thinking_body)
             
             # 解析JSON响应
             import json
@@ -906,7 +948,7 @@ class LiteratureAgent:
                 logger.info(f"合并后的解析结果: {merged}")
                 return merged
             else:
-                logger.warning("无法从LLM响应中提取JSON，使用简单解析结果")
+                logger.warning("无法从LLM响应中提取JSON，使用简单解析结果。LLM原始响应: %s", response[:1000])
                 return parsed  # 返回简单解析的结果
         except Exception as e:
             logger.warning(f"LLM解析用户需求失败: {e}，使用简单解析结果")
@@ -1022,7 +1064,7 @@ class LiteratureAgent:
         )
         
         try:
-            summary = self.llm_client.generate(prompt, max_tokens=200, temperature=0.5)
+            summary = self.llm_client.generate(prompt, max_tokens=200, temperature=0.5, extra_body=self.llm_client.disable_thinking_body)
             # 清理输出，移除可能的前缀
             summary = summary.strip()
             # 移除常见的LLM输出前缀
@@ -1105,7 +1147,7 @@ class LiteratureAgent:
         )
         
         try:
-            summary = self.llm_client.generate(prompt, max_tokens=1000, temperature=0.5)
+            summary = self.llm_client.generate(prompt, max_tokens=1000, temperature=0.5, extra_body=self.llm_client.disable_thinking_body)
             
             # 添加关键词匹配验证表（如果有）
             if keyword_validation_info:
@@ -1714,7 +1756,7 @@ class LiteratureAgent:
         prompt = prompt_template.replace("{keywords}", ", ".join(keywords))
         
         try:
-            response = self.llm_client.generate(prompt, max_tokens=400, temperature=0.2)
+            response = self.llm_client.generate(prompt, max_tokens=400, temperature=0.2, extra_body=self.llm_client.disable_thinking_body)
             import json, re
             # 尽量提取**完整**的JSON对象：
             # - 使用findall并选择最长的那一段，避免非贪婪匹配截断嵌套结构
@@ -1833,7 +1875,7 @@ class LiteratureAgent:
         import re, json
         prompt = prompt_template.format(user_input=user_input)
         try:
-            resp = self.llm_client.generate(prompt, max_tokens=300, temperature=0.1)
+            resp = self.llm_client.generate(prompt, max_tokens=300, temperature=0.1, extra_body=self.llm_client.disable_thinking_body)
             json_match = re.search(r'\{.*?\}', resp, re.DOTALL)
             if not json_match:
                 logger.warning(f"LLM时间解析未返回JSON，原始响应: {resp[:200]}...")
@@ -2123,7 +2165,7 @@ class LiteratureAgent:
 - 本地PDF解析（需要：PDF路径 + 邮箱）"""
 
         try:
-            response = self.llm_client.generate(prompt, max_tokens=300, temperature=0.7)
+            response = self.llm_client.generate(prompt, max_tokens=300, temperature=0.7, extra_body=self.llm_client.disable_thinking_body)
             return response.strip()
         except Exception as e:
             logger.warning(f"LLM 回复失败: {e}")
@@ -2347,7 +2389,7 @@ class LiteratureAgent:
         prompt = template.format(**prompt_vars)
 
         try:
-            raw = self.llm_client.generate(prompt, max_tokens=max_tokens, temperature=0.1)
+            raw = self.llm_client.generate(prompt, max_tokens=max_tokens, temperature=0.1, extra_body=self.llm_client.disable_thinking_body)
             json_str = raw.strip()
 
             # 提取 JSON（LLM 可能包裹在 ```json ... ``` 中）
@@ -2729,7 +2771,7 @@ class LiteratureAgent:
 4. 严格输出 JSON"""
 
         try:
-            raw = self.llm_client.generate(prompt, max_tokens=2000, temperature=0.1)
+            raw = self.llm_client.generate(prompt, max_tokens=2000, temperature=0.1, extra_body=self.llm_client.disable_thinking_body)
             json_str = raw.strip()
             if "```" in json_str:
                 import re as _re
@@ -2793,7 +2835,7 @@ def _llm_classify_intent(text: str) -> dict | None:
     )
     try:
         import json as _json
-        raw = client.generate(prompt, max_tokens=30, temperature=0.1)
+        raw = client.generate(prompt, max_tokens=30, temperature=0.1, extra_body=client.disable_thinking_body)
         m = re.search(r'\{[^}]+\}', raw)
         if m:
             data = _json.loads(m.group(0))

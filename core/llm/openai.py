@@ -57,7 +57,15 @@ class OpenAIProvider(LLMProvider):
         }
         
         logger.info(f"OpenAI Provider initialized: {config.base_url}")
-    
+
+    @property
+    def disable_thinking_body(self) -> Dict[str, Any]:
+        """返回禁用 thinking 模式的 extra_body，适配不同模型"""
+        model_lower = (self.config.model or "").lower()
+        if "glm" in model_lower:
+            return {"chat_template_kwargs": {"enable_thinking": False}}
+        return {"enable_thinking": False}
+
     def generate(
         self,
         prompt: str,
