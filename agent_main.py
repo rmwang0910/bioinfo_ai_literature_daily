@@ -1316,6 +1316,7 @@ class LiteratureAgent:
 
     def _update_date_config(self, parsed_request: Dict[str, Any]):
         """更新日期/时间范围配置。"""
+        self.base_agent.config.setdefault('search', {})
         if parsed_request.get('days_back'):
             self.base_agent.config['search']['days_back'] = parsed_request['days_back']
             logger.info(f"时间范围: 最近{parsed_request['days_back']}天")
@@ -1333,6 +1334,7 @@ class LiteratureAgent:
         if not parsed_request.get('filter'):
             return
         fc = parsed_request['filter']
+        self.base_agent.config.setdefault('filter', {})
         cfg = self.base_agent.config['filter']
         for key in ['min_abstract_length', 'exclude_keywords', 'include_keywords',
                      'allowed_journals', 'allowed_fields', 'min_impact_factor', 'max_impact_factor']:
@@ -1378,10 +1380,12 @@ class LiteratureAgent:
 
         # 6. 邮件配置
         if parsed_request.get('to_email'):
+            self.base_agent.config.setdefault('email', {})
             self.base_agent.config['email']['to_email'] = parsed_request['to_email']
 
         # 7. 报告配置
         if parsed_request.get('max_papers'):
+            self.base_agent.config.setdefault('report', {})
             self.base_agent.config['report']['max_papers'] = parsed_request['max_papers']
 
         # 8. 过滤配置
