@@ -621,13 +621,10 @@ def make_handler(manager: SessionManager):
                     else:
                         session.config[section] = values
 
-                # 如果 base_url 有值但 api_key 为空，使用占位值
+                # 前端发来空 api_key 时，使用占位值
                 llm_cfg = session.config.get("llm", {})
-                base_url = str(llm_cfg.get("base_url", "")).strip()
-                api_key = str(llm_cfg.get("api_key", "")).strip()
-                if base_url and not api_key:
+                if not str(llm_cfg.get("api_key", "")).strip():
                     llm_cfg["api_key"] = "no-key"
-                    logging.warning("LLM API Key 为空，使用 no-key 作为占位值")
 
                 session.sync_config_to_agent()
                 return _json_response(self, {"ok": True, "config": _safe_config(session.config)})
