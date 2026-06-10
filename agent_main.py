@@ -2511,12 +2511,24 @@ class LiteratureAgent:
                 f.write(html_content)
 
             # 更新索引
+            summary_sentence = (
+                analysis.get("全文概述")
+                or analysis.get("结论与意义")
+                or analysis.get("研究目的")
+                or ""
+            )
+            if isinstance(summary_sentence, list):
+                summary_sentence = "；".join(str(x) for x in summary_sentence[:2])
+            summary_sentence = str(summary_sentence).strip().replace("\n", " ")[:220]
             self._update_analysis_index(analyses_dir, {
                 "id": json_path.stem,
                 "topic": topic,
                 "title": paper.title or "",
                 "doi": paper.doi,
                 "pubmed_id": paper.pubmed_id,
+                "journal": paper.journal or paper.venue,
+                "citation_count": getattr(paper, "citation_count", 0) or 0,
+                "summary_sentence": summary_sentence,
                 "source_desc": source_desc,
                 "analyzed_at": json_data["analyzed_at"],
                 "json_file": json_path.name,

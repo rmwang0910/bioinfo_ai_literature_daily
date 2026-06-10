@@ -15,6 +15,8 @@ Then open:
 from __future__ import annotations
 
 import argparse
+import email
+import email.policy
 import copy
 import json
 import logging
@@ -39,7 +41,7 @@ from datetime import datetime
 
 from main import BioinfoAILiteratureDaily
 from agent_main import LiteratureAgent
-from literature.base_client import PaperMetadata
+from literature.base_client import Author, PaperMetadata, PaperSource
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +112,123 @@ def _read_json(handler: BaseHTTPRequestHandler, *, max_bytes: int = 5_000_000) -
     return obj
 
 
+def _read_multipart_form(handler: BaseHTTPRequestHandler, *, max_bytes: int = 80_000_000) -> Dict[str, Any]:
+    """Parse a multipart/form-data request using stdlib email parser."""
+    content_type = handler.headers.get("Content-Type", "")
+    if "multipart/form-data" not in content_type.lower():
+        raise ValueError("request must be multipart/form-data")
+
+    length = int(handler.headers.get("Content-Length", "0") or 0)
+    if length <= 0:
+        raise ValueError("empty upload")
+    if length > int(max_bytes):
+        raise ValueError(f"upload too large: {length} bytes")
+
+    raw = handler.rfile.read(length)
+    header = f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode("utf-8")
+    msg = email.message_from_bytes(header + raw, policy=email.policy.default)
+    if not msg.is_multipart():
+        raise ValueError("invalid multipart upload")
+
+    fields: Dict[str, Any] = {}
+    files: Dict[str, Dict[str, Any]] = {}
+    for part in msg.iter_parts():
+        name = part.get_param("name", header="content-disposition")
+        if not name:
+            continue
+        filename = part.get_filename()
+        payload = part.get_payload(decode=True) or b""
+        if filename:
+            files[name] = {
+                "filename": filename,
+                "content_type": part.get_content_type(),
+                "data": payload,
+            }
+        else:
+            fields[name] = payload.decode(part.get_content_charset() or "utf-8", errors="replace")
+
+    fields["_files"] = files
+    return fields
+
+
+def _safe_upload_filename(filename: str) -> str:
+    name = Path(filename or "paper.pdf").name
+    safe = "".join(ch if ch.isalnum() or ch in ("-", "_", ".", " ") else "_" for ch in name).strip()
+    return safe or "paper.pdf"
+
+
+def _analysis_summary_sentence(analysis: Any) -> str:
+    """Pick a compact Chinese one-sentence explanation from saved analysis."""
+    if not isinstance(analysis, dict):
+        return ""
+    for key in ("全文概述", "结论与意义", "研究目的", "主要发现", "核心结论"):
+        value = analysis.get(key)
+        if isinstance(value, list):
+            parts = []
+            for item in value[:2]:
+                if isinstance(item, dict):
+                    parts.extend(str(v) for v in item.values() if v)
+                elif item:
+                    parts.append(str(item))
+            text = "；".join(parts)
+        elif isinstance(value, dict):
+            text = "；".join(str(v) for v in value.values() if v)
+        else:
+            text = str(value or "")
+        text = " ".join(text.strip().split())
+        if text:
+            return text[:220]
+    return ""
+
+
+def _lookup_archive_impact_factor(manager: Any, journal: Optional[str]) -> tuple[Optional[float], Optional[str]]:
+    if not manager or not journal:
+        return None, None
+    session = manager.first_session()
+    base_agent = getattr(getattr(session, "agent", None), "base_agent", None) if session else None
+    if not base_agent or not hasattr(base_agent, "_get_journal_impact_factor_info"):
+        return None, None
+    try:
+        value, source = base_agent._get_journal_impact_factor_info(journal)
+        if value is not None and value > 0:
+            return round(float(value), 1), source
+    except Exception:
+        return None, None
+    return None, None
+
+
+def _enrich_analysis_entries(entries: List[Dict[str, Any]], analyses_dir: Path, manager: Any = None) -> List[Dict[str, Any]]:
+    """Add display metadata from per-analysis JSON files for older index entries."""
+    enriched = []
+    for entry in entries:
+        item = dict(entry)
+        json_name = item.get("json_file")
+        if json_name and (not item.get("journal") or "citation_count" not in item or not item.get("summary_sentence") or "impact_factor" not in item):
+            json_path = analyses_dir / Path(json_name).name
+            if json_path.exists():
+                try:
+                    data = json.loads(json_path.read_text(encoding="utf-8"))
+                    paper = data.get("paper") or {}
+                    analysis = data.get("analysis") or {}
+                    item.setdefault("journal", paper.get("journal") or paper.get("venue"))
+                    item.setdefault("citation_count", paper.get("citation_count") or 0)
+                    item.setdefault("source", paper.get("source"))
+                    item.setdefault("year", paper.get("year"))
+                    if paper.get("impact_factor") is not None:
+                        item.setdefault("impact_factor", paper.get("impact_factor"))
+                        item.setdefault("impact_factor_source", paper.get("impact_factor_source"))
+                    item.setdefault("summary_sentence", _analysis_summary_sentence(analysis))
+                except Exception:
+                    pass
+        if item.get("impact_factor") is None and item.get("journal"):
+            if_value, if_source = _lookup_archive_impact_factor(manager, item.get("journal"))
+            if if_value is not None:
+                item["impact_factor"] = if_value
+                item["impact_factor_source"] = if_source
+        enriched.append(item)
+    return enriched
+
+
 def _paper_to_dict(paper: PaperMetadata) -> Dict[str, Any]:
     """Convert PaperMetadata to a JSON-safe dict with extra useful fields."""
     d = paper.to_dict()
@@ -117,6 +236,106 @@ def _paper_to_dict(paper: PaperMetadata) -> Dict[str, Any]:
     d["open_access_url"] = getattr(paper, "open_access_url", None)
     d["institutions"] = getattr(paper, "institutions", [])
     return d
+
+
+def _dict_to_paper(data: Dict[str, Any]) -> PaperMetadata:
+    """Rebuild PaperMetadata from web JSON payloads such as saved papers."""
+    source_raw = str(data.get("source") or "unknown")
+    try:
+        source = PaperSource(source_raw)
+    except Exception:
+        source = PaperSource.UNKNOWN
+
+    authors = []
+    for item in data.get("authors") or []:
+        if isinstance(item, dict):
+            name = str(item.get("name") or "").strip()
+            if name:
+                authors.append(Author(name=name, affiliation=item.get("affiliation")))
+        elif item:
+            authors.append(Author(name=str(item)))
+
+    publication_date = None
+    pub_raw = data.get("publication_date")
+    if pub_raw:
+        try:
+            publication_date = datetime.fromisoformat(str(pub_raw).replace("Z", "+00:00"))
+        except Exception:
+            publication_date = None
+
+    return PaperMetadata(
+        id=str(data.get("id") or data.get("doi") or data.get("pubmed_id") or data.get("title") or uuid.uuid4()),
+        source=source,
+        doi=data.get("doi"),
+        arxiv_id=data.get("arxiv_id"),
+        pubmed_id=data.get("pubmed_id"),
+        title=data.get("title") or "",
+        abstract=data.get("abstract") or "",
+        authors=authors,
+        publication_date=publication_date,
+        journal=data.get("journal"),
+        venue=data.get("venue"),
+        year=data.get("year"),
+        url=data.get("url"),
+        pdf_url=data.get("pdf_url") or data.get("open_access_url"),
+        is_open_access=bool(data.get("is_open_access")),
+        open_access_url=data.get("open_access_url"),
+        citation_count=int(data.get("citation_count") or 0),
+        reference_count=int(data.get("reference_count") or 0),
+        influential_citation_count=int(data.get("influential_citation_count") or 0),
+        fields=data.get("fields") or [],
+        keywords=data.get("keywords") or [],
+        institutions=data.get("institutions") or [],
+    )
+
+
+def _build_ris_bytes(agent: Any, papers: List[PaperMetadata]) -> bytes:
+    lines: list[str] = []
+    for paper in papers:
+        ris_ty, ris_m3 = agent._get_ris_type(paper)
+        lines.append(f"TY  - {ris_ty}")
+        title = (paper.title or "").strip()
+        if title:
+            lines.append(f"T1  - {title}")
+        for author in agent._format_ris_authors(paper):
+            lines.append(f"A1  - {author}")
+        journal_full = (paper.journal or paper.venue or "").strip() or None
+        journal_abbrev = (paper.journal or "").strip() or None
+        if journal_full:
+            lines.append(f"JF  - {journal_full}")
+        if journal_abbrev:
+            lines.append(f"JO  - {journal_abbrev}")
+        ris_date = agent._format_ris_date(paper)
+        if ris_date:
+            lines.append(f"Y1  - {ris_date}")
+        elif paper.year:
+            lines.append(f"Y1  - {paper.year}//")
+        if paper.pubmed_id:
+            lines.append(f"ID  - PMID:{paper.pubmed_id}")
+        elif paper.arxiv_id:
+            lines.append(f"ID  - arXiv:{paper.arxiv_id}")
+        db_label = agent._get_ris_db_label(paper)
+        if db_label:
+            lines.append(f"DB  - {db_label}")
+        if paper.doi:
+            lines.append(f"DO  - {paper.doi}")
+        if ris_m3:
+            lines.append(f"M3  - {ris_m3}")
+        url = paper.url
+        if not url and paper.pubmed_id:
+            url = f"https://pubmed.ncbi.nlm.nih.gov/{paper.pubmed_id}/"
+        if url:
+            lines.append(f"UR  - {url}")
+        abstract = (paper.abstract or "").strip()
+        if abstract:
+            lines.append(f"N2  - {abstract}")
+        for kw in (paper.keywords or []):
+            kw = str(kw).strip()
+            if kw:
+                lines.append(f"KW  - {kw}")
+        lines.append("ER  - ")
+        lines.append("")
+    return "\n".join(lines).encode("utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -243,6 +462,10 @@ class SessionManager:
     def get(self, session_id: str) -> Optional[Session]:
         with self._lock:
             return self._sessions.get(session_id)
+
+    def first_session(self) -> Optional[Session]:
+        with self._lock:
+            return next(iter(self._sessions.values()), None)
 
     def delete(self, session_id: str) -> bool:
         with self._lock:
@@ -481,6 +704,72 @@ def _analyze_worker(session: Session, paper_query: str, eq: queue.Queue, topic: 
         eq.put({"type": "error", "message": str(e)})
 
 
+def _analyze_local_pdf_worker(session: Session, pdf_path: str, original_filename: str, title: str, eq: queue.Queue, topic: str = None):
+    """Execute local PDF deep analysis, pushing progress events."""
+    try:
+        from literature.pdf_downloader import PDFDownloader
+        from literature.base_client import PaperMetadata, PaperSource
+
+        agent = session.agent
+        session.sync_config_to_agent()
+
+        pdf_file = Path(pdf_path)
+        if not pdf_file.exists():
+            eq.put({"type": "error", "message": f"PDF 文件不存在: {original_filename}"})
+            return
+        if pdf_file.suffix.lower() != ".pdf":
+            eq.put({"type": "error", "message": "目前仅支持上传 PDF 文件"})
+            return
+
+        inferred_title = (title or "").strip() or Path(original_filename or pdf_file.name).stem.replace("_", " ").replace("-", " ")
+
+        eq.put({"type": "status", "step": "extracting", "message": "正在提取 PDF 全文..."})
+        content = PDFDownloader()._extract_text_from_pdf(str(pdf_file))
+        if not content or len(content) < 100:
+            eq.put({"type": "error", "message": "PDF 内容提取失败或内容过少"})
+            return
+
+        paper = PaperMetadata(
+            id=f"local:{pdf_file.name}",
+            source=PaperSource.MANUAL,
+            title=inferred_title,
+            abstract="",
+            authors=[],
+            journal="本地文件",
+            url=None,
+            pdf_url=None,
+        )
+        eq.put({"type": "paper_meta", "data": _paper_to_dict(paper)})
+
+        source_desc = "本地PDF全文"
+        eq.put({"type": "status", "step": "analyzing", "message": f"LLM 正在分析文献 ({source_desc})..."})
+        try:
+            analysis = agent._analyze_paper_with_llm(paper, content, source_desc)
+        except Exception as e:
+            eq.put({"type": "error", "message": f"LLM 分析失败: {e}"})
+            return
+
+        saved_path = None
+        try:
+            clean_topic = agent._extract_topic(topic, fallback=inferred_title) if topic and topic.strip() else inferred_title
+            saved_path = agent._save_analysis_result(paper, analysis, source_desc, clean_topic)
+        except Exception as e:
+            logger.warning(f"保存本地 PDF 分析结果失败: {e}")
+
+        eq.put({
+            "type": "analysis",
+            "data": analysis,
+            "source": source_desc,
+            "paper": _paper_to_dict(paper),
+            "saved_path": str(saved_path) if saved_path else None,
+        })
+        eq.put({"type": "done"})
+
+    except Exception as e:
+        logger.error(f"Local PDF analyze worker error: {traceback.format_exc()}")
+        eq.put({"type": "error", "message": str(e)})
+
+
 def _sanitize(obj: Any) -> Any:
     """Make an object JSON-serializable."""
     if obj is None:
@@ -586,6 +875,58 @@ def make_handler(manager: SessionManager):
         def do_POST(self):
             parsed = urlparse(self.path or "/")
             path = parsed.path or "/"
+
+            # --- Analyze uploaded local PDF (multipart NDJSON streaming) ---
+            if path == "/api/analyze/upload":
+                try:
+                    form = _read_multipart_form(self)
+                except Exception as e:
+                    return _json_response(self, {"error": str(e)}, status=400)
+
+                session = manager.get(str(form.get("session_id", "")))
+                if not session:
+                    return _json_response(self, {"error": "unknown session"}, status=404)
+                if session.busy:
+                    return _json_response(self, {"error": "session is busy"}, status=409)
+
+                files = form.get("_files") or {}
+                upload = files.get("paper")
+                if not upload:
+                    return _json_response(self, {"error": "paper file is required"}, status=400)
+
+                original_filename = _safe_upload_filename(str(upload.get("filename") or "paper.pdf"))
+                if not original_filename.lower().endswith(".pdf"):
+                    return _json_response(self, {"error": "目前仅支持上传 PDF 文件"}, status=400)
+
+                data = upload.get("data") or b""
+                if len(data) < 100:
+                    return _json_response(self, {"error": "上传文件为空或过小"}, status=400)
+
+                uploads_dir = _PROJECT_DIR / "cache" / "uploads"
+                uploads_dir.mkdir(parents=True, exist_ok=True)
+                upload_path = uploads_dir / f"{uuid.uuid4().hex}_{original_filename}"
+                upload_path.write_bytes(data)
+
+                title = str(form.get("title", "")).strip()
+                topic = str(form.get("topic", "")).strip() or None
+                logger.info(f"[analyze-upload] file={original_filename!r}, title={title!r}, topic={topic!r}")
+
+                session.busy = True
+                eq = queue.Queue()
+                t = threading.Thread(
+                    target=_analyze_local_pdf_worker,
+                    args=(session, str(upload_path), original_filename, title, eq, topic),
+                    daemon=True,
+                )
+                t.start()
+
+                try:
+                    self._drain_queue(eq, t)
+                except BrokenPipeError:
+                    pass
+                finally:
+                    session.busy = False
+                return
 
             try:
                 body = _read_json(self)
@@ -740,55 +1081,8 @@ def make_handler(manager: SessionManager):
                 if not selected:
                     return _json_response(self, {"error": "no papers selected"}, status=400)
 
-                # Generate RIS content using the agent's existing method
                 agent = session.agent.base_agent
-                lines: list[str] = []
-                for paper in selected:
-                    ris_ty, ris_m3 = agent._get_ris_type(paper)
-                    lines.append(f"TY  - {ris_ty}")
-                    title = (paper.title or "").strip()
-                    if title:
-                        lines.append(f"T1  - {title}")
-                    for author in agent._format_ris_authors(paper):
-                        lines.append(f"A1  - {author}")
-                    journal_full = (paper.journal or paper.venue or "").strip() or None
-                    journal_abbrev = (paper.journal or "").strip() or None
-                    if journal_full:
-                        lines.append(f"JF  - {journal_full}")
-                    if journal_abbrev:
-                        lines.append(f"JO  - {journal_abbrev}")
-                    ris_date = agent._format_ris_date(paper)
-                    if ris_date:
-                        lines.append(f"Y1  - {ris_date}")
-                    elif paper.year:
-                        lines.append(f"Y1  - {paper.year}//")
-                    if paper.pubmed_id:
-                        lines.append(f"ID  - PMID:{paper.pubmed_id}")
-                    elif paper.arxiv_id:
-                        lines.append(f"ID  - arXiv:{paper.arxiv_id}")
-                    db_label = agent._get_ris_db_label(paper)
-                    if db_label:
-                        lines.append(f"DB  - {db_label}")
-                    if paper.doi:
-                        lines.append(f"DO  - {paper.doi}")
-                    if ris_m3:
-                        lines.append(f"M3  - {ris_m3}")
-                    url = paper.url
-                    if not url and paper.pubmed_id:
-                        url = f"https://pubmed.ncbi.nlm.nih.gov/{paper.pubmed_id}/"
-                    if url:
-                        lines.append(f"UR  - {url}")
-                    abstract = (paper.abstract or "").strip()
-                    if abstract:
-                        lines.append(f"N2  - {abstract}")
-                    for kw in (paper.keywords or []):
-                        kw = str(kw).strip()
-                        if kw:
-                            lines.append(f"KW  - {kw}")
-                    lines.append("ER  - ")
-                    lines.append("")
-
-                ris_bytes = "\n".join(lines).encode("utf-8")
+                ris_bytes = _build_ris_bytes(agent, selected)
                 from datetime import datetime as _dt
                 fname = f"{_dt.now().strftime('%Y%m%d')}_literature.ris"
 
@@ -869,6 +1163,55 @@ def make_handler(manager: SessionManager):
                 total = len(manager.saved_store.list_all())
                 return _json_response(self, {"ok": True, "deleted": deleted, "total": total})
 
+            # --- Saved papers: export RIS ---
+            if path == "/api/saved/export-ris":
+                session = manager.get(str(body.get("session_id", ""))) or manager.first_session()
+                if not session:
+                    return _json_response(self, {"error": "unknown session"}, status=404)
+                items = body.get("papers")
+                if not items or not isinstance(items, list):
+                    return _json_response(self, {"error": "papers array is required"}, status=400)
+                selected = [_dict_to_paper(item) for item in items if isinstance(item, dict)]
+                if not selected:
+                    return _json_response(self, {"error": "no papers selected"}, status=400)
+
+                ris_bytes = _build_ris_bytes(session.agent.base_agent, selected)
+                from datetime import datetime as _dt
+                fname = f"{_dt.now().strftime('%Y%m%d')}_saved_literature.ris"
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/x-research-info-systems; charset=utf-8")
+                self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+                self.send_header("Content-Length", str(len(ris_bytes)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(ris_bytes)
+                return
+
+            # --- Saved papers: send email ---
+            if path == "/api/saved/email":
+                session = manager.get(str(body.get("session_id", ""))) or manager.first_session()
+                if not session:
+                    return _json_response(self, {"error": "unknown session"}, status=404)
+                items = body.get("papers")
+                if not items or not isinstance(items, list):
+                    return _json_response(self, {"error": "papers array is required"}, status=400)
+                selected = [_dict_to_paper(item) for item in items if isinstance(item, dict)]
+                if not selected:
+                    return _json_response(self, {"error": "no papers selected"}, status=400)
+
+                to_email = str(body.get("to_email", "")).strip()
+                if to_email:
+                    session.config.setdefault("email", {})["to_email"] = to_email
+                    session.sync_config_to_agent()
+                try:
+                    ok = session.agent.base_agent.send_email(selected)
+                    if ok:
+                        return _json_response(self, {"ok": True, "message": f"邮件发送成功（{len(selected)} 篇 Saved 文献）"})
+                    return _json_response(self, {"error": "邮件发送失败，请检查 SMTP 配置"}, status=500)
+                except Exception as e:
+                    return _json_response(self, {"error": f"邮件发送异常: {e}"}, status=500)
+
             # --- Analyses: list (grouped by topic) ---
             if path == "/api/analyses/list":
                 analyses_dir = Path(__file__).parent / "outputs" / "analyses"
@@ -877,7 +1220,8 @@ def make_handler(manager: SessionManager):
                     try:
                         with open(index_path, "r", encoding="utf-8") as f:
                             index = json.load(f)
-                        return _json_response(self, {"entries": index.get("entries", [])})
+                        entries = _enrich_analysis_entries(index.get("entries", []), analyses_dir, manager)
+                        return _json_response(self, {"entries": entries})
                     except Exception as e:
                         return _json_response(self, {"entries": [], "error": str(e)})
                 return _json_response(self, {"entries": []})

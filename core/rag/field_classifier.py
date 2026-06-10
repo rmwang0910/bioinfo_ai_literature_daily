@@ -25,7 +25,8 @@ class RAGFieldClassifier:
                  taxonomy_path: str = "data/field_taxonomy.json", 
                  embedding_cache_path: str = "data/field_embeddings.json",
                  api_key: Optional[str] = None,
-                 base_url: Optional[str] = None):
+                 base_url: Optional[str] = None,
+                 compute_missing_embeddings: Optional[bool] = None):
         """
         Initialize the classifier.
         
@@ -34,6 +35,8 @@ class RAGFieldClassifier:
             embedding_cache_path: Path to save/load pre-computed embeddings.
             api_key: OpenAI API key (optional, will try env var if None).
             base_url: OpenAI Base URL (optional).
+            compute_missing_embeddings: Whether to call the embedding API for
+                uncached fields during initialization. Defaults to false.
         """
         self.taxonomy_path = taxonomy_path
         self.embedding_cache_path = embedding_cache_path
@@ -52,12 +55,16 @@ class RAGFieldClassifier:
             api_key = api_key or os.environ.get("OPENAI_API_KEY")
             base_url = base_url or os.environ.get("OPENAI_BASE_URL")
             if api_key:
-                self.client = OpenAI(api_key=api_key, base_url=base_url)
+                self.client = OpenAI(api_key=api_key, base_url=base_url, timeout=8)
             else:
                 logger.warning("OpenAI API key not found. RAG functionality will be limited to keyword matching.")
-        
-        # Load or compute embeddings
-        self._load_embeddings()
+
+        if compute_missing_embeddings is None:
+            compute_missing_embeddings = os.getenv("BIOAI_BUILD_FIELD_EMBEDDINGS", "").lower() in {"1", "true", "yes"}
+
+        # Load cached embeddings. Building missing embeddings is opt-in because
+        # doing it during Web session creation can block unrelated workflows.
+        self._load_embeddings(compute_missing=compute_missing_embeddings)
 
     def _load_taxonomy(self):
         """Load field definitions from JSON."""
@@ -111,7 +118,7 @@ class RAGFieldClassifier:
         
         return descendants
 
-    def _load_embeddings(self):
+    def _load_embeddings(self, compute_missing: bool = False):
         """Load embeddings from cache or compute them."""
         path = Path(self.embedding_cache_path)
         if not path.exists():
@@ -127,7 +134,7 @@ class RAGFieldClassifier:
                 logger.warning(f"Failed to load embedding cache: {e}")
         
         # Check if we need to compute missing embeddings
-        if self.client:
+        if self.client and compute_missing:
             updates = False
             for field in self.fields:
                 name = field['name']
@@ -141,6 +148,13 @@ class RAGFieldClassifier:
             
             if updates:
                 self._save_embeddings(path)
+        elif self.client and self.fields:
+            missing_count = sum(1 for field in self.fields if field['name'] not in self.embeddings)
+            if missing_count:
+                logger.info(
+                    "Skipping %s missing field embeddings. Set BIOAI_BUILD_FIELD_EMBEDDINGS=true to build them.",
+                    missing_count,
+                )
 
     def _save_embeddings(self, path: Path):
         """Save embeddings to cache."""
@@ -190,7 +204,7 @@ class RAGFieldClassifier:
             
         query_embedding = self._get_embedding(query)
         if not query_embedding:
-            return []
+            return self._keyword_search(query)
             
         scores = []
         for field in self.fields:

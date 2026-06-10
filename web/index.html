@@ -22,6 +22,11 @@
   <main class="main">
     <!-- LEFT PANEL -->
     <aside class="panel-left">
+      <button id="searchPanelToggle" class="search-panel-toggle" type="button" aria-expanded="true" title="隐藏搜索面板">
+        <span class="search-panel-toggle__icon" aria-hidden="true">‹</span>
+        <span class="search-panel-toggle__text">Search</span>
+      </button>
+      <div class="panel-left__content" id="searchPanelContent">
       <!-- Natural language input -->
       <div class="card">
         <label class="card__title" for="nlInput">Search</label>
@@ -211,6 +216,7 @@
           <div class="progress-bar__fill" id="progressBarFill"></div>
         </div>
       </div>
+      </div>
     </aside>
 
     <!-- RIGHT PANEL -->
@@ -246,8 +252,16 @@
           <input id="analyzeQueryInput" class="input" type="text" placeholder="输入 PMID、DOI 或论文标题，直接深度分析" style="flex:1;">
           <button id="analyzeQueryBtn" class="btn btn--primary">分析</button>
         </div>
+        <div class="upload-panel">
+          <div class="upload-panel__file">
+            <input id="paperUploadInput" class="file-input" type="file" accept="application/pdf,.pdf">
+            <div class="upload-panel__hint">上传本地 PDF 文献进行单篇解读</div>
+          </div>
+          <input id="paperUploadTitleInput" class="input upload-panel__title" type="text" placeholder="论文标题（可选，不填则使用文件名）">
+          <button id="paperUploadBtn" class="btn btn--primary" disabled>上传解读</button>
+        </div>
         <div id="analysisContent" class="analysis-content">
-          <div class="empty-state">输入 PMID / DOI / 标题，或在文献卡片上点击「深度分析」</div>
+          <div class="empty-state">输入 PMID / DOI / 标题、上传本地 PDF，或在文献卡片上点击「深度分析」</div>
         </div>
       </div>
       <div id="savedTab" class="tab-content">

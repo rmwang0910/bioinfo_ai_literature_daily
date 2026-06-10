@@ -16,6 +16,11 @@ const state = {
   selectedPapers: new Set(),  // set of indices
   savedPapers: [],            // from server
   analysisArchives: [],       // from index.json
+  savedDateFilter: { range: "all", from: "", to: "" },
+  archiveDateFilter: { range: "all", from: "", to: "" },
+  savedQuery: "",
+  archiveQuery: "",
+  selectedSavedPapers: new Set(),
   searchStartTime: null,      // for timing
   timings: {},                // step timing info
   currentAbortController: null  // for cancelling operations
@@ -43,7 +48,80 @@ function formatDate(d) {
   if (!d) return "";
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return String(d).slice(0, 10);
-  return dt.toISOString().slice(0, 10);
+  return dateInputValue(dt);
+}
+
+function formatDateTime(d) {
+  if (!d) return "";
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return String(d).replace("T", " ").slice(0, 16);
+  const date = dateInputValue(dt);
+  const time = dt.toTimeString().slice(0, 5);
+  return `${date} ${time}`;
+}
+
+function dateInputValue(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function getDateFilterBounds(filter) {
+  const range = filter.range || "all";
+  if (range === "all") return { from: "", to: "" };
+  if (range === "custom") return { from: filter.from || "", to: filter.to || "" };
+
+  const days = parseInt(range, 10);
+  if (!days) return { from: "", to: "" };
+  const to = new Date();
+  const from = new Date();
+  from.setDate(to.getDate() - days + 1);
+  return { from: dateInputValue(from), to: dateInputValue(to) };
+}
+
+function isWithinDateFilter(value, filter) {
+  if (!value) return (filter.range || "all") === "all";
+  const itemDate = formatDate(value);
+  const { from, to } = getDateFilterBounds(filter);
+  if (from && itemDate < from) return false;
+  if (to && itemDate > to) return false;
+  return true;
+}
+
+function timestampOf(value) {
+  const t = new Date(value || 0).getTime();
+  return isNaN(t) ? 0 : t;
+}
+
+function monthKeyOf(value) {
+  if (!value) return "unknown";
+  const dt = new Date(value);
+  if (isNaN(dt.getTime())) {
+    const raw = String(value);
+    return raw.length >= 7 ? raw.slice(0, 7) : "unknown";
+  }
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatMonthLabel(key) {
+  if (!key || key === "unknown") return "时间未知";
+  const [year, month] = key.split("-");
+  return `${year}年${month}月`;
+}
+
+function groupByMonth(items, dateGetter) {
+  const grouped = {};
+  for (const item of items) {
+    const key = monthKeyOf(dateGetter(item));
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(item);
+  }
+  return Object.entries(grouped).sort(([a], [b]) => {
+    if (a === "unknown") return 1;
+    if (b === "unknown") return -1;
+    return b.localeCompare(a);
+  });
 }
 
 function sourceBadgeClass(source) {
@@ -54,10 +132,65 @@ function sourceBadgeClass(source) {
   return "source-badge--unknown";
 }
 
+const TOPIC_COLOR_PALETTE = [
+  { name: "蓝", fg: "#2563eb", bg: "rgba(37,99,235,0.12)", border: "rgba(37,99,235,0.30)" },
+  { name: "绿", fg: "#16a34a", bg: "rgba(22,163,74,0.12)", border: "rgba(22,163,74,0.30)" },
+  { name: "橙", fg: "#d97706", bg: "rgba(217,119,6,0.13)", border: "rgba(217,119,6,0.32)" },
+  { name: "红", fg: "#dc2626", bg: "rgba(220,38,38,0.11)", border: "rgba(220,38,38,0.28)" },
+  { name: "紫", fg: "#7c3aed", bg: "rgba(124,58,237,0.12)", border: "rgba(124,58,237,0.30)" },
+  { name: "青", fg: "#0891b2", bg: "rgba(8,145,178,0.12)", border: "rgba(8,145,178,0.30)" },
+];
+const TOPIC_COLOR_STORAGE_KEY = "biolit-topic-colors";
+
+function hashString(s) {
+  let h = 0;
+  const text = String(s || "");
+  for (let i = 0; i < text.length; i++) {
+    h = ((h << 5) - h + text.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+function loadTopicColorOverrides() {
+  try {
+    const raw = localStorage.getItem(TOPIC_COLOR_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveTopicColorOverrides(colors) {
+  try {
+    localStorage.setItem(TOPIC_COLOR_STORAGE_KEY, JSON.stringify(colors || {}));
+  } catch (e) {
+    console.warn("Failed to save topic colors:", e);
+  }
+}
+
+function topicPaletteColor(hex) {
+  return TOPIC_COLOR_PALETTE.find(color => color.fg.toLowerCase() === String(hex || "").toLowerCase()) || null;
+}
+
+function topicColorValue(topic) {
+  const overrides = loadTopicColorOverrides();
+  const custom = overrides[String(topic || "")];
+  if (topicPaletteColor(custom)) return custom;
+  return TOPIC_COLOR_PALETTE[hashString(topic) % TOPIC_COLOR_PALETTE.length].fg;
+}
+
+function topicColorStyle(topic) {
+  const overrides = loadTopicColorOverrides();
+  const custom = topicPaletteColor(overrides[String(topic || "")]);
+  const c = custom || TOPIC_COLOR_PALETTE[hashString(topic) % TOPIC_COLOR_PALETTE.length];
+  return `--topic-color:${c.fg};--topic-bg:${c.bg};--topic-border:${c.border};`;
+}
+
 // ---------------------------------------------------------------------------
 // LocalStorage config persistence
 // ---------------------------------------------------------------------------
 const CONFIG_STORAGE_KEY = "biolit-config";
+const SEARCH_PANEL_STORAGE_KEY = "biolit-search-panel-collapsed";
 
 function saveConfigToStorage(cfg) {
   try {
@@ -75,6 +208,38 @@ function loadConfigFromStorage() {
     console.warn("Failed to load config from localStorage:", e);
     return {};
   }
+}
+
+function applySearchPanelCollapsed(collapsed) {
+  const main = document.querySelector(".main");
+  const btn = el("searchPanelToggle");
+  const content = el("searchPanelContent");
+  if (!main || !btn || !content) return;
+
+  main.classList.toggle("search-panel-collapsed", collapsed);
+  btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  btn.title = collapsed ? "展开搜索面板" : "隐藏搜索面板";
+  btn.querySelector(".search-panel-toggle__icon").textContent = collapsed ? "›" : "‹";
+  content.setAttribute("aria-hidden", collapsed ? "true" : "false");
+
+  try {
+    localStorage.setItem(SEARCH_PANEL_STORAGE_KEY, collapsed ? "1" : "0");
+  } catch (e) {
+    console.warn("Failed to save search panel state:", e);
+  }
+}
+
+function loadSearchPanelCollapsed() {
+  try {
+    return localStorage.getItem(SEARCH_PANEL_STORAGE_KEY) === "1";
+  } catch (e) {
+    return false;
+  }
+}
+
+function toggleSearchPanel() {
+  const main = document.querySelector(".main");
+  applySearchPanelCollapsed(!main?.classList.contains("search-panel-collapsed"));
 }
 
 function collectFullConfig() {
@@ -237,6 +402,50 @@ async function apiStreamNdjson(path, body, onEvent, signal) {
     }
   } finally {
     // Ensure reader is released on abort or completion
+    reader.releaseLock();
+  }
+}
+
+async function apiStreamFormData(path, formData, onEvent, signal) {
+  const res = await fetch(path, {
+    method: "POST",
+    body: formData,
+    signal: signal,
+  });
+  if (!res.ok) {
+    const errJson = await res.json().catch(() => ({}));
+    throw new Error(errJson?.error || `HTTP ${res.status}`);
+  }
+  if (!res.body) throw new Error("Streaming body unavailable");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      while (true) {
+        const idx = buffer.indexOf("\n");
+        if (idx < 0) break;
+        const line = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx + 1);
+        if (!line) continue;
+        try {
+          const obj = JSON.parse(line);
+          if (obj && typeof onEvent === "function") onEvent(obj);
+        } catch (_) { /* skip invalid */ }
+      }
+    }
+    buffer += decoder.decode();
+    const tail = buffer.trim();
+    if (tail) {
+      try { onEvent(JSON.parse(tail)); } catch (_) {}
+    }
+  } finally {
     reader.releaseLock();
   }
 }
@@ -739,7 +948,7 @@ function renderPapers() {
           ${journal ? `<span class="paper-card__meta-item">${journal}</span>` : ""}
           ${p.impact_factor != null ? `<span class="paper-card__meta-item" style="color:#e67e22;font-weight:600;">IF: ${p.impact_factor}</span>` : ""}
           ${year ? `<span class="paper-card__meta-item">${year}</span>` : ""}
-          ${citations ? `<span class="paper-card__meta-item">Cited: ${citations}</span>` : ""}
+          ${citations ? `<span class="paper-card__meta-item">${citations}</span>` : ""}
           ${doi ? `<span class="paper-card__meta-item" style="font-family:var(--mono);font-size:11px;">${doi}</span>` : ""}
         </div>
         <div class="paper-card__meta" style="color:var(--text-muted);">
@@ -845,6 +1054,13 @@ function renderSummary() {
 // ---------------------------------------------------------------------------
 // Single paper analysis
 // ---------------------------------------------------------------------------
+function getCurrentAnalysisTopic(useSearchTopic) {
+  if (!useSearchTopic) return "";
+  const cfgKeywordsInput = el("cfgKeywords").value.trim();
+  const stateKeywords = (state.config.search || {}).keywords || [];
+  return cfgKeywordsInput || stateKeywords.join(", ") || el("nlInput").value.trim() || "";
+}
+
 // useSearchTopic: true = 从搜索关键词取主题（搜索结果中点"深度分析"）
 //                 false = 用论文标题做主题（直接输入 PMID/DOI/标题）
 async function runAnalyze(paperQuery, useSearchTopic = true) {
@@ -866,12 +1082,7 @@ async function runAnalyze(paperQuery, useSearchTopic = true) {
   try {
     // useSearchTopic=true: 从搜索关键词取主题（搜索结果触发）
     // useSearchTopic=false: 传空字符串，后端用论文标题做主题（直接查询触发）
-    let topic = "";
-    if (useSearchTopic) {
-      const cfgKeywordsInput = el("cfgKeywords").value.trim();
-      const stateKeywords = (state.config.search || {}).keywords || [];
-      topic = cfgKeywordsInput || stateKeywords.join(", ") || el("nlInput").value.trim() || "";
-    }
+    const topic = getCurrentAnalysisTopic(useSearchTopic);
 
     await apiStreamNdjson("/api/analyze", {
       session_id: state.sessionId,
@@ -922,6 +1133,92 @@ async function runAnalyze(paperQuery, useSearchTopic = true) {
   } finally {
     state.analyzing = false;
     state.currentAbortController = null;
+    hideProgressBar();
+    hideCancel();
+  }
+}
+
+async function runAnalyzeUpload() {
+  if (state.analyzing || !state.sessionId) return;
+
+  const fileInput = el("paperUploadInput");
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) {
+    addProgress("请先选择 PDF 文件", "err");
+    return;
+  }
+  if (!file.name.toLowerCase().endsWith(".pdf")) {
+    addProgress("目前仅支持 PDF 文件", "err");
+    return;
+  }
+
+  state.analyzing = true;
+  switchTab("analysis");
+  state.currentAbortController = new AbortController();
+
+  const c = el("analysisContent");
+  c.innerHTML = '<div class="empty-state"><span class="spinner"></span> 正在上传并分析 PDF...</div>';
+
+  const uploadBtn = el("paperUploadBtn");
+  uploadBtn.disabled = true;
+  uploadBtn.innerHTML = '<span class="spinner"></span>解读中...';
+
+  showProgress(true);
+  addProgress("开始上传本地文献: " + truncate(file.name, 60));
+  setProgressBar(0, true);
+
+  const formData = new FormData();
+  formData.append("session_id", state.sessionId);
+  formData.append("paper", file);
+  formData.append("title", el("paperUploadTitleInput").value.trim());
+  formData.append("topic", getCurrentAnalysisTopic(true));
+
+  try {
+    await apiStreamFormData("/api/analyze/upload", formData, (ev) => {
+      const t = String(ev.type || "");
+
+      if (t === "status") {
+        addProgress(ev.message || ev.step);
+      }
+
+      if (t === "paper_meta") {
+        const p = ev.data || {};
+        c.innerHTML = `
+          <div class="analysis-meta">
+            <strong>${escapeHtml(p.title || file.name)}</strong>
+            <span style="color:var(--text-muted);">${escapeHtml(p.journal || "本地文件")}</span>
+          </div>
+          <div id="analysisBody"><div class="empty-state"><span class="spinner"></span> LLM 正在分析...</div></div>
+        `;
+      }
+
+      if (t === "analysis") {
+        renderAnalysisResult(ev.data, ev.source, ev.paper);
+        addProgress("本地文献解读完成", "ok");
+      }
+
+      if (t === "done") {
+        setProgressBar(100, false);
+        loadAnalysisArchives();
+      }
+
+      if (t === "error") {
+        c.innerHTML = `<div class="empty-state" style="color:var(--err);">分析失败: ${escapeHtml(ev.message)}</div>`;
+        addProgress("分析失败: " + ev.message, "err");
+      }
+    }, state.currentAbortController.signal);
+  } catch (e) {
+    if (e.name === "AbortError") {
+      c.innerHTML = '<div class="empty-state">分析已取消</div>';
+    } else {
+      c.innerHTML = `<div class="empty-state" style="color:var(--err);">请求失败: ${escapeHtml(e.message)}</div>`;
+      addProgress("请求失败: " + e.message, "err");
+    }
+  } finally {
+    state.analyzing = false;
+    state.currentAbortController = null;
+    uploadBtn.disabled = !(fileInput.files && fileInput.files.length);
+    uploadBtn.textContent = "上传解读";
     hideProgressBar();
     hideCancel();
   }
@@ -1039,6 +1336,7 @@ async function saveSelectedPapers() {
 async function deleteSavedPaper(id) {
   try {
     const data = await apiJson("/api/saved/delete", { ids: [id] });
+    state.selectedSavedPapers.delete(String(id));
     addProgress(`已删除 ${data.deleted} 篇存档`, "ok");
     await loadSavedPapers();
   } catch (e) {
@@ -1046,16 +1344,137 @@ async function deleteSavedPaper(id) {
   }
 }
 
+function renderListFilterToolbar(prefix, filter, visibleCount, totalCount, query, placeholder) {
+  const range = filter.range || "all";
+  const customStyle = range === "custom" ? "" : 'style="display:none;"';
+  return `
+    <div class="list-filter-bar" data-filter-prefix="${prefix}">
+      <div class="list-filter-bar__search">
+        <input id="${prefix}SearchInput" class="input list-filter-bar__search-input" type="search"
+          placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(query || "")}">
+      </div>
+      <div class="list-filter-bar__controls">
+        <select id="${prefix}DateRange" class="select list-filter-bar__select" title="时间范围">
+          <option value="all" ${range === "all" ? "selected" : ""}>全部</option>
+          <option value="7" ${range === "7" ? "selected" : ""}>最近 7 天</option>
+          <option value="30" ${range === "30" ? "selected" : ""}>最近 30 天</option>
+          <option value="90" ${range === "90" ? "selected" : ""}>最近 90 天</option>
+          <option value="custom" ${range === "custom" ? "selected" : ""}>自定义</option>
+        </select>
+        <div id="${prefix}CustomRange" class="list-filter-bar__custom" ${customStyle}>
+          <input id="${prefix}DateFrom" class="input list-filter-bar__date" type="date" value="${escapeHtml(filter.from || "")}" title="开始日期">
+          <span class="list-filter-bar__dash">-</span>
+          <input id="${prefix}DateTo" class="input list-filter-bar__date" type="date" value="${escapeHtml(filter.to || "")}" title="结束日期">
+        </div>
+        <span class="list-filter-bar__count">${visibleCount} / ${totalCount}</span>
+      </div>
+    </div>
+  `;
+}
+
+function bindListFilterToolbar(prefix, filter, getQuery, setQuery, renderFn) {
+  const searchEl = document.getElementById(`${prefix}SearchInput`);
+  const rangeEl = document.getElementById(`${prefix}DateRange`);
+  const customEl = document.getElementById(`${prefix}CustomRange`);
+  const fromEl = document.getElementById(`${prefix}DateFrom`);
+  const toEl = document.getElementById(`${prefix}DateTo`);
+
+  if (searchEl) {
+    searchEl.oninput = () => {
+      const pos = searchEl.selectionStart || searchEl.value.length;
+      setQuery(searchEl.value);
+      renderFn();
+      const next = document.getElementById(`${prefix}SearchInput`);
+      if (next) {
+        next.focus();
+        next.setSelectionRange(pos, pos);
+      }
+    };
+  }
+  if (rangeEl) {
+    rangeEl.onchange = () => {
+      filter.range = rangeEl.value;
+      if (customEl) customEl.style.display = filter.range === "custom" ? "" : "none";
+      renderFn();
+    };
+  }
+  if (fromEl) {
+    fromEl.onchange = () => {
+      filter.from = fromEl.value;
+      filter.range = "custom";
+      renderFn();
+    };
+  }
+  if (toEl) {
+    toEl.onchange = () => {
+      filter.to = toEl.value;
+      filter.range = "custom";
+      renderFn();
+    };
+  }
+}
+
 function renderSavedPapers() {
   const list = el("savedList");
   if (!state.savedPapers.length) {
+    state.selectedSavedPapers.clear();
     list.innerHTML = '<div class="empty-state">暂无存档文献</div>';
     el("savedCount").textContent = "0";
     return;
   }
-  el("savedCount").textContent = String(state.savedPapers.length);
+  const savedQuery = state.savedQuery.trim().toLowerCase();
+  const filtered = state.savedPapers
+    .filter(p => isWithinDateFilter(p.saved_at, state.savedDateFilter))
+    .filter(p => {
+      if (!savedQuery) return true;
+      return [p.title, p.journal, p.venue, p.doi, p.pubmed_id, p.source]
+        .some(value => String(value || "").toLowerCase().includes(savedQuery));
+    })
+    .sort((a, b) => timestampOf(b.saved_at) - timestampOf(a.saved_at));
 
-  const html = state.savedPapers.map((p, i) => {
+  el("savedCount").textContent = String(state.savedPapers.length);
+  const filterHtml = renderListFilterToolbar(
+    "saved",
+    state.savedDateFilter,
+    filtered.length,
+    state.savedPapers.length,
+    state.savedQuery,
+    "搜索 Saved 文献、期刊、DOI"
+  );
+
+  if (!filtered.length) {
+    state.selectedSavedPapers.clear();
+    list.innerHTML = filterHtml + '<div class="empty-state">当前时间范围内没有存档文献</div>';
+    bindListFilterToolbar(
+      "saved",
+      state.savedDateFilter,
+      () => state.savedQuery,
+      value => { state.savedQuery = value; },
+      renderSavedPapers
+    );
+    return;
+  }
+
+  const visibleKeys = new Set(filtered.map(savedPaperKey));
+  for (const key of Array.from(state.selectedSavedPapers)) {
+    if (!visibleKeys.has(key)) state.selectedSavedPapers.delete(key);
+  }
+  const selectedCount = state.selectedSavedPapers.size;
+  const toolbarHtml = `
+    <div class="papers-toolbar saved-toolbar">
+      <label class="papers-toolbar__select-all">
+        <input type="checkbox" id="savedSelectAllCheckbox" ${selectedCount === filtered.length ? "checked" : ""}>
+        <span>${selectedCount === filtered.length ? "取消全选" : "全选"}</span>
+      </label>
+      <span class="papers-toolbar__count">已选 ${selectedCount} 篇</span>
+      <button class="btn btn--small btn--ghost" data-action="email-saved-selected" ${selectedCount ? "" : "disabled"}>发送邮件</button>
+      <button class="btn btn--small btn--ghost" data-action="export-saved-ris" ${selectedCount ? "" : "disabled"}>导出 RIS</button>
+    </div>
+  `;
+
+  const savedTimelineHtml = groupByMonth(filtered, p => p.saved_at).map(([monthKey, items]) => {
+    const itemsHtml = items.map((p, i) => {
+    const key = savedPaperKey(p);
     const title = escapeHtml(p.title || "Untitled");
     const authors = (p.authors || []).slice(0, 3).map(a => escapeHtml(typeof a === "string" ? a : a.name || "")).join(", ");
     const hasMore = (p.authors || []).length > 3;
@@ -1064,7 +1483,7 @@ function renderSavedPapers() {
     const source = String(p.source || "unknown").toLowerCase();
     const badgeCls = sourceBadgeClass(source);
     const doi = p.doi ? escapeHtml(p.doi) : "";
-    const savedAt = p.saved_at ? p.saved_at.slice(0, 10) : "";
+    const savedAt = formatDateTime(p.saved_at);
     const deleteId = p.doi || p.title || "";
 
     let link = "#";
@@ -1073,31 +1492,146 @@ function renderSavedPapers() {
     else if (p.pubmed_id) link = `https://pubmed.ncbi.nlm.nih.gov/${p.pubmed_id}/`;
 
     return `
-      <div class="paper-card">
-        <div class="paper-card__header">
-          <div class="paper-card__title" style="flex:1;">
-            <a href="${link}" target="_blank" rel="noopener">${title}</a>
+      <div class="timeline-item">
+        <div class="timeline-item__marker"></div>
+        <div class="timeline-item__body">
+          <div class="timeline-item__time">${savedAt ? `保存于 ${escapeHtml(savedAt)}` : "保存时间未知"}</div>
+          <div class="paper-card${state.selectedSavedPapers.has(key) ? " paper-card--selected" : ""}">
+            <div class="paper-card__header">
+              <input type="checkbox" class="paper-card__checkbox" data-saved-key="${escapeHtml(key)}" ${state.selectedSavedPapers.has(key) ? "checked" : ""}>
+              <div class="paper-card__title" style="flex:1;">
+                <a href="${link}" target="_blank" rel="noopener">${title}</a>
+              </div>
+            </div>
+            <div class="paper-card__meta">
+              <span class="source-badge ${badgeCls}">${escapeHtml(source)}</span>
+              ${journal ? `<span class="paper-card__meta-item">${journal}</span>` : ""}
+              ${year ? `<span class="paper-card__meta-item">${year}</span>` : ""}
+              ${doi ? `<span class="paper-card__meta-item" style="font-family:var(--mono);font-size:11px;">${doi}</span>` : ""}
+            </div>
+            <div class="paper-card__meta" style="color:var(--text-muted);">
+              ${authors}${hasMore ? " et al." : ""}
+            </div>
+            <div class="paper-card__actions">
+              <button class="btn btn--small btn--danger" data-action="delete-saved" data-delete-id="${escapeHtml(deleteId)}">删除</button>
+              <button class="btn btn--small btn--ghost" data-action="analyze" data-query="${doi || escapeHtml(truncate(p.title, 100))}">深度分析</button>
+            </div>
           </div>
         </div>
-        <div class="paper-card__meta">
-          <span class="source-badge ${badgeCls}">${escapeHtml(source)}</span>
-          ${journal ? `<span class="paper-card__meta-item">${journal}</span>` : ""}
-          ${year ? `<span class="paper-card__meta-item">${year}</span>` : ""}
-          ${doi ? `<span class="paper-card__meta-item" style="font-family:var(--mono);font-size:11px;">${doi}</span>` : ""}
-          ${savedAt ? `<span class="paper-card__meta-item">存档于 ${savedAt}</span>` : ""}
+      </div>
+    `;
+    }).join("");
+    return `
+      <div class="timeline-month">
+        <div class="timeline-month__header">
+          <span>${formatMonthLabel(monthKey)}</span>
+          <span>${items.length} 篇</span>
         </div>
-        <div class="paper-card__meta" style="color:var(--text-muted);">
-          ${authors}${hasMore ? " et al." : ""}
-        </div>
-        <div class="paper-card__actions">
-          <button class="btn btn--small btn--danger" data-action="delete-saved" data-delete-id="${escapeHtml(deleteId)}">删除</button>
-          <button class="btn btn--small btn--ghost" data-action="analyze" data-query="${doi || escapeHtml(truncate(p.title, 100))}">深度分析</button>
-        </div>
+        <div class="timeline-list">${itemsHtml}</div>
       </div>
     `;
   }).join("");
 
+  const html = filterHtml + toolbarHtml + savedTimelineHtml;
+
   list.innerHTML = html;
+  bindListFilterToolbar(
+    "saved",
+    state.savedDateFilter,
+    () => state.savedQuery,
+    value => { state.savedQuery = value; },
+    renderSavedPapers
+  );
+  const selectAll = document.getElementById("savedSelectAllCheckbox");
+  if (selectAll) selectAll.indeterminate = selectedCount > 0 && selectedCount < filtered.length;
+}
+
+function savedPaperKey(p) {
+  return String(p.doi || p.pubmed_id || p.arxiv_id || p.title || p.id || "");
+}
+
+function selectedSavedPapers() {
+  return state.savedPapers.filter(p => state.selectedSavedPapers.has(savedPaperKey(p)));
+}
+
+function toggleSavedPaperSelect(key) {
+  if (state.selectedSavedPapers.has(key)) state.selectedSavedPapers.delete(key);
+  else state.selectedSavedPapers.add(key);
+  renderSavedPapers();
+}
+
+function toggleSavedSelectAll() {
+  const savedQuery = state.savedQuery.trim().toLowerCase();
+  const visible = state.savedPapers
+    .filter(p => isWithinDateFilter(p.saved_at, state.savedDateFilter))
+    .filter(p => {
+      if (!savedQuery) return true;
+      return [p.title, p.journal, p.venue, p.doi, p.pubmed_id, p.source]
+        .some(value => String(value || "").toLowerCase().includes(savedQuery));
+    })
+    .sort((a, b) => timestampOf(b.saved_at) - timestampOf(a.saved_at));
+  const visibleKeys = visible.map(savedPaperKey);
+  const allSelected = visibleKeys.length > 0 && visibleKeys.every(key => state.selectedSavedPapers.has(key));
+  for (const key of visibleKeys) {
+    if (allSelected) state.selectedSavedPapers.delete(key);
+    else state.selectedSavedPapers.add(key);
+  }
+  renderSavedPapers();
+}
+
+async function sendSavedEmail() {
+  const papers = selectedSavedPapers();
+  if (!papers.length) {
+    addProgress("请先勾选 Saved 里的文献", "err");
+    return;
+  }
+  const toEmail = el("cfgEmail").value.trim();
+  addProgress(`正在发送 ${papers.length} 篇 Saved 文献的邮件...`);
+  try {
+    const data = await apiJson("/api/saved/email", {
+      session_id: state.sessionId,
+      papers,
+      to_email: toEmail || undefined,
+    });
+    addProgress(data.message || "邮件已发送", "ok");
+  } catch (e) {
+    addProgress("Saved 邮件发送失败: " + e.message, "err");
+  }
+}
+
+async function exportSavedRIS() {
+  const papers = selectedSavedPapers();
+  if (!papers.length) {
+    addProgress("请先勾选 Saved 里的文献", "err");
+    return;
+  }
+  addProgress(`正在导出 ${papers.length} 篇 Saved 文献的 RIS...`);
+  try {
+    const res = await fetch("/api/saved/export-ris", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: state.sessionId, papers }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const disposition = res.headers.get("Content-Disposition") || "";
+    const fnameMatch = disposition.match(/filename="?([^"]+)"?/);
+    const filename = fnameMatch ? fnameMatch[1] : "saved_literature.ris";
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    addProgress(`RIS 文件已下载: ${filename}`, "ok");
+  } catch (e) {
+    addProgress("Saved RIS 导出失败: " + e.message, "err");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1123,20 +1657,27 @@ function renderAnalysisArchives() {
   }
   el("archivesCount").textContent = String(entries.length);
 
-  // 搜索框（保留已有输入值）
-  const prevQuery = document.getElementById("archiveSearchInput")?.value || "";
-  const searchHtml = `<div style="margin-bottom:12px;">
-    <input id="archiveSearchInput" class="input" type="text" placeholder="搜索主题关键词..." value="${escapeHtml(prevQuery)}" style="width:100%;">
-  </div>`;
+  const timeFiltered = entries
+    .filter(e => isWithinDateFilter(e.analyzed_at, state.archiveDateFilter))
+    .sort((a, b) => timestampOf(b.analyzed_at) - timestampOf(a.analyzed_at));
 
-  // 按关键词过滤
-  const query = prevQuery.toLowerCase();
+  const query = state.archiveQuery.trim().toLowerCase();
   const filtered = query
-    ? entries.filter(e => (e.topic || "").toLowerCase().includes(query) || (e.title || "").toLowerCase().includes(query))
-    : entries;
+    ? timeFiltered.filter(e => [e.topic, e.title, e.journal, e.doi, e.source_desc]
+        .some(value => String(value || "").toLowerCase().includes(query)))
+    : timeFiltered;
+
+  const filterHtml = renderListFilterToolbar(
+    "archive",
+    state.archiveDateFilter,
+    filtered.length,
+    entries.length,
+    state.archiveQuery,
+    "搜索 Archives 标题、标签、期刊、DOI"
+  );
 
   if (!filtered.length) {
-    list.innerHTML = searchHtml + `<div class="empty-state">无匹配的存档</div>`;
+    list.innerHTML = filterHtml + `<div class="empty-state">无匹配的存档</div>`;
     _bindArchiveSearch();
     return;
   }
@@ -1150,39 +1691,77 @@ function renderAnalysisArchives() {
   }
 
   const topicNames = Object.keys(grouped).sort();
-  const html = searchHtml + topicNames.map(topic => {
+  const html = filterHtml + topicNames.map(topic => {
     const items = grouped[topic];
-    const itemsHtml = items.map(e => {
+    const monthGroups = groupByMonth(
+      items.sort((a, b) => timestampOf(b.analyzed_at) - timestampOf(a.analyzed_at)),
+      e => e.analyzed_at
+    );
+    const itemsHtml = monthGroups.map(([monthKey, monthItems]) => {
+      const monthItemsHtml = monthItems.map(e => {
       const title = escapeHtml(e.title || "Untitled");
-      const date = (e.analyzed_at || "").slice(0, 10);
+      const date = formatDateTime(e.analyzed_at);
       const source = escapeHtml(e.source_desc || "");
+      const journal = escapeHtml(e.journal || "");
+      const citations = Number(e.citation_count || 0);
+      const impactFactor = e.impact_factor != null ? Number(e.impact_factor) : null;
+      const summarySentence = escapeHtml(e.summary_sentence || "");
       const doi = e.doi ? escapeHtml(e.doi) : "";
       const htmlFile = escapeHtml(e.html_file || "");
 
       return `
-        <div class="paper-card" style="margin-left:12px;">
-          <div class="paper-card__header">
-            <div class="paper-card__title" style="flex:1;">${title}</div>
-          </div>
-          <div class="paper-card__meta">
-            ${source ? `<span class="source-badge source-badge--oa">${source}</span>` : ""}
-            ${date ? `<span class="paper-card__meta-item">${date}</span>` : ""}
-            ${doi ? `<span class="paper-card__meta-item" style="font-family:var(--mono);font-size:11px;">${doi}</span>` : ""}
-          </div>
-          <div class="paper-card__actions">
-            ${htmlFile ? `<button class="btn btn--small btn--ghost" data-action="view-archive-html" data-html-file="${htmlFile}">查看报告</button>` : ""}
-            <button class="btn btn--small btn--ghost" data-action="delete-archive" data-archive-id="${escapeHtml(e.id || "")}" style="color:var(--err);">删除</button>
+        <div class="timeline-item">
+          <div class="timeline-item__marker"></div>
+          <div class="timeline-item__body">
+            <div class="timeline-item__time">${date ? `解读于 ${escapeHtml(date)}` : "解读时间未知"}</div>
+            <div class="paper-card paper-card--topic">
+              <div class="archive-card__topline">
+                <div class="archive-card__source">
+                  ${journal ? `<span>${journal}</span>` : ""}
+                  ${journal && source ? `<span class="archive-card__dot">·</span>` : ""}
+                  ${source ? `<span>${source}</span>` : ""}
+                </div>
+                <div class="archive-card__badges">
+                  ${citations > 0 ? `<span class="archive-card__badge archive-card__badge--cite">${citations}</span>` : ""}
+                </div>
+              </div>
+              <div class="paper-card__header archive-card__header">
+                <div class="paper-card__title archive-card__title" style="flex:1;">${title}</div>
+              </div>
+              <div class="paper-card__meta">
+                ${journal ? `<span class="archive-card__tag">${journal}</span>` : ""}
+                ${impactFactor ? `<span class="archive-card__tag archive-card__tag--if">IF ${impactFactor.toFixed(1)}</span>` : ""}
+                ${source ? `<span class="archive-card__tag">${source}</span>` : ""}
+                ${doi ? `<span class="paper-card__meta-item" style="font-family:var(--mono);font-size:11px;">${doi}</span>` : ""}
+              </div>
+              ${summarySentence ? `<div class="archive-card__summary">推荐理由：${summarySentence}</div>` : ""}
+              <div class="paper-card__actions">
+                ${htmlFile ? `<button class="btn btn--small btn--ghost" data-action="view-archive-html" data-html-file="${htmlFile}">查看报告</button>` : ""}
+                <button class="btn btn--small btn--ghost" data-action="delete-archive" data-archive-id="${escapeHtml(e.id || "")}" style="color:var(--err);">删除</button>
+              </div>
+            </div>
           </div>
         </div>`;
+      }).join("");
+      return `
+        <div class="timeline-month timeline-month--nested">
+          <div class="timeline-month__header">
+            <span>${formatMonthLabel(monthKey)}</span>
+            <span>${monthItems.length} 篇</span>
+          </div>
+          <div class="timeline-list">${monthItemsHtml}</div>
+        </div>
+      `;
     }).join("");
 
     const topicEsc = escapeHtml(topic);
+    const colorStyle = topicColorStyle(topic);
     return `
-      <div class="archive-topic-group" style="margin-bottom:20px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 0;border-bottom:1px solid var(--border);">
-          <span style="font-weight:600;font-size:14px;color:var(--accent);">${topicEsc}</span>
-          <span style="color:var(--text-muted);font-size:12px;">(${items.length})</span>
-          <button class="btn btn--small btn--ghost" data-action="rename-topic" data-old-topic="${topicEsc}" style="margin-left:auto;font-size:11px;">改名</button>
+      <div class="archive-topic-group" style="${colorStyle}">
+        <div class="archive-topic-header">
+          <span class="archive-topic-tag">${topicEsc}</span>
+          <span class="archive-topic-count">${items.length} 篇</span>
+          <button class="archive-topic-edit" data-action="edit-topic" data-topic="${topicEsc}" title="编辑标签">✎</button>
         </div>
         ${itemsHtml}
       </div>`;
@@ -1193,12 +1772,13 @@ function renderAnalysisArchives() {
 }
 
 function _bindArchiveSearch() {
-  const input = document.getElementById("archiveSearchInput");
-  if (!input) return;
-  input.oninput = () => renderAnalysisArchives();
-  // 保持焦点和光标位置
-  input.focus();
-  input.selectionStart = input.selectionEnd = input.value.length;
+  bindListFilterToolbar(
+    "archive",
+    state.archiveDateFilter,
+    () => state.archiveQuery,
+    value => { state.archiveQuery = value; },
+    renderAnalysisArchives
+  );
 }
 
 async function renameTopic(oldTopic) {
@@ -1211,6 +1791,12 @@ async function renameTopic(oldTopic) {
       new_topic: newTopic.trim()
     });
     if (data.ok) {
+      const colors = loadTopicColorOverrides();
+      if (colors[oldTopic] && !colors[newTopic.trim()]) {
+        colors[newTopic.trim()] = colors[oldTopic];
+        delete colors[oldTopic];
+        saveTopicColorOverrides(colors);
+      }
       addProgress(`已将「${oldTopic}」改名为「${newTopic.trim()}」(${data.renamed} 条)`, "ok");
       await loadAnalysisArchives();
     } else {
@@ -1219,6 +1805,88 @@ async function renameTopic(oldTopic) {
   } catch (e) {
     addProgress("改名失败: " + e.message, "err");
   }
+}
+
+function editTopic(topic) {
+  const existing = document.querySelector(".topic-edit-dialog");
+  if (existing) existing.remove();
+
+  let selectedColor = topicColorValue(topic);
+  const colorButtons = TOPIC_COLOR_PALETTE.map(color => `
+    <button class="topic-edit-dialog__swatch${color.fg === selectedColor ? " is-selected" : ""}"
+      type="button"
+      data-color="${color.fg}"
+      title="${color.name}"
+      style="--swatch:${color.fg};"></button>
+  `).join("");
+
+  const dialog = document.createElement("div");
+  dialog.className = "topic-edit-dialog";
+  dialog.innerHTML = `
+    <div class="topic-edit-dialog__panel">
+      <label class="topic-edit-dialog__label">标签名</label>
+      <input class="input topic-edit-dialog__input" type="text" value="${escapeHtml(topic)}">
+      <div class="topic-edit-dialog__label">颜色</div>
+      <div class="topic-edit-dialog__swatches">${colorButtons}</div>
+      <div class="topic-edit-dialog__actions">
+        <button class="btn btn--small btn--ghost" type="button" data-topic-edit-cancel>取消</button>
+        <button class="btn btn--small btn--primary" type="button" data-topic-edit-save>保存</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+
+  const input = dialog.querySelector(".topic-edit-dialog__input");
+  const close = () => dialog.remove();
+  input.focus();
+  input.select();
+
+  dialog.addEventListener("click", async (ev) => {
+    const swatch = ev.target.closest("[data-color]");
+    if (swatch) {
+      selectedColor = swatch.getAttribute("data-color");
+      dialog.querySelectorAll(".topic-edit-dialog__swatch").forEach(btn => btn.classList.remove("is-selected"));
+      swatch.classList.add("is-selected");
+      return;
+    }
+    if (ev.target.closest("[data-topic-edit-cancel]") || ev.target === dialog) {
+      close();
+      return;
+    }
+    if (!ev.target.closest("[data-topic-edit-save]")) return;
+
+    const newTopic = input.value.trim();
+    if (!newTopic) return;
+
+    try {
+      const colors = loadTopicColorOverrides();
+      const topicChanged = newTopic !== topic;
+      if (topicChanged) {
+        const data = await apiJson("/api/analyses/rename-topic", {
+          old_topic: topic,
+          new_topic: newTopic
+        });
+        if (!data.ok) {
+          addProgress("标签保存失败: " + (data.error || ""), "err");
+          return;
+        }
+        delete colors[topic];
+        addProgress(`已将「${topic}」改为「${newTopic}」(${data.renamed} 条)`, "ok");
+      }
+      colors[newTopic] = selectedColor;
+      saveTopicColorOverrides(colors);
+      if (!topicChanged) addProgress(`已更新「${newTopic}」的标签颜色`, "ok");
+      close();
+      await loadAnalysisArchives();
+    } catch (e) {
+      addProgress("标签保存失败: " + e.message, "err");
+    }
+  });
+
+  input.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") close();
+    if (ev.key === "Enter") dialog.querySelector("[data-topic-edit-save]")?.click();
+  });
 }
 
 async function viewArchiveHtml(htmlFile) {
@@ -1302,6 +1970,8 @@ async function exportRIS() {
 // Event binding
 // ---------------------------------------------------------------------------
 function bind() {
+  el("searchPanelToggle").addEventListener("click", toggleSearchPanel);
+
   // Parse (step 1)
   el("parseBtn").addEventListener("click", runParse);
   el("nlInput").addEventListener("keydown", (ev) => {
@@ -1329,6 +1999,14 @@ function bind() {
       if (q) runAnalyze(q, false);
     }
   });
+  el("paperUploadInput").addEventListener("change", () => {
+    const file = el("paperUploadInput").files?.[0];
+    el("paperUploadBtn").disabled = !file;
+    if (file && !el("paperUploadTitleInput").value.trim()) {
+      el("paperUploadTitleInput").value = file.name.replace(/\.pdf$/i, "").replaceAll("_", " ").replaceAll("-", " ");
+    }
+  });
+  el("paperUploadBtn").addEventListener("click", runAnalyzeUpload);
 
   // Tabs
   document.querySelectorAll(".tab").forEach(tab => {
@@ -1373,8 +2051,16 @@ function bind() {
   // Saved list delegation (delete + analyze)
   el("savedList").addEventListener("click", (ev) => {
     const btn = ev.target.closest("[data-action]");
+    const action = btn?.getAttribute("data-action");
+    if (action === "email-saved-selected") {
+      sendSavedEmail();
+      return;
+    }
+    if (action === "export-saved-ris") {
+      exportSavedRIS();
+      return;
+    }
     if (!btn) return;
-    const action = btn.getAttribute("data-action");
     if (action === "delete-saved") {
       const id = btn.getAttribute("data-delete-id");
       if (id) deleteSavedPaper(id);
@@ -1384,15 +2070,24 @@ function bind() {
       if (query) runAnalyze(query);
     }
   });
+  el("savedList").addEventListener("change", (ev) => {
+    const selectAll = ev.target.closest("#savedSelectAllCheckbox");
+    if (selectAll) {
+      toggleSavedSelectAll();
+      return;
+    }
+    const cb = ev.target.closest("[data-saved-key]");
+    if (cb) toggleSavedPaperSelect(cb.getAttribute("data-saved-key"));
+  });
 
   // Archives list delegation (rename-topic + view-archive-html)
   el("archivesList").addEventListener("click", (ev) => {
     const btn = ev.target.closest("[data-action]");
     if (!btn) return;
     const action = btn.getAttribute("data-action");
-    if (action === "rename-topic") {
-      const oldTopic = btn.getAttribute("data-old-topic");
-      if (oldTopic) renameTopic(oldTopic);
+    if (action === "edit-topic") {
+      const topic = btn.getAttribute("data-topic");
+      if (topic) editTopic(topic);
     }
     if (action === "view-archive-html") {
       const htmlFile = btn.getAttribute("data-html-file");
@@ -1428,6 +2123,7 @@ function toggleTheme() {
 // ---------------------------------------------------------------------------
 window.addEventListener("load", async () => {
   applyTheme(getTheme());
+  applySearchPanelCollapsed(loadSearchPanelCollapsed());
   el("themeToggle").addEventListener("click", toggleTheme);
   bind();
   await createSession();
